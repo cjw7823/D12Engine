@@ -1,0 +1,60 @@
+#pragma once
+
+// 디버그 빌드에서만 C Runtime에 c/c++ 힙 할당을 추적 가능하게 만듦.
+// 프로그램 종료 시 메모리 누수 보고서를 출력함.
+#if defined(DEBUG) || defined(_DEBUG)
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#endif
+
+#include "../SampleSrc/d3dUtil.h"
+#include "../SampleSrc/GameTimer.h"
+
+#pragma comment(lib,"d3dcompiler.lib")
+#pragma comment(lib, "D3D12.lib")
+#pragma comment(lib, "dxgi.lib")
+
+class AppD3D
+{
+protected:
+	AppD3D(HINSTANCE hInstance);
+	AppD3D(const AppD3D& rhs) = delete;
+	AppD3D& operator=(const AppD3D& rhs) = delete;
+	virtual ~AppD3D();
+
+public:
+	static AppD3D* GetApp() { return mApp; };
+	int Run();
+	virtual bool Initialize();
+	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+protected:
+	virtual void OnResize() {};
+	virtual void Update(const GameTimer& gt)=0;
+	virtual void Draw(const GameTimer& gt)=0;
+
+	bool InitMainWindow();
+	bool InitDirect3D();
+
+	void PrintAdapters();
+protected:
+	inline static AppD3D* mApp = nullptr;
+	HINSTANCE mhAppInst = nullptr;
+	HWND      mhMainWnd = nullptr;
+	GameTimer mTimer;
+
+	UINT m4xMsaaQuality = 0;
+
+	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
+	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;
+	Microsoft::WRL::ComPtr<ID3D12Fence> mFence;
+
+	UINT mRtvDescriptorSize = 0;
+	UINT mDsvDescriptorSize = 0;
+	UINT mCbvSrvUavDescriptorSize = 0;
+
+	std::wstring mMainWndCaption = L"Direct3D 12 App";
+	DXGI_FORMAT mAbckBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	int mClientWidth = 800;
+	int mClientHeight = 600;
+};

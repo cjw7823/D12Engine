@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="SampleSrc">
+      <UniqueIdentifier>{9d671705-c9d4-4774-8972-7eb3f3e9d406}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="D12Engine.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Initd3dApp.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="AppD3D.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\Camera.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\d3dApp.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\d3dUtil.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\d3dx12.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\DDSTextureLoader.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\GameTimer.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\GeometryGenerator.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\MathHelper.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SampleSrc\UploadBuffer.h">
+      <Filter>SampleSrc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D12Engine.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="AppD3D.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\Camera.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\d3dApp.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\d3dUtil.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\DDSTextureLoader.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\GameTimer.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\GeometryGenerator.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SampleSrc\MathHelper.cpp">
+      <Filter>SampleSrc</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="D12Engine.rc">
+      <Filter>리소스 파일</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="D12Engine.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
