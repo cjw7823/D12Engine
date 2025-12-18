@@ -1,12 +1,12 @@
-﻿// CopyD2D12.cpp : 애플리케이션에 대한 진입점을 정의합니다.
+﻿// D12Engine.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
 
 #include "Initd3dApp.h"
 
-int APIENTRY wWinMain(HINSTANCE hInstance,
-    HINSTANCE hPrevInstance,
-    LPWSTR    lpCmdLine,
-    int       nCmdShow)
+int APIENTRY wWinMain( _In_ HINSTANCE hInstance,
+                       _In_opt_ HINSTANCE hPrevInstance,
+                       _In_ LPWSTR lpCmdLine,
+                       _In_ int nCmdShow)
 {
 #if defined(DEBUG) | defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
