@@ -70,6 +70,9 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 
+	D3D12_VIEWPORT mScreenViewport = {};
+	D3D12_RECT mScissorRect = {};
+
 	int mCurrBackBuffer = 0;
 	UINT64 mCurrentFence = 0;
 
@@ -79,6 +82,7 @@ protected:
 
 	std::wstring mMainWndCaption = L"Direct3D 12 App";
 	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	int mClientWidth = 800;
 	int mClientHeight = 600;
 };

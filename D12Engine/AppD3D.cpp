@@ -314,12 +314,75 @@ void AppD3D::OnResize()
 		rtvHeapHandle.Offset(1, mRtvDescriptorSize);
 	}
 
+	//Depth/Stencil 버퍼 생성. view 생성.
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
 	depthStencilDesc.Width = mClientWidth;
 	depthStencilDesc.Height = mClientHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
+	depthStencilDesc.MipLevels = 1; // 0은 가능한 모든 밉맵을 자동 생성한다는 의미.
+
+	//동일한 리소스에 두개의 뷰를 생성해야 하므로 다음과 같이 처리.
+	// 1. SRV 형식: DXGI_FORMAT_R24_UNORM_X8_TYPELESS
+	// 2. DSV 형식: DXGI_FORMAT_D24_UNORM_S8_UINT
+	// 3. 리소스 형식: DXGI_FORMAT_R24G8_TYPELESS
+	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+	depthStencilDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
+	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	//Clear 최적화용	초기값 지정.
+	//이 리소스는 이렇게 초기화 될 것임을 GPU에 알림.
+	//리소스 포맷이 아닌 뷰 포맷을 사용.
+	D3D12_CLEAR_VALUE optClear;
+	optClear.Format = mDepthStencilFormat;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);//DEFAULT는 GPU 전용 메모리(실제 VRAM 또는 드라이버가 관리하는 GPU-local)
+	//Committed는 힙과 리소스를 동시에 생성.
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&depthStencilDesc,
+		D3D12_RESOURCE_STATE_COMMON,//리소스 생성 직후는 보통 COMMON 상태. 실제로 사용 직전에 필요한 상태로 변환.
+		&optClear,
+		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
+
+	//DSV 디스크립터 힙의 첫번째 슬롯에 DSV 디스크립터 생성.
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Format = mDepthStencilFormat;
+	dsvDesc.Texture2D.MipSlice = 0;
+	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),
+		&dsvDesc,
+		mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	//COMMON 상태에서 DEPTH_WRITE 상태로 전환.
+	auto depthBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		mDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	mCommandList->ResourceBarrier(1, &depthBarrier); //전환 명령을 기록.
+
+	ThrowIfFailed(mCommandList->Close());
+	//커맨드 리스트는 연속된 메모리 주소가 아니므로 포인터 배열로 전달.
+	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
+	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+	FlushCommandQueue();
+
+	//뷰포트와 시저렉트 설정.
+	mScreenViewport.TopLeftX = 0;
+	mScreenViewport.TopLeftY = 0;
+	mScreenViewport.Width = static_cast<float>(mClientWidth);
+	mScreenViewport.Height = static_cast<float>(mClientHeight);
+	mScreenViewport.MinDepth = 0.0f;
+	mScreenViewport.MaxDepth = 1.0f;
+
+	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
 
 void AppD3D::FlushCommandQueue()
