@@ -86,6 +86,9 @@
     <ClCompile Include="..\SampleSrc\MathHelper.cpp">
       <Filter>SampleSrc</Filter>
     </ClCompile>
+    <ClCompile Include="AppD3D.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="D12Engine.rc">

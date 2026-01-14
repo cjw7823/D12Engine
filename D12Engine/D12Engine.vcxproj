@@ -146,6 +146,7 @@
     <ClCompile Include="..\SampleSrc\GameTimer.cpp" />
     <ClCompile Include="..\SampleSrc\GeometryGenerator.cpp" />
     <ClCompile Include="..\SampleSrc\MathHelper.cpp" />
+    <ClCompile Include="AppD3D.cpp" />
     <ClCompile Include="Initd3dApp.cpp" />
     <ClCompile Include="D12Engine.cpp" />
   </ItemGroup>
