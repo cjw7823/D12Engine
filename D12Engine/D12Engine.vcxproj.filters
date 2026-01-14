@@ -30,16 +30,13 @@
     <ClInclude Include="D12Engine.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Initd3dApp.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="AppD3D.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\SampleSrc\Camera.h">
-      <Filter>SampleSrc</Filter>
+    <ClInclude Include="Initd3dApp.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\SampleSrc\d3dApp.h">
+    <ClInclude Include="..\SampleSrc\Camera.h">
       <Filter>SampleSrc</Filter>
     </ClInclude>
     <ClInclude Include="..\SampleSrc\d3dUtil.h">
@@ -68,13 +65,10 @@
     <ClCompile Include="D12Engine.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="AppD3D.cpp">
+    <ClCompile Include="Initd3dApp.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\SampleSrc\Camera.cpp">
-      <Filter>SampleSrc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\SampleSrc\d3dApp.cpp">
       <Filter>SampleSrc</Filter>
     </ClCompile>
     <ClCompile Include="..\SampleSrc\d3dUtil.cpp">

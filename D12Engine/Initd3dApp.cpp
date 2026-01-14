@@ -1,26 +1,26 @@
-#include "AppD3D.h"
+#include "InitD3DApp.h"
 #include <WindowsX.h> // For GET_X_LPARAM, GET_Y_LPARAM, #include <Window.h> 선행 필수.
 #include <iostream>
 
 LRESULT CALLBACK
 MainWndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	return AppD3D::GetApp()->MsgProc(hwnd, msg, wParam, lParam);
+	return InitD3DApp::GetApp()->MsgProc(hwnd, msg, wParam, lParam);
 }
 
-AppD3D::AppD3D(HINSTANCE hInstance) : mhAppInst(hInstance)
+InitD3DApp::InitD3DApp(HINSTANCE hInstance) : mhAppInst(hInstance)
 {
 	assert(mApp == nullptr);// 디버그용. expr가 거짓이면 강제 종료.
 	mApp = this;
 }
 
-AppD3D::~AppD3D()
+InitD3DApp::~InitD3DApp()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
 
-int AppD3D::Run()
+int InitD3DApp::Run()
 {
 	MSG msg = { 0 };
 
@@ -52,7 +52,7 @@ int AppD3D::Run()
 	return (int)msg.wParam;
 }
 
-bool AppD3D::Initialize()
+bool InitD3DApp::Initialize()
 {
 	if (!InitMainWindow())
 		return false;
@@ -64,7 +64,7 @@ bool AppD3D::Initialize()
 	return true;
 }
 
-LRESULT AppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT InitD3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
@@ -179,7 +179,7 @@ LRESULT AppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-void AppD3D::Set4xMsaaState(bool value)
+void InitD3DApp::Set4xMsaaState(bool value)
 {
 	if (m4xMsaaState != value)
 	{
@@ -191,7 +191,7 @@ void AppD3D::Set4xMsaaState(bool value)
 	}
 }
 
-bool AppD3D::InitMainWindow()
+bool InitD3DApp::InitMainWindow()
 {
 	//윈도우 객체의 공통 속성 정의서.
 	WNDCLASSEX wcex = {};
@@ -248,7 +248,7 @@ bool AppD3D::InitMainWindow()
 	return true;
 }
 
-bool AppD3D::InitDirect3D()
+bool InitD3DApp::InitDirect3D()
 {
 #if defined(DEBUG) || defined(_DEBUG)
 //디버그 레이어 활성화. CreateDevice 호출 전에 해야 함.
@@ -325,7 +325,7 @@ bool AppD3D::InitDirect3D()
 	return true;
 }
 
-void AppD3D::CreateCommandObjects()
+void InitD3DApp::CreateCommandObjects()
 {
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -350,7 +350,7 @@ void AppD3D::CreateCommandObjects()
 	mCommandList->Close();
 }
 
-void AppD3D::CreateSwapChain()
+void InitD3DApp::CreateSwapChain()
 {
 	//백버퍼 여러장을 돌려가며 Present(제시) 하는 구조
 	mSwapChain.Reset();
@@ -385,7 +385,7 @@ void AppD3D::CreateSwapChain()
 // 리소스 자체가 아니라, 리소스를 렌더링 파이프라인에 바인딩할 때 사용할
 // RTV/DSV 디스크립터(뷰)를 저장하는 힙이다.
 // 실제 RTV/DSV 디스크립터는 백버퍼/깊이버퍼 리소스를 만든 뒤 Create*View로 힙에 기록한다.
-void AppD3D::CreateRtvDsvDescriptorHeaps()
+void InitD3DApp::CreateRtvDsvDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
 	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
@@ -406,7 +406,7 @@ void AppD3D::CreateRtvDsvDescriptorHeaps()
 		IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
 }
 
-void AppD3D::OnResize()
+void InitD3DApp::OnResize()
 {
 	assert(md3dDevice);
 	assert(mSwapChain);
@@ -511,7 +511,7 @@ void AppD3D::OnResize()
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
 	
-void AppD3D::FlushCommandQueue()
+void InitD3DApp::FlushCommandQueue()
 {
 	//다음 프레임에서 사용할 펜스 값 계산.
 	mCurrentFence++;
@@ -530,7 +530,7 @@ void AppD3D::FlushCommandQueue()
 	}
 }
 
-void AppD3D::CalculateFrameStats()
+void InitD3DApp::CalculateFrameStats()
 {
 	static int frameCnt = 0;
 	static double timeElapsed = 0.0f;
@@ -557,7 +557,7 @@ void AppD3D::CalculateFrameStats()
 	}
 }
 
-void AppD3D::PrintAdapters()
+void InitD3DApp::PrintAdapters()
 {
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
 	UINT index = 0;
@@ -592,7 +592,7 @@ void AppD3D::PrintAdapters()
 	}
 }
 
-void AppD3D::LogAdapters()
+void InitD3DApp::LogAdapters()
 {
 	UINT i = 0;
 	IDXGIAdapter* adapter = nullptr;
@@ -620,7 +620,7 @@ void AppD3D::LogAdapters()
 	}
 }
 
-void AppD3D::LogAdapterOutputs(IDXGIAdapter* adapter)
+void InitD3DApp::LogAdapterOutputs(IDXGIAdapter* adapter)
 {
 	UINT i = 0;
 	IDXGIOutput* output = nullptr;
@@ -642,7 +642,7 @@ void AppD3D::LogAdapterOutputs(IDXGIAdapter* adapter)
 	}
 }
 
-void AppD3D::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
+void InitD3DApp::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
 {
 	UINT count = 0;
 	UINT flags = 0;
