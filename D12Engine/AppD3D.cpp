@@ -24,6 +24,8 @@ int AppD3D::Run()
 {
 	MSG msg = { 0 };
 
+	mTimer.Reset();
+
 	while (msg.message != WM_QUIT)
 	{
 		//윈도우 메시지 처리.
@@ -34,8 +36,16 @@ int AppD3D::Run()
 		}
 		else
 		{
-			Update(mTimer);
-			Draw(mTimer);
+			mTimer.Tick();
+
+			if (!mAppPaused)
+			{
+				CalculateFrameStats();
+				Update(mTimer);
+				Draw(mTimer);
+			}
+			else
+				Sleep(100); //앱이 일시정지 상태이면 CPU 점유율을 낮춤.
 		}
 	}
 
@@ -58,11 +68,127 @@ LRESULT AppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
+	case WM_ACTIVATE: //윈도우가 포커스를 얻거나 잃을 때 OS가 보내는 메시지
+		if (LOWORD(wParam) == WA_INACTIVE)
+		{
+			mAppPaused = true;
+			mTimer.Stop();
+		}
+		else
+		{
+			mAppPaused = false;
+			mTimer.Start();
+		}
+		return 0;
+
+	case WM_SIZE: //윈도우 크기가 변경될 때 OS가 보내는 메시지
+		mClientWidth = LOWORD(lParam);
+		mClientHeight = HIWORD(lParam);
+		if (md3dDevice)
+		{
+			if (wParam == SIZE_MINIMIZED)
+			{
+				mAppPaused = true;
+				mMinimized = true;
+				mMaximized = false;
+			}
+			else if (wParam == SIZE_MAXIMIZED)
+			{
+				mAppPaused = false;
+				mMinimized = false;
+				mMaximized = true;
+				OnResize();
+			}
+			else if (wParam == SIZE_RESTORED)//정상 크기 상태로 복귀/변경
+			{
+				if (mMinimized)
+				{
+					mAppPaused = false;
+					mMinimized = false;
+					OnResize();
+				}
+				else if (mMaximized)
+				{
+					mAppPaused = false;
+					mMaximized = false;
+					OnResize();
+				}
+				else if (mResizing)//창 크기 드래그 중
+				{
+					//드래그 중 계속해서 WM_SIZE 메시지가 오기 때문에
+					//여기서는 OnResize를 호출하지 않는다.
+				}
+				else // SetWindowPos 또는 mSwapChain->SetFullscreenState와 같은 API 호출입니다.
+				{
+					OnResize();
+				}
+			}
+
+		}
+		return 0;
+
+	case WM_ENTERSIZEMOVE: //사용자가 창 크기 조절 막대를 잡을 때 전송되는 메시지
+		mAppPaused = true;
+		mResizing = true;
+		mTimer.Stop();
+		return 0;
+
+	case WM_EXITSIZEMOVE: //사용자가 창 크기 조절 막대를 놓을 때 전송되는 메시지
+		mAppPaused = false;
+		mResizing = false;
+		mTimer.Start();
+		OnResize();
+		return 0;
+
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
+
+	case WM_MENUCHAR://메뉴가 활성화된 상태에서 사용자가 니모닉 키나 가속기 키에 해당하지 않는 키를 누를 때 전송됩니다.
+		return MAKELRESULT(0, MNC_CLOSE); //삐 소리 방지.
+
+	case WM_GETMINMAXINFO: //사용자가 드래그해서 리사이즈 하거나, OS가 윈도우 크기를 계산하려고 할 때.
+						   //앱은 여기서 최대/최소 크기 수정 기회를 갖음.
+		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
+		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+		return 0;
+
+	case WM_LBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+		OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
+	case WM_LBUTTONUP:
+	case WM_MBUTTONUP:
+	case WM_RBUTTONUP:
+		OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
+	case WM_MOUSEMOVE:
+		OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
+	case WM_KEYUP:
+		if (wParam == VK_ESCAPE)
+			PostQuitMessage(0);
+		else if ((int)wParam == VK_F2)
+			Set4xMsaaState(!m4xMsaaState);
+		return 0;
 	}
 	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+void AppD3D::Set4xMsaaState(bool value)
+{
+	if (m4xMsaaState != value)
+	{
+		m4xMsaaState = value;
+
+		FlushCommandQueue();
+		CreateSwapChain();
+		OnResize();
+	}
 }
 
 bool AppD3D::InitMainWindow()
@@ -384,7 +510,7 @@ void AppD3D::OnResize()
 
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
-
+	
 void AppD3D::FlushCommandQueue()
 {
 	//다음 프레임에서 사용할 펜스 값 계산.
@@ -401,6 +527,33 @@ void AppD3D::FlushCommandQueue()
 		//이벤트가 신호 상태가 될 때까지 대기.
 		WaitForSingleObject(eventHandle, INFINITE);
 		CloseHandle(eventHandle);
+	}
+}
+
+void AppD3D::CalculateFrameStats()
+{
+	static int frameCnt = 0;
+	static double timeElapsed = 0.0f;
+
+	frameCnt++;
+
+	//1초마다 프레임 통계 출력.
+	if ((mTimer.TotalTime() - timeElapsed) >= 1.0f)
+	{
+		float fps = (float)frameCnt;
+		float mfps = 1000.0f / fps;
+
+		std::wstring fpsStr = std::to_wstring(fps);
+		std::wstring mfpsStr = std::to_wstring(mfps);
+
+		std::wstring windowText = mMainWndCaption +
+			L"     fps" + fpsStr +
+			L"    mfps: " + mfpsStr;
+
+		SetWindowText(mhMainWnd, windowText.c_str());
+
+		frameCnt = 0;
+		timeElapsed += mTimer.TotalTime();
 	}
 }
 

@@ -28,17 +28,25 @@ public:
 	virtual bool Initialize();
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+	void Set4xMsaaState(bool value);
+
 protected:
 	virtual void OnResize();
 	virtual void Update(const GameTimer& gt)=0;
 	virtual void Draw(const GameTimer& gt)=0;
 	virtual void CreateRtvDsvDescriptorHeaps();
 
+	virtual void OnMouseDown(WPARAM btnState, int x, int y) {}
+	virtual void OnMouseUp(WPARAM btnState, int x, int y) {}
+	virtual void OnMouseMove(WPARAM btnState, int x, int y) {}
+
 	bool InitMainWindow();
 	bool InitDirect3D();
 	void CreateCommandObjects();
 	void CreateSwapChain();
 	void FlushCommandQueue();
+
+	void CalculateFrameStats();
 
 	void PrintAdapters();
 	void LogAdapters();
@@ -50,6 +58,10 @@ protected:
 
 	HINSTANCE mhAppInst = nullptr;
 	HWND      mhMainWnd = nullptr;
+	bool	  mAppPaused = false;
+	bool	  mMinimized = false;
+	bool	  mMaximized = false;
+	bool	  mResizing = false;
 	GameTimer mTimer;
 
 	UINT m4xMsaaQuality = 0;
