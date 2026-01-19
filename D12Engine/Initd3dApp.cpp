@@ -169,6 +169,10 @@ LRESULT InitD3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 
+	case WM_MOUSEWHEEL:
+		OnMouseMove(GET_WHEEL_DELTA_WPARAM(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
 	case WM_KEYUP:
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
@@ -189,6 +193,11 @@ void InitD3DApp::Set4xMsaaState(bool value)
 		CreateSwapChain();
 		OnResize();
 	}
+}
+
+float InitD3DApp::AspectRatio() const
+{
+	return static_cast<float>(mClientWidth) / mClientHeight;
 }
 
 bool InitD3DApp::InitMainWindow()

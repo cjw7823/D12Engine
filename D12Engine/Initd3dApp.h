@@ -29,6 +29,7 @@ public:
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	void Set4xMsaaState(bool value);
+	float AspectRatio()const;
 
 protected:
 	virtual void OnResize();
@@ -52,6 +53,17 @@ protected:
 	void LogAdapters();
 	void LogAdapterOutputs(IDXGIAdapter* adapter);
 	void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
+
+	ID3D12Resource* CurrentBackBuffer()const { return mSwapChainBuffer[mCurrBackBuffer].Get(); }
+	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView()const
+	{
+		return CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
+			mCurrBackBuffer,
+			mRtvDescriptorSize);
+	}
+	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView()const { return mDsvHeap->GetCPUDescriptorHandleForHeapStart(); }
+
 protected:
 	inline static InitD3DApp* mApp = nullptr;
 	static const int SwapChainBufferCount = 2;
