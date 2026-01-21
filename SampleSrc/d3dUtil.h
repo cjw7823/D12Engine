@@ -164,18 +164,18 @@ struct MeshGeometry
 
 	// System memory copies.  Use Blobs because the vertex/index format can be generic.
 	// It is up to the client to cast appropriately.  
-	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3DBlob>> VertexBufferCPU;
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU  = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> VertexBufferGPU;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> VertexBufferUploader;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
     // Data about the buffers.
-	UINT VertexByteStride = 0;
-	UINT VertexBufferByteSize = 0;
+	std::vector<UINT> VertexByteStride;
+	std::vector<UINT> VertexBufferByteSize;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 	UINT IndexBufferByteSize = 0;
 
@@ -184,12 +184,12 @@ struct MeshGeometry
 	// the Submeshes individually.
 	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
 
-	D3D12_VERTEX_BUFFER_VIEW VertexBufferView()const
+	D3D12_VERTEX_BUFFER_VIEW VertexBufferView(int index)const
 	{
 		D3D12_VERTEX_BUFFER_VIEW vbv;
-		vbv.BufferLocation = VertexBufferGPU->GetGPUVirtualAddress();
-		vbv.StrideInBytes = VertexByteStride;
-		vbv.SizeInBytes = VertexBufferByteSize;
+		vbv.BufferLocation = VertexBufferGPU[index]->GetGPUVirtualAddress();
+		vbv.StrideInBytes = VertexByteStride[index];
+		vbv.SizeInBytes = VertexBufferByteSize[index];
 
 		return vbv;
 	}
@@ -207,8 +207,24 @@ struct MeshGeometry
 	// We can free this memory after we finish upload to the GPU.
 	void DisposeUploaders()
 	{
-		VertexBufferUploader = nullptr;
+		for(auto& vbUploader : VertexBufferUploader)
+			vbUploader = nullptr;
 		IndexBufferUploader = nullptr;
+	}
+
+	// 추가: 벡터를 N개 요소로 초기화하는 헬퍼
+	void InitializeVertexBuffers(UINT count = 2)
+	{
+		VertexBufferCPU.clear();
+		VertexBufferCPU.resize(count);
+		VertexBufferGPU.clear();
+		VertexBufferGPU.resize(count);
+		VertexBufferByteSize.clear();
+		VertexBufferByteSize.resize(count, 0u);
+		VertexByteStride.clear();
+		VertexByteStride.resize(count, 0u);
+		VertexBufferUploader.clear();
+		VertexBufferUploader.resize(count);
 	}
 };
 

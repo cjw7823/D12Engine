@@ -92,8 +92,11 @@ void AppD3D::Draw(const GameTimer& gt)
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	auto vbv = mBoxGeo->VertexBufferView();
-	mCommandList->IASetVertexBuffers(0, 1, &vbv);
+	D3D12_VERTEX_BUFFER_VIEW vbv[] = {
+		mBoxGeo->VertexBufferView(0),
+		mBoxGeo->VertexBufferView(1)
+	};
+	mCommandList->IASetVertexBuffers(0, 2, vbv);
 	auto ibv = mBoxGeo->IndexBufferView();
 	mCommandList->IASetIndexBuffer(&ibv);
 
@@ -196,7 +199,7 @@ void AppD3D::BuildShadersAndInputLayout()
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 }
 
@@ -206,65 +209,71 @@ void AppD3D::BuildBoxGeometry()
 	using namespace DirectX;
 
 	//고정크기, 크기정보 포함 이므로 array사용.
-	std::array<Vertex, 8> vertices =
+	std::array<Vertex1, 5> verticesPos =
 	{
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+		Vertex1({XMFLOAT3(-1.0f, -1.0f, -1.0f)}),
+		Vertex1({XMFLOAT3(+1.0f, -1.0f, -1.0f)}),
+		Vertex1({XMFLOAT3(-1.0f, -1.0f, +1.0f)}),
+		Vertex1({XMFLOAT3(+1.0f, -1.0f, +1.0f)}),
+		Vertex1({XMFLOAT3(0.0f, +1.0f, 0.0f)}),
 	};
 
-	std::array<std::uint16_t, 36> indices =
+	std::array<Vertex2, 5> verticesCol =
 	{
-		// front face
-		0, 1, 2,
-		0, 2, 3,
-
-		// back face
-		4, 6, 5,
-		4, 7, 6,
-
-		// left face
-		4, 5, 1,
-		4, 1, 0,
-
-		// right face
-		3, 2, 6,
-		3, 6, 7,
-
-		// top face
-		1, 5, 6,
-		1, 6, 2,
-
-		// bottom face
-		4, 0, 3,
-		4, 3, 7
+		Vertex2({XMFLOAT4(Colors::Green)}),
+		Vertex2({XMFLOAT4(Colors::Green)}),
+		Vertex2({XMFLOAT4(Colors::Green)}),
+		Vertex2({XMFLOAT4(Colors::Green)}),
+		Vertex2({XMFLOAT4(Colors::Red)}),
 	};
 
-	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	std::array<std::uint16_t, 18> indices =
+	{
+		//아래면
+		0,1,2,
+		1,3,2,
+
+		//앞면
+		0,4,1,
+
+		//오른쪽면
+		1,4,3,
+
+		//뒷면
+		3,4,2,
+
+		//왼쪽면
+		2,4,0
+	};
+
+	const UINT vbpByteSize = (UINT)verticesPos.size() * sizeof(Vertex1);
+	const UINT vbcByteSize = (UINT)verticesCol.size() * sizeof(Vertex2);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	mBoxGeo = std::make_unique<MeshGeometry>();
+	mBoxGeo->InitializeVertexBuffers(2); //정점 버퍼 2개
 	mBoxGeo->Name = "boxGeo";
 
-	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
-	CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+	ThrowIfFailed(D3DCreateBlob(vbpByteSize, mBoxGeo->VertexBufferCPU[0].GetAddressOf()));
+	CopyMemory(mBoxGeo->VertexBufferCPU[0]->GetBufferPointer(), verticesPos.data(), vbpByteSize);
+	ThrowIfFailed(D3DCreateBlob(vbcByteSize, mBoxGeo->VertexBufferCPU[1].GetAddressOf()));
+	CopyMemory(mBoxGeo->VertexBufferCPU[1]->GetBufferPointer(), verticesCol.data(), vbcByteSize);
 
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
 	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-	mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+	mBoxGeo->VertexBufferGPU[0] = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), verticesPos.data(), vbpByteSize, mBoxGeo->VertexBufferUploader[0]);
+	mBoxGeo->VertexBufferGPU[1] = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), verticesCol.data(), vbcByteSize, mBoxGeo->VertexBufferUploader[1]);
 
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
 		mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
 
-	mBoxGeo->VertexByteStride = sizeof(Vertex);
-	mBoxGeo->VertexBufferByteSize = vbByteSize;
+	mBoxGeo->VertexByteStride[0] = sizeof(Vertex1);
+	mBoxGeo->VertexByteStride[1] = sizeof(Vertex2);
+	mBoxGeo->VertexBufferByteSize[0] = vbpByteSize;
+	mBoxGeo->VertexBufferByteSize[1] = vbcByteSize;
 	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
 	mBoxGeo->IndexBufferByteSize = ibByteSize;
 
@@ -335,7 +344,7 @@ void AppD3D::OnMouseMove(WPARAM btnState, int x, int y)
 	else if (btnState)	//확대/축소
 	{
 		mRadius -= static_cast<long long>(btnState) * 0.002f;
-		mRadius = MathHelper::Clamp(mRadius, 3.0f, 15.0f);
+		mRadius = MathHelper::Clamp(mRadius, 0.1f, 15.0f);
 	}
 
 	mLastMousePos.x = x;

@@ -31,9 +31,19 @@
 	   └─ GPU 접근 불가
 */
 
-struct Vertex
+//struct Vertex
+//{
+//	DirectX::XMFLOAT3 Pos;
+//	DirectX::XMFLOAT4 Color;
+//};
+
+struct Vertex1
 {
 	DirectX::XMFLOAT3 Pos;
+};
+
+struct Vertex2
+{
 	DirectX::XMFLOAT4 Color;
 };
 
@@ -83,7 +93,7 @@ private:
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 
-	float mTheta = 1.5f * DirectX::XM_PI;	//방위각
+	float mTheta = 1.55f * DirectX::XM_PI;	//방위각
 	float mPhi = DirectX::XM_PIDIV4;		//극각
 	float mRadius = 5.0f;					//거리
 
