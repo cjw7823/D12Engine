@@ -1,6 +1,7 @@
 ﻿#include "InitD3DApp.h"
 #include "../SampleSrc/MathHelper.h"
 #include "../SampleSrc/UploadBuffer.h"
+#include <windows.h>
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -50,6 +51,7 @@ struct Vertex2
 struct ObjectConstants
 {
 	DirectX::XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
+	float Time;
 };
 
 class AppD3D : public InitD3DApp
@@ -75,6 +77,9 @@ private:
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
+	virtual void OnMouseWheel(short zDelta, int x, int y) override;
+	virtual void OnKeyDown(WPARAM key) override;
+
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mCbvHeap;
@@ -95,7 +100,7 @@ private:
 
 	float mTheta = 1.55f * DirectX::XM_PI;	//방위각
 	float mPhi = DirectX::XM_PIDIV4;		//극각
-	float mRadius = 5.0f;					//거리
+	float mRadius = 15.0f;					//거리
 
 	POINT mLastMousePos;
 };

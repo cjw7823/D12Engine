@@ -3,7 +3,7 @@
 #include <iostream>
 
 LRESULT CALLBACK
-MainWndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	return InitD3DApp::GetApp()->MsgProc(hwnd, msg, wParam, lParam);
 }
@@ -170,7 +170,7 @@ LRESULT InitD3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	case WM_MOUSEWHEEL:
-		OnMouseMove(GET_WHEEL_DELTA_WPARAM(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 
 	case WM_KEYUP:
@@ -206,7 +206,7 @@ bool InitD3DApp::InitMainWindow()
 	WNDCLASSEX wcex = {};
 	wcex.cbSize = sizeof(WNDCLASSEX); // 구조체 크기.
 	wcex.style = CS_HREDRAW | CS_VREDRAW; // 가로/세로 크기 변경 시 전체를 다시 그리도록 설정.
-	wcex.lpfnWndProc = MainWndProc2;
+	wcex.lpfnWndProc = MainWndProc;
 	//win16과 호환 가능성을 위해 예약된 필드.
 	wcex.cbClsExtra = 0; // 클래스 메모리 추가 할당 없음. 
 	wcex.cbWndExtra = 0; // 윈도우 메모리 추가 할당 없음.

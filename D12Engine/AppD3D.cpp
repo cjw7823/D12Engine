@@ -1,4 +1,7 @@
 #include "AppD3D.h"
+#include <commdlg.h>
+#include <shlobj.h>
+#include <numeric>
 
 bool AppD3D::Initialize()
 {
@@ -10,10 +13,10 @@ bool AppD3D::Initialize()
 
 	BuildDescriptorHeaps();			//CBV 힙 생성.
 	BuildConstantBuffers();			//CBV 힙에 CBV 생성.
-	BuildRootSignature();			//
-	BuildShadersAndInputLayout();
-	BuildBoxGeometry();
-	BuildPSO();
+	BuildRootSignature();			//루트 시그니처 생성.
+	BuildShadersAndInputLayout();	//셰이더 및 입력 레이아웃 생성.
+	BuildBoxGeometry();				//박스 메쉬 생성.
+	BuildPSO();						//파이프라인 상태 객체(PSO) 생성.
 
 	ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
@@ -51,14 +54,23 @@ void AppD3D::Update(const GameTimer& gt)
 
 	DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&mWorld);
 	DirectX::XMMATRIX proj= DirectX::XMLoadFloat4x4(&mProj);
-	DirectX::XMMATRIX worldViewProj = world * view * proj;
+	DirectX::XMMATRIX worldViewProj1 = world * DirectX::XMMatrixTranslation(-2.0f, 0.0f, 0.0f) * view * proj;
+	DirectX::XMMATRIX worldViewProj2 = world * DirectX::XMMatrixTranslation(2.0f, 0.0f, 0.0f) * view * proj;
 
-	ObjectConstants objConstants;
+	ObjectConstants objConstants1;
 	//CPU와 GPU는 서로 다른 팀, 다른 시대, 다른 목적에서 설계됐다.
 	//CPU는 RowMajor, GPU는 ColumnMajor 행렬을 선호.
 	//따라서 행렬을 전치(transpose)해서 복사해야 한다.
-	DirectX::XMStoreFloat4x4(&objConstants.WorldViewProj, DirectX::XMMatrixTranspose(worldViewProj));
-	mObjectCB->CopyData(0, objConstants);
+	DirectX::XMStoreFloat4x4(&objConstants1.WorldViewProj, DirectX::XMMatrixTranspose(worldViewProj1));
+	objConstants1.Time = gt.TotalTime();
+
+	mObjectCB->CopyData(0, objConstants1);
+
+	ObjectConstants objConstants2;
+	DirectX::XMStoreFloat4x4(&objConstants2.WorldViewProj, DirectX::XMMatrixTranspose(worldViewProj2));
+	objConstants2.Time = gt.TotalTime();
+
+	mObjectCB->CopyData(1, objConstants2);
 }
 
 void AppD3D::Draw(const GameTimer& gt)
@@ -100,12 +112,28 @@ void AppD3D::Draw(const GameTimer& gt)
 	auto ibv = mBoxGeo->IndexBufferView();
 	mCommandList->IASetIndexBuffer(&ibv);
 
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+	auto heapstart = mCbvHeap->GetGPUDescriptorHandleForHeapStart();
+	int index = 0;
+	for( auto a = mBoxGeo->DrawArgs.begin() ; a!= mBoxGeo->DrawArgs.end() ; a++ )
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE heap = heapstart;
+		heap.ptr += index * mCbvSrvUavDescriptorSize;
 
-	mCommandList->DrawIndexedInstanced(
-		mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+		mCommandList->SetGraphicsRootDescriptorTable(0, heap);
+
+		auto submesh = a->second;
+		mCommandList->DrawIndexedInstanced(
+			submesh.IndexCount,
+			1,
+			submesh.StartIndexLocation,
+			submesh.BaseVertexLocation,
+			0
+		);
+
+		index++;
+	}
 
 	auto barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		CurrentBackBuffer(),
@@ -131,7 +159,7 @@ void AppD3D::Draw(const GameTimer& gt)
 void AppD3D::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.NumDescriptors = 2;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
@@ -140,20 +168,25 @@ void AppD3D::BuildDescriptorHeaps()
 
 void AppD3D::BuildConstantBuffers()
 {
-	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
+	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 2, true);
 
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB->Resource()->GetGPUVirtualAddress();
-	int boxCBufIndex = 0;
-	cbAddress += boxCBufIndex * objCBByteSize;
+	for (int i = 0; i < 2; ++i)
+	{
+		D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
+			mObjectCB->Resource()->GetGPUVirtualAddress() + i * objCBByteSize;
 
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-	cbvDesc.BufferLocation = cbAddress;
-	cbvDesc.SizeInBytes = objCBByteSize;
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+		cbvDesc.BufferLocation = cbAddress;
+		cbvDesc.SizeInBytes = objCBByteSize;
 
-	md3dDevice->CreateConstantBufferView(&cbvDesc,
-		mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+		D3D12_CPU_DESCRIPTOR_HANDLE handle =
+			mCbvHeap->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += i * mCbvSrvUavDescriptorSize;
+
+		md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
+	}
 }
 
 //루트 파라미터로 테이블을 사용하는 이유는
@@ -163,7 +196,7 @@ void AppD3D::BuildRootSignature()
 	//루트 시그니처는 쉐이더 프로그램의 함수 시그니처라고 생각하면 된다.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[1];				//루트 파라미터 1개
 	CD3DX12_DESCRIPTOR_RANGE cbvTable;							//그 한개는 Table
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);		//Table안에는 CBV1개 (b0에 매핑)
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);		//Table안에는 CBV1개 (b0에 매핑)
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 
 	//루트 시그니처는 루트 파라미터의 배열이다.
@@ -208,6 +241,57 @@ void AppD3D::BuildBoxGeometry()
 {
 	using namespace DirectX;
 
+    std::array<Vertex1, 8> BoxPos =
+    {
+		Vertex1({ XMFLOAT3(-1.0f, -1.0f, -1.0f) }),
+		Vertex1({ XMFLOAT3(-1.0f, +1.0f, -1.0f) }),
+		Vertex1({ XMFLOAT3(+1.0f, +1.0f, -1.0f) }),
+		Vertex1({ XMFLOAT3(+1.0f, -1.0f, -1.0f) }),
+		Vertex1({ XMFLOAT3(-1.0f, -1.0f, +1.0f) }),
+		Vertex1({ XMFLOAT3(-1.0f, +1.0f, +1.0f) }),
+		Vertex1({ XMFLOAT3(+1.0f, +1.0f, +1.0f) }),
+		Vertex1({ XMFLOAT3(+1.0f, -1.0f, +1.0f) })
+    };
+
+    std::array<Vertex2, 8> BoxCol =
+    {
+		Vertex2({ XMFLOAT4(Colors::White) }),
+		Vertex2({ XMFLOAT4(Colors::Black) }),
+		Vertex2({ XMFLOAT4(Colors::Red) }),
+		Vertex2({ XMFLOAT4(Colors::Green) }),
+		Vertex2({ XMFLOAT4(Colors::Blue) }),
+		Vertex2({ XMFLOAT4(Colors::Yellow) }),
+		Vertex2({ XMFLOAT4(Colors::Cyan) }),
+		Vertex2({ XMFLOAT4(Colors::Magenta) })
+    };
+
+	std::array<std::uint16_t, 36> indicesBox =
+	{
+		// front face
+		0, 1, 2,
+		0, 2, 3,
+
+		// back face
+		4, 6, 5,
+		4, 7, 6,
+
+		// left face
+		4, 5, 1,
+		4, 1, 0,
+
+		// right face
+		3, 2, 6,
+		3, 6, 7,
+
+		// top face
+		1, 5, 6,
+		1, 6, 2,
+
+		// bottom face
+		4, 0, 3,
+		4, 3, 7
+	};
+
 	//고정크기, 크기정보 포함 이므로 array사용.
 	std::array<Vertex1, 5> verticesPos =
 	{
@@ -246,43 +330,81 @@ void AppD3D::BuildBoxGeometry()
 		2,4,0
 	};
 
-	const UINT vbpByteSize = (UINT)verticesPos.size() * sizeof(Vertex1);
-	const UINT vbcByteSize = (UINT)verticesCol.size() * sizeof(Vertex2);
-	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	std::vector<UINT> vbpByteSizes;
+	vbpByteSizes.push_back((UINT)BoxPos.size() * sizeof(Vertex1));
+	vbpByteSizes.push_back((UINT)verticesPos.size() * sizeof(Vertex1));
+	std::vector<UINT> vbcByteSizes;
+	vbcByteSizes.push_back((UINT)BoxCol.size() * sizeof(Vertex2));
+	vbcByteSizes.push_back((UINT)verticesCol.size() * sizeof(Vertex2));
+	std::vector<UINT> ibByteSizes;
+	ibByteSizes.push_back((UINT)indicesBox.size() * sizeof(std::uint16_t));
+	ibByteSizes.push_back((UINT)indices.size() * sizeof(std::uint16_t));
+
+	int allVbpByteSizes = std::accumulate(vbpByteSizes.begin(), vbpByteSizes.end(), 0);
+	int allVbcByteSizes = std::accumulate(vbcByteSizes.begin(), vbcByteSizes.end(), 0);
+	int allIbByteSizes = std::accumulate(ibByteSizes.begin(), ibByteSizes.end(), 0);
 
 	mBoxGeo = std::make_unique<MeshGeometry>();
 	mBoxGeo->InitializeVertexBuffers(2); //정점 버퍼 2개
-	mBoxGeo->Name = "boxGeo";
+	mBoxGeo->Name = "mergeMesh";
 
-	ThrowIfFailed(D3DCreateBlob(vbpByteSize, mBoxGeo->VertexBufferCPU[0].GetAddressOf()));
-	CopyMemory(mBoxGeo->VertexBufferCPU[0]->GetBufferPointer(), verticesPos.data(), vbpByteSize);
-	ThrowIfFailed(D3DCreateBlob(vbcByteSize, mBoxGeo->VertexBufferCPU[1].GetAddressOf()));
-	CopyMemory(mBoxGeo->VertexBufferCPU[1]->GetBufferPointer(), verticesCol.data(), vbcByteSize);
+	ThrowIfFailed(D3DCreateBlob(allVbpByteSizes, mBoxGeo->VertexBufferCPU[0].GetAddressOf()));
+	{
+		auto* dst = reinterpret_cast<char*>(mBoxGeo->VertexBufferCPU[0]->GetBufferPointer());
+		CopyMemory(dst, BoxPos.data(), vbpByteSizes[0]);
+		CopyMemory(dst + vbpByteSizes[0], verticesPos.data(), vbpByteSizes[1]);
+	}
+	ThrowIfFailed(D3DCreateBlob(allVbcByteSizes, mBoxGeo->VertexBufferCPU[1].GetAddressOf()));
+	{
+		auto* dst = reinterpret_cast<char*>(mBoxGeo->VertexBufferCPU[1]->GetBufferPointer());
+		CopyMemory(dst, BoxCol.data(), vbcByteSizes[0]);
+		CopyMemory(dst + vbcByteSizes[0], verticesCol.data(), vbcByteSizes[1]);
+	}
 
-	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
-	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+	ThrowIfFailed(D3DCreateBlob(allIbByteSizes, &mBoxGeo->IndexBufferCPU));
+	{
+		auto* dst = reinterpret_cast<char*>(mBoxGeo->IndexBufferCPU->GetBufferPointer());
+		CopyMemory(dst, indicesBox.data(), ibByteSizes[0]);
+		CopyMemory(dst + ibByteSizes[0], indices.data(), ibByteSizes[1]);
+	}
+	
+	std::vector<Vertex1> mergeBoxPos;
+	mergeBoxPos.insert(mergeBoxPos.end(), BoxPos.begin(), BoxPos.end());
+	mergeBoxPos.insert(mergeBoxPos.end(), verticesPos.begin(), verticesPos.end());
+	std::vector<Vertex2> mergeBoxCol;
+	mergeBoxCol.insert(mergeBoxCol.end(), BoxCol.begin(), BoxCol.end());
+	mergeBoxCol.insert(mergeBoxCol.end(), verticesCol.begin(), verticesCol.end());
+	std::vector<std::uint16_t> indicesBoxMerged;
+	indicesBoxMerged.insert(indicesBoxMerged.end(), indicesBox.begin(), indicesBox.end());
+	indicesBoxMerged.insert(indicesBoxMerged.end(), indices.begin(), indices.end());
 
 	mBoxGeo->VertexBufferGPU[0] = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), verticesPos.data(), vbpByteSize, mBoxGeo->VertexBufferUploader[0]);
+		mCommandList.Get(), mergeBoxPos.data(), allVbpByteSizes, mBoxGeo->VertexBufferUploader[0]);
 	mBoxGeo->VertexBufferGPU[1] = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), verticesCol.data(), vbcByteSize, mBoxGeo->VertexBufferUploader[1]);
-
+		mCommandList.Get(), mergeBoxCol.data(), allVbcByteSizes, mBoxGeo->VertexBufferUploader[1]);
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
+		mCommandList.Get(), indicesBoxMerged.data(), allIbByteSizes, mBoxGeo->IndexBufferUploader);
 
 	mBoxGeo->VertexByteStride[0] = sizeof(Vertex1);
 	mBoxGeo->VertexByteStride[1] = sizeof(Vertex2);
-	mBoxGeo->VertexBufferByteSize[0] = vbpByteSize;
-	mBoxGeo->VertexBufferByteSize[1] = vbcByteSize;
+	mBoxGeo->VertexBufferByteSize[0] = std::accumulate(vbpByteSizes.begin(), vbpByteSizes.end(), 0);
+	mBoxGeo->VertexBufferByteSize[1] = std::accumulate(vbcByteSizes.begin(), vbcByteSizes.end(), 0);
 	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
-	mBoxGeo->IndexBufferByteSize = ibByteSize;
+	mBoxGeo->IndexBufferByteSize = std::accumulate(ibByteSizes.begin(), ibByteSizes.end(), 0);
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount = indicesBox.size();
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
 	mBoxGeo->DrawArgs["box"] = submesh;
+
+	SubmeshGeometry submesh2;
+	submesh2.IndexCount = indices.size();
+	submesh2.StartIndexLocation = indicesBox.size();
+	submesh2.BaseVertexLocation = BoxPos.size();
+
+	mBoxGeo->DrawArgs["square pyramid"] = submesh2;
 }
 
 void AppD3D::BuildPSO()
@@ -305,7 +427,7 @@ void AppD3D::BuildPSO()
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);					//색 합성
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);	//깊이 스텐실 테스트
 	psoDesc.SampleMask = UINT_MAX;											//모든 샘플 사용
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = mBackBufferFormat;								//백 버퍼와 설정 동기화.
 	psoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
@@ -341,12 +463,18 @@ void AppD3D::OnMouseMove(WPARAM btnState, int x, int y)
 		//LookAt 행렬 생성 시 up 벡터와 시선 벡터가 평행해져서 직교 기저를 만들 수 없는 수학적 퇴화 현상 방지.
 		mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::Pi - 0.1f);
 	}
-	else if (btnState)	//확대/축소
-	{
-		mRadius -= static_cast<long long>(btnState) * 0.002f;
-		mRadius = MathHelper::Clamp(mRadius, 0.1f, 15.0f);
-	}
 
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
+}
+
+void AppD3D::OnMouseWheel(short zDelta, int x, int y)
+{
+	//확대/축소
+	mRadius -= static_cast<long long>(zDelta) * 0.005f;
+	mRadius = MathHelper::Clamp(mRadius, 0.1f, 50.0f);
+}
+
+void AppD3D::OnKeyDown(WPARAM key)
+{
 }
