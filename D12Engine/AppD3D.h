@@ -2,6 +2,7 @@
 #include "../SampleSrc/MathHelper.h"
 #include "../SampleSrc/UploadBuffer.h"
 #include <windows.h>
+#include <DirectXPackedVector.h>
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -45,13 +46,15 @@ struct Vertex1
 
 struct Vertex2
 {
-	DirectX::XMFLOAT4 Color;
+	DirectX::PackedVector::XMCOLOR Color;
 };
 
 struct ObjectConstants
 {
 	DirectX::XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 	float Time;
+	float Padding[3];
+	DirectX::XMFLOAT4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
 };
 
 class AppD3D : public InitD3DApp

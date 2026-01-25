@@ -8,6 +8,7 @@ cbuffer cbPerObject : register(b0)
 {
 	float4x4 gWorldViewProj;
     float gTime;
+    float4 gColor;
 };
 
 struct VertexIn
@@ -48,8 +49,37 @@ VertexOut VS2(VertexIn vin)
     return vout;
 }
 
+VertexOut VS3(VertexIn vin)
+{
+    VertexOut vout;
+	
+    vin.Color.xy += 0.5f * sin(vin.PosL.x) * sin(3.0f * gTime);
+    vin.Color.z *= 0.6f + 0.4f * sin(2.0f * gTime);
+	
+    vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
+    vout.Color = vin.Color;
+    
+    return vout;
+}
+
+VertexOut VS4(VertexIn vin)
+{
+    VertexOut vout;
+	
+    vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
+    vout.Color = vin.Color * gColor;
+    
+    return vout;
+}
+
 float4 PS(VertexOut pin) : SV_Target
 {
+    const float pi = 3.141592;
+    float s = 0.5f * sin(2 * gTime - 0.25f * pi) + 0.5f;
+    float4 c = lerp(pin.Color, gColor, s);
+    
+    return c;
+    
     return pin.Color;
 }
 

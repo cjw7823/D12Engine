@@ -517,6 +517,7 @@ void InitD3DApp::OnResize()
 	mScreenViewport.MinDepth = 0.0f;
 	mScreenViewport.MaxDepth = 1.0f;
 
+	//mScissorRect = { mClientWidth / 4, mClientHeight / 4, mClientWidth * 3 / 4, mClientHeight * 3 / 4 };
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
 	

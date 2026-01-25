@@ -36,6 +36,13 @@ void AppD3D::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
+float SmoothStep(float t)
+{
+	float time = static_cast<float>(t);
+	float phase = 0.5f * (sinf(time) + 1.0f);
+	return phase * phase * (3.0f - 2.0f * phase);
+}
+
 void AppD3D::Update(const GameTimer& gt)
 {
 	//구면좌표계 -> 데카르트 좌표계 변환.
@@ -57,18 +64,21 @@ void AppD3D::Update(const GameTimer& gt)
 	DirectX::XMMATRIX worldViewProj1 = world * DirectX::XMMatrixTranslation(-2.0f, 0.0f, 0.0f) * view * proj;
 	DirectX::XMMATRIX worldViewProj2 = world * DirectX::XMMatrixTranslation(2.0f, 0.0f, 0.0f) * view * proj;
 
+	float eased = SmoothStep(gt.TotalTime());
 	ObjectConstants objConstants1;
 	//CPU와 GPU는 서로 다른 팀, 다른 시대, 다른 목적에서 설계됐다.
 	//CPU는 RowMajor, GPU는 ColumnMajor 행렬을 선호.
 	//따라서 행렬을 전치(transpose)해서 복사해야 한다.
 	DirectX::XMStoreFloat4x4(&objConstants1.WorldViewProj, DirectX::XMMatrixTranspose(worldViewProj1));
 	objConstants1.Time = gt.TotalTime();
+	objConstants1.Color = { eased, eased, eased, eased };
 
 	mObjectCB->CopyData(0, objConstants1);
 
 	ObjectConstants objConstants2;
 	DirectX::XMStoreFloat4x4(&objConstants2.WorldViewProj, DirectX::XMMatrixTranspose(worldViewProj2));
 	objConstants2.Time = gt.TotalTime();
+	objConstants2.Color = { eased, eased, eased, eased };
 
 	mObjectCB->CopyData(1, objConstants2);
 }
@@ -181,8 +191,7 @@ void AppD3D::BuildConstantBuffers()
 		cbvDesc.BufferLocation = cbAddress;
 		cbvDesc.SizeInBytes = objCBByteSize;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle =
-			mCbvHeap->GetCPUDescriptorHandleForHeapStart();
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = mCbvHeap->GetCPUDescriptorHandleForHeapStart();
 		handle.ptr += i * mCbvSrvUavDescriptorSize;
 
 		md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
@@ -196,7 +205,7 @@ void AppD3D::BuildRootSignature()
 	//루트 시그니처는 쉐이더 프로그램의 함수 시그니처라고 생각하면 된다.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[1];				//루트 파라미터 1개
 	CD3DX12_DESCRIPTOR_RANGE cbvTable;							//그 한개는 Table
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);		//Table안에는 CBV1개 (b0에 매핑)
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);		//Table안에는 CBV1개 (b0에 매핑)
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 
 	//루트 시그니처는 루트 파라미터의 배열이다.
@@ -232,7 +241,7 @@ void AppD3D::BuildShadersAndInputLayout()
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_B8G8R8X8_UNORM, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
@@ -240,6 +249,7 @@ void AppD3D::BuildShadersAndInputLayout()
 void AppD3D::BuildBoxGeometry()
 {
 	using namespace DirectX;
+	using namespace DirectX::PackedVector;
 
     std::array<Vertex1, 8> BoxPos =
     {
@@ -255,14 +265,14 @@ void AppD3D::BuildBoxGeometry()
 
     std::array<Vertex2, 8> BoxCol =
     {
-		Vertex2({ XMFLOAT4(Colors::White) }),
-		Vertex2({ XMFLOAT4(Colors::Black) }),
-		Vertex2({ XMFLOAT4(Colors::Red) }),
-		Vertex2({ XMFLOAT4(Colors::Green) }),
-		Vertex2({ XMFLOAT4(Colors::Blue) }),
-		Vertex2({ XMFLOAT4(Colors::Yellow) }),
-		Vertex2({ XMFLOAT4(Colors::Cyan) }),
-		Vertex2({ XMFLOAT4(Colors::Magenta) })
+		Vertex2({ XMCOLOR(Colors::White) }),
+		Vertex2({ XMCOLOR(Colors::Black) }),
+		Vertex2({ XMCOLOR(Colors::Red) }),
+		Vertex2({ XMCOLOR(Colors::Green) }),
+		Vertex2({ XMCOLOR(Colors::Blue) }),
+		Vertex2({ XMCOLOR(Colors::Yellow) }),
+		Vertex2({ XMCOLOR(Colors::Cyan) }),
+		Vertex2({ XMCOLOR(Colors::Magenta) })
     };
 
 	std::array<std::uint16_t, 36> indicesBox =
@@ -304,11 +314,11 @@ void AppD3D::BuildBoxGeometry()
 
 	std::array<Vertex2, 5> verticesCol =
 	{
-		Vertex2({XMFLOAT4(Colors::Green)}),
-		Vertex2({XMFLOAT4(Colors::Green)}),
-		Vertex2({XMFLOAT4(Colors::Green)}),
-		Vertex2({XMFLOAT4(Colors::Green)}),
-		Vertex2({XMFLOAT4(Colors::Red)}),
+		Vertex2({XMCOLOR(Colors::Green)}),
+		Vertex2({XMCOLOR(Colors::Green)}),
+		Vertex2({XMCOLOR(Colors::Green)}),
+		Vertex2({XMCOLOR(Colors::Green)}),
+		Vertex2({XMCOLOR(Colors::Red)}),
 	};
 
 	std::array<std::uint16_t, 18> indices =
@@ -423,7 +433,10 @@ void AppD3D::BuildPSO()
 		reinterpret_cast<BYTE*>(mpsByteCode->GetBufferPointer()),
 		mpsByteCode->GetBufferSize()
 	};
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);		//기하->픽셀
+	auto RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	//RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME; //와이어프레임 모드
+	RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	psoDesc.RasterizerState = RasterizerState;		//기하->픽셀
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);					//색 합성
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);	//깊이 스텐실 테스트
 	psoDesc.SampleMask = UINT_MAX;											//모든 샘플 사용
