@@ -503,7 +503,7 @@ void InitD3DApp::OnResize()
 	mCommandList->ResourceBarrier(1, &depthBarrier); //전환 명령을 기록.
 
 	ThrowIfFailed(mCommandList->Close());
-	//커맨드 리스트는 연속된 메모리 주소가 아니므로 포인터 배열로 전달.
+	//여러 개의 커맨드 리스트 객체를 순서대로 GPU 큐에 제출.
 	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 

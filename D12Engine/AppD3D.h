@@ -1,7 +1,7 @@
 ﻿#include "InitD3DApp.h"
 #include "../SampleSrc/MathHelper.h"
 #include "../SampleSrc/UploadBuffer.h"
-#include <windows.h>
+//#include <windows.h>
 #include <DirectXPackedVector.h>
 
 /*
