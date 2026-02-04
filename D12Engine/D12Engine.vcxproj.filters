@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="SampleSrc">
+      <UniqueIdentifier>{9d671705-c9d4-4774-8972-7eb3f3e9d406}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EntryPoint">
+      <UniqueIdentifier>{6b238841-fb96-42aa-9168-288961d7a6d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{5df7dd8d-198f-49d6-8b4b-e3c3526d1722}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="d3dUtil.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTimer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelper.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="InitAppD3D.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="AppD3D.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D12Engine.cpp">
+      <Filter>EntryPoint</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dUtil.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="MathHelper.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="InitAppD3D.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="AppD3D.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Shaders\color.hlsl">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\SampleSrc\Camera.cpp">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\Camera.h">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\d3dUtil.cpp">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\d3dUtil.h">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\DDSTextureLoader.cpp">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\DDSTextureLoader.h">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\GeometryGenerator.cpp">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\GeometryGenerator.h">
+      <Filter>SampleSrc</Filter>
+    </None>
+  </ItemGroup>
+</Project>
