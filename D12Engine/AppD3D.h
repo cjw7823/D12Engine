@@ -3,7 +3,6 @@
 #include "InitAppD3D.h"
 #include "MathHelper.h"
 #include "UploadBuffer.h"
-#include <DirectXPackedVector.h>
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -34,6 +33,8 @@
 	   └─ GPU 접근 불가
 */
 
+const int gNumFrameResources = 3;
+
 struct Vertex1
 {
 	DirectX::XMFLOAT3 Pos;
@@ -53,7 +54,8 @@ class AppD3D : public InitAppD3D
 {
 public:
 	AppD3D(HINSTANCE hInstance) : InitAppD3D(hInstance) {};
-	~AppD3D() override {};
+	AppD3D(const AppD3D& rhs) = delete;
+	AppD3D& operator=(const AppD3D& rhs) = delete;
 
 	virtual bool Initialize() override;
 
@@ -66,8 +68,11 @@ private:
 	void BuildConstantsBuffer();
 	void BuildRootsignature();
 	void BuildShadersAndInputLayout();
-	void BuildBoxGeometry();
+	void BuildShapeGeometry();
 	void BuildPSO();
+	void BuildRenderItem();
+	void BuildFrameResources();
+	void BuildConstantsBufferView();
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
@@ -105,7 +110,7 @@ private:
 		3 : a
 		4 : d
 	*/
-	int md;
+	int md = 0;
 
 	POINT mLastMousePos = {};
 };

@@ -38,6 +38,15 @@
     <ClInclude Include="AppD3D.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="RenderItem.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryGenerator.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameResource.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -53,6 +62,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="AppD3D.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenerator.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameResource.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -78,12 +93,6 @@
       <Filter>SampleSrc</Filter>
     </None>
     <None Include="..\SampleSrc\DDSTextureLoader.h">
-      <Filter>SampleSrc</Filter>
-    </None>
-    <None Include="..\SampleSrc\GeometryGenerator.cpp">
-      <Filter>SampleSrc</Filter>
-    </None>
-    <None Include="..\SampleSrc\GeometryGenerator.h">
       <Filter>SampleSrc</Filter>
     </None>
   </ItemGroup>

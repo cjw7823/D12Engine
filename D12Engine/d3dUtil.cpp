@@ -70,10 +70,10 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 		nullptr,
 		IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-	D3D12_SUBRESOURCE_DATA subREsourceData = {};
-	subREsourceData.pData = initData;
-	subREsourceData.RowPitch = byteSize;
-	subREsourceData.SlicePitch = byteSize;
+	D3D12_SUBRESOURCE_DATA subResourceData = {};
+	subResourceData.pData = initData;
+	subResourceData.RowPitch = byteSize;
+	subResourceData.SlicePitch = byteSize;
 
 	// 기본(Default) 버퍼 리소스로의 데이터 복사를 커맨드 리스트에 기록(예약).
 	// 헬퍼 함수 UpdateSubresources는 CPU 메모리를 중간 업로드 힙에 복사한 뒤,
@@ -84,7 +84,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 		D3D12_RESOURCE_STATE_COPY_DEST);
 	cmdList->ResourceBarrier(1, &barrier1);
 
-	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subREsourceData);
+	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 	
 	CD3DX12_RESOURCE_BARRIER barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		defaultBuffer.Get(),

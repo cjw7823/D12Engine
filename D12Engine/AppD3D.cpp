@@ -1,6 +1,7 @@
 #include "AppD3D.h"
-#include <commdlg.h>
-#include <ShlObj.h>
+#include "RenderItem.h"
+#include "GeometryGenerator.h"
+#include "FrameResource.h"
 
 using namespace Microsoft::WRL;
 
@@ -9,15 +10,25 @@ bool AppD3D::Initialize()
 	if (!InitAppD3D::Initialize())
 		return false;
 
-	//Initialize()->OnResize()에서 사용 후 재사용을 위한 Reset.
+	ThrowIfFailed(mDirectCmdListAlloc->Reset());
+	// OnResize()에서 close되었으므로 재사용을 위해 Reset.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
 	//순서 종속성 : 1->2 / 5 / 3->4->6
-	BuildDescriptorHeaps();
+	/*BuildDescriptorHeaps();
 	BuildConstantsBuffer();
 	BuildRootsignature();
 	BuildShadersAndInputLayout();
 	BuildBoxGeometry();
+	BuildPSO();*/
+
+	BuildRootsignature();
+	BuildShadersAndInputLayout();
+	BuildShapeGeometry();
+	BuildRenderItem();
+	BuildFrameResources();
+	BuildDescriptorHeaps();
+	BuildConstantsBufferView();
 	BuildPSO();
 
 	ThrowIfFailed(mCommandList->Close());
@@ -184,14 +195,18 @@ void AppD3D::BuildConstantsBuffer()
 
 void AppD3D::BuildRootsignature()
 {
-	CD3DX12_ROOT_PARAMETER slotRootParameter[1] = {};	//루트 파라미터 1개.
-	CD3DX12_DESCRIPTOR_RANGE cbvTable;			//그 한개는 Table.
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);	//Table안에는 CBV1개 (b0에 매핑)
-	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
+	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); //b0 매핑
+	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
+	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); //b1 매핑
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable1);
 
 	//그래프 구조.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-		1,
+		2,
 		slotRootParameter,
 		0,
 		nullptr,
@@ -202,9 +217,12 @@ void AppD3D::BuildRootsignature()
 	//직렬화된 Blob은 표준화된 바이너리 표현이라 저장/전달/비교(해시)에 유리하다.
 	ComPtr<ID3DBlob> serializedRootsig = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
-	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc,
+	HRESULT hr = D3D12SerializeRootSignature(
+		&rootSigDesc,
 		D3D_ROOT_SIGNATURE_VERSION_1,
-		serializedRootsig.GetAddressOf(), errorBlob.GetAddressOf());
+		serializedRootsig.GetAddressOf(),
+		errorBlob.GetAddressOf());
+
 	if (errorBlob != nullptr)
 		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	ThrowIfFailed(hr);
@@ -213,69 +231,69 @@ void AppD3D::BuildRootsignature()
 		0,
 		serializedRootsig->GetBufferPointer(),
 		serializedRootsig->GetBufferSize(),
-		IID_PPV_ARGS(&mRootSignature)));
+		IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
 void AppD3D::BuildShadersAndInputLayout()
 {
-	HRESULT hr = S_OK;
-
-	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
-	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
+	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
+	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
 
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_B8G8R8X8_UNORM, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_B8G8R8X8_UNORM, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
-void AppD3D::BuildBoxGeometry()
+void AppD3D::BuildShapeGeometry()
 {
-	using namespace DirectX;
-	using namespace DirectX::PackedVector;
+	GeometryGenerator geoGen;
+	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5, 0.5, 1.5, 3);
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20, 30, 60, 40);
+	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5, 20, 20);
+	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5, 0.3, 3, 20, 20);
 
-	//고정크기, 크기정보 포함 이므로 array사용.
-	std::array<Vertex1, 5> verticesPos =
-	{
-		Vertex1({XMFLOAT3(-1.0f, -1.0f, -1.0f)}),
-		Vertex1({XMFLOAT3(+1.0f, -1.0f, -1.0f)}),
-		Vertex1({XMFLOAT3(-1.0f, -1.0f, +1.0f)}),
-		Vertex1({XMFLOAT3(+1.0f, -1.0f, +1.0f)}),
-		Vertex1({XMFLOAT3(0.0f, +1.0f, 0.0f)}),
-	};
+	UINT boxVertexOffset = 0;
+	UINT gridVertexOffset = (UINT)box.Vertices.size();
+	UINT sphereVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
+	UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
 
-	std::array<Vertex2, 5> verticesCol =
-	{
-		Vertex2({XMCOLOR(Colors::Green)}),
-		Vertex2({XMCOLOR(Colors::Green)}),
-		Vertex2({XMCOLOR(Colors::Green)}),
-		Vertex2({XMCOLOR(Colors::Green)}),
-		Vertex2({XMCOLOR(Colors::Red)}),
-	};
+	UINT boxIndexOffset = 0;
+	UINT gridIndexOffset = (UINT)box.Indices32.size();
+	UINT sphereIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
+	UINT cylinderIndexOffset = sphereIndexOffset + (UINT)grid.Indices32.size();
 
-	std::array<std::uint16_t, 18> indices =
-	{
-		//아래면
-		0,1,2,
-		1,3,2,
+	SubmeshGeometry boxSubmesh;
+	boxSubmesh.IndexCount = (UINT)box.Indices32.size();
+	boxSubmesh.StartIndexLocation = boxIndexOffset;
+	boxSubmesh.BaseVertexLocation = boxVertexOffset;
 
-		//앞면
-		0,4,1,
+	SubmeshGeometry gridSubmesh;
+	gridSubmesh.IndexCount = (UINT)grid.Indices32.size();
+	gridSubmesh.StartIndexLocation = gridIndexOffset;
+	gridSubmesh.BaseVertexLocation = gridVertexOffset;
 
-		//오른쪽면
-		1,4,3,
+	SubmeshGeometry sphereSubmesh;
+	sphereSubmesh.IndexCount = (UINT)sphere.Indices32.size();
+	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
+	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
 
-		//뒷면
-		3,4,2,
+	SubmeshGeometry cylinderSubmesh;
+	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
+	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
+	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 
-		//왼쪽면
-		2,4,0
-	};
+	auto totalVertexCount =
+		box.Vertices.size() +
+		grid.Vertices.size() +
+		sphere.Vertices.size() +
+		cylinder.Vertices.size();
 
-	const UINT vbpByteSize = (UINT)verticesPos.size() * sizeof(Vertex1);
-	const UINT vbcByteSize = (UINT)verticesCol.size() * sizeof(Vertex2);
-	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	std::vector<Vertex> vertices(totalVertexCount);
+
+	//작성중..
+
 
 	mBoxGeo = std::make_unique<MeshGeometry>();
 	mBoxGeo->InitializeVertexBuffers(2);
@@ -358,6 +376,18 @@ void AppD3D::BuildPSO()
 	psoDesc.DSVFormat = mDepthStencilFormat;
 
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mPSO)));
+}
+
+void AppD3D::BuildRenderItem()
+{
+}
+
+void AppD3D::BuildFrameResources()
+{
+}
+
+void AppD3D::BuildConstantsBufferView()
+{
 }
 
 void AppD3D::OnMouseDown(WPARAM btnState, int x, int y)

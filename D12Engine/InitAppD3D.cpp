@@ -195,7 +195,7 @@ void InitAppD3D::Set4xMsaaState(bool value)
 	{
 		m4xMsaaState = value;
 
-		std::wstring debug = std::wstring(L"MSAA : ") + (value ? L"True" : L"False") + std::wstring(L"MSAA : ") + L"\n";
+		std::wstring debug = std::wstring(L"MSAA : ") + (value ? L"True" : L"False") + L"\n";
 		OutputDebugString(debug.c_str());
 
 		FlushCommandQueue();
@@ -217,6 +217,7 @@ void InitAppD3D::OnResize()
 
 	FlushCommandQueue();
 
+	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 	for (auto& buffer : mSwapChainBuffer)
 		buffer.Reset();

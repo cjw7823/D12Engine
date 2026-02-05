@@ -1,0 +1,53 @@
+#pragma once
+
+#include "d3dUtil.h"
+#include "MathHelper.h"
+#include "UploadBuffer.h"
+
+struct ObjectConstants
+{
+	DirectX::XMFLOAT4X4 World = MathHelper::Identify4x4();
+};
+
+struct PassConstants
+{
+	DirectX::XMFLOAT4X4 View = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 InvView = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 Proj = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 InvProj = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identify4x4();
+	DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
+	float cbPerObjectPad1 = 0.0f;
+	DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
+	DirectX::XMFLOAT2 InvRenderTargetSize = { 0.0f, 0.0f };
+	float NearZ = 0.0f;
+	float FarZ = 0.0f;
+	float TotalTime= 0.0f;
+	float DeltaTime = 0.0f;
+};
+
+struct Vertex
+{
+	DirectX::XMFLOAT3 Pos;
+	DirectX::XMFLOAT3 Color;
+};
+//CPU가 한 프레임에 대한 명령 목록을 구성하는 데 필요한 리소스 묶음.
+struct FrameResource
+{
+public:
+	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
+	FrameResource(const FrameResource& rhs) = delete;
+	FrameResource& operator=(const FrameResource& rhs) = delete;
+	~FrameResource() {};
+
+	//GPU가 명령을 완료할 때까지 Alloc을 수정하면 안되므로 프레임마다 Alloc 존재.
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CmdListAlloc;
+
+	//cbuffer도 마찬가지로 프레임마다 존재.
+	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
+	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+	//해당 프레임 리소스가 GPU에서 여전히 사용 중인지 확인
+	UINT64 Fence = 0;
+};
