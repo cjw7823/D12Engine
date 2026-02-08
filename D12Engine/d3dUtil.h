@@ -101,17 +101,17 @@ struct MeshGeometry
 
 	//시스템 메모리 복사본. 정점/인덱스 형식을 일반화할 수 있으므로 Blob을 사용.
 	// 적절한 형변환은 클라이언트의 책임.
-	std::vector<Microsoft::WRL::ComPtr<ID3DBlob>> VertexBufferCPU;
+	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU;
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
 
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> VertexBufferGPU;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
 
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> VertexBufferUploader;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
-	std::vector<UINT> VertexByteStride;
-	std::vector<UINT> VertexBufferByteSize;
+	UINT VertexByteStride;
+	UINT VertexBufferByteSize;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 	UINT IndexBufferByteSize = 0;
 
@@ -119,12 +119,12 @@ struct MeshGeometry
 	//서브메시 지오메트리를 정의하면 서브메시를 개별적으로 렌더링 가능.
 	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
 
-	D3D12_VERTEX_BUFFER_VIEW VertexBufferView(int index) const
+	D3D12_VERTEX_BUFFER_VIEW VertexBufferView() const
 	{
 		D3D12_VERTEX_BUFFER_VIEW vbv;
-		vbv.BufferLocation = VertexBufferGPU[index]->GetGPUVirtualAddress();
-		vbv.StrideInBytes = VertexByteStride[index];
-		vbv.SizeInBytes = VertexBufferByteSize[index];
+		vbv.BufferLocation = VertexBufferGPU->GetGPUVirtualAddress();
+		vbv.StrideInBytes = VertexByteStride;
+		vbv.SizeInBytes = VertexBufferByteSize;
 
 		return vbv;
 	}
@@ -143,23 +143,7 @@ struct MeshGeometry
 	//GPU에 업로드가 완료되면 해제 가능.
 	void DisposeUploaders()
 	{
-		for (auto& vbUploader : VertexBufferUploader)
-			vbUploader = nullptr;
+		VertexBufferUploader = nullptr;
 		IndexBufferUploader = nullptr;
-	}
-
-	// 추가: 벡터를 N개 요소로 초기화하는 헬퍼
-	void InitializeVertexBuffers(UINT count = 2)
-	{
-		VertexBufferCPU.clear();
-		VertexBufferCPU.resize(count);
-		VertexBufferGPU.clear();
-		VertexBufferGPU.resize(count);
-		VertexBufferByteSize.clear();
-		VertexBufferByteSize.resize(count, 0u);
-		VertexByteStride.clear();
-		VertexByteStride.resize(count, 0u);
-		VertexBufferUploader.clear();
-		VertexBufferUploader.resize(count);
 	}
 };

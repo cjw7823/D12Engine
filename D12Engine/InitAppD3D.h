@@ -130,7 +130,7 @@ protected:
 	UINT mDsvDescriptorSize = 0;
 	UINT mCbvSrvUavDescriptorSize = 0;
 
-	std::wstring mMainWndCaption = L"copy code";
+	std::wstring mMainWndCaption = L"Direct3D 12 App";
 	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM; //Unsigned Normalized 8-bit RGBA format
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT; //24-bit depth, 8-bit stencil format
 	int mClientWidth = 800;

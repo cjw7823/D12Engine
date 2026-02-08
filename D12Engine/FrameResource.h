@@ -6,32 +6,33 @@
 
 struct ObjectConstants
 {
-	DirectX::XMFLOAT4X4 World = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 };
 
 struct PassConstants
 {
-	DirectX::XMFLOAT4X4 View = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 InvView = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 Proj = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 InvProj = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 View = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 InvView = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 Proj = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 InvProj = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
 	DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
 	float cbPerObjectPad1 = 0.0f;
 	DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
 	DirectX::XMFLOAT2 InvRenderTargetSize = { 0.0f, 0.0f };
 	float NearZ = 0.0f;
 	float FarZ = 0.0f;
-	float TotalTime= 0.0f;
+	float TotalTime = 0.0f;
 	float DeltaTime = 0.0f;
 };
 
 struct Vertex
 {
 	DirectX::XMFLOAT3 Pos;
-	DirectX::XMFLOAT3 Color;
+	DirectX::XMFLOAT4 Color;
 };
+
 //CPU가 한 프레임에 대한 명령 목록을 구성하는 데 필요한 리소스 묶음.
 struct FrameResource
 {

@@ -1,7 +1,7 @@
 cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
-}
+};
 
 cbuffer cbPass : register(b1)
 {
@@ -14,12 +14,12 @@ cbuffer cbPass : register(b1)
     float3   gEyePosW;
     float    cbPerObjectPad1;
     float2   gRenderTargetSize;
-    float2   gIntRenderTargetSize;
+    float2   gInvRenderTargetSize;
     float    gNearZ;
     float    gFarZ;
-    float    gTotalTimeZ;
-    float    gDeltaTimeZ; 
-}
+    float    gTotalTime;
+    float    gDeltaTime;
+};
 
 struct VertexIn
 {

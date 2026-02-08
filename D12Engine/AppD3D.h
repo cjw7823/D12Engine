@@ -3,6 +3,8 @@
 #include "InitAppD3D.h"
 #include "MathHelper.h"
 #include "UploadBuffer.h"
+#include "FrameResource.h"
+#include "RenderItem.h"
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -33,22 +35,7 @@
 	   └─ GPU 접근 불가
 */
 
-const int gNumFrameResources = 3;
-
-struct Vertex1
-{
-	DirectX::XMFLOAT3 Pos;
-};
-
-struct Vertex2
-{
-	DirectX::PackedVector::XMCOLOR Color;
-};
-
-struct ObjectConstants
-{
-	DirectX::XMFLOAT4X4 WorldViewProj = MathHelper::Identify4x4();
-};
+inline const int gNumFrameResources = 3;
 
 class AppD3D : public InitAppD3D
 {
@@ -65,14 +52,14 @@ private:
 	virtual void Draw(const GameTimer& gt) override;
 
 	void BuildDescriptorHeaps();
-	void BuildConstantsBuffer();
 	void BuildRootsignature();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
 	void BuildPSO();
-	void BuildRenderItem();
+	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildConstantsBufferView();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
@@ -81,28 +68,42 @@ private:
 	virtual void OnKeyUp(WPARAM key) override;
 	virtual void OnKeyDown(WPARAM key) override;
 
+	void OnKeyboardInput(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMainPassCB(const GameTimer& gt);
+
 private:
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource* mCurrFrameResource = nullptr;
+	int mCurrFrameResourceIndex = 0;
+
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+
+	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
+	//Observer pointer 이므로 const강제.
+	std::vector<const RenderItem*> mOpaqueRenderItems;
+
+	UINT mPassCbvOffset = 0;
+	PassConstants mMainPassCB;
+
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mCbvHeap;
 
-	std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
-	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
-
-	Microsoft::WRL::ComPtr<ID3DBlob> mvsByteCode = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> mpsByteCode = nullptr;
-
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
-	DirectX::XMFLOAT4X4 mWorld = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 mView= MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 mProj = MathHelper::Identify4x4();
-	DirectX::XMFLOAT4X4 mCamPos = MathHelper::Identify4x4();
+	DirectX::XMFLOAT4X4 mView= MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 mCamPos = MathHelper::Identity4x4();
+	DirectX::XMFLOAT3 mEyePos = { 0.f,0.f,0.f };
 
 	float mTheta = 1.55f * DirectX::XM_PI;
 	float mPhi = DirectX::XM_PIDIV4;
 	float mRadius = 15.0f;
 
+	bool mIsWireframe = false;
 	bool isMoving = false;
 	/*
 		1 : w
