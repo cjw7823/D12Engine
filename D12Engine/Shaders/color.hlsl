@@ -1,6 +1,6 @@
 cbuffer cbPerObject : register(b0)
 {
-    float4x4 gWorld;
+    float4x4 gWorld;    //16DWARD
 };
 
 cbuffer cbPass : register(b1)

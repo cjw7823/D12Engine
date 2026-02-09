@@ -43,6 +43,7 @@ public:
 	AppD3D(HINSTANCE hInstance) : InitAppD3D(hInstance) {};
 	AppD3D(const AppD3D& rhs) = delete;
 	AppD3D& operator=(const AppD3D& rhs) = delete;
+	~AppD3D() override;
 
 	virtual bool Initialize() override;
 

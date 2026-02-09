@@ -4,6 +4,12 @@
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
+AppD3D::~AppD3D()
+{
+	if (md3dDevice != nullptr)
+		FlushCommandQueue();
+}
+
 bool AppD3D::Initialize()
 {
 	if (!InitAppD3D::Initialize())
@@ -63,7 +69,7 @@ void AppD3D::Update(const GameTimer& gt)
 	float dt = gt.DeltaTime();
 	if (isMoving)
 	{
-		float speed = 2.f; // units/sec
+		float speed = 4.f; // units/sec
 		float forward = 0;
 		float right = 0;
 		float up = 0;
@@ -106,20 +112,20 @@ void AppD3D::Draw(const GameTimer& gt)
 		D3D12_RESOURCE_STATE_PRESENT,
 		D3D12_RESOURCE_STATE_RENDER_TARGET);
 	mCommandList->ResourceBarrier(1, &barrier1);
+	auto rtvHandle = CurrentBackBufferView();
+	auto dsvHandle = DepthStencilView();
 	mCommandList->ClearRenderTargetView(
-		CurrentBackBufferView(),
+		rtvHandle,
 		Colors::LightSteelBlue,
 		0,
 		nullptr);
 	mCommandList->ClearDepthStencilView(
-		DepthStencilView(),
+		dsvHandle,
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
 		1.0f,
 		0,
 		0,
 		nullptr);
-	auto rtvHandle = CurrentBackBufferView();
-	auto dsvHandle = DepthStencilView();
 	mCommandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 	
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
@@ -176,8 +182,12 @@ void AppD3D::BuildRootsignature()
 	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
 	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); //b1 매핑
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
+	/*CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
+	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);*/
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
+	slotRootParameter[0].InitAsConstants(16, 0);
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);
 
 	//그래프 구조.
@@ -189,7 +199,7 @@ void AppD3D::BuildRootsignature()
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	//루트 시그니처는 보통 DESC → Serialize(Blob) → Create
-	//표준 바이너리로 직렬화하면서 일부 검증/버전 호환 처리를 사전 수행.
+	//표준 바이너리로 직렬화하면서 루트 시그니처 자체가 문법/제약/버전 관점에서 유효한지
 	//직렬화된 Blob은 표준화된 바이너리 표현이라 저장/전달/비교(해시)에 유리하다.
 	ComPtr<ID3DBlob> serializedRootsig = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -479,6 +489,7 @@ void AppD3D::BuildConstantsBufferView()
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
+	//모든 objCB 이후에 (Frame0-passCB0),(Frame1-passCB1),(Frame2-passCB2)...
 	for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
 	{
 		auto passCB = mFrameResources[frameIndex]->PassCB->Resource();
@@ -517,7 +528,18 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 		auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 		cbvHandle.Offset(cbvIndex, mCbvSrvUavDescriptorSize);
 
-		cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+		//cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+
+		XMMATRIX world = XMLoadFloat4x4(&ri->World);
+		XMFLOAT4X4 worldT;
+		XMStoreFloat4x4(&worldT, XMMatrixTranspose(world));
+
+		cmdList->SetGraphicsRoot32BitConstants(
+			0,      // RootParamIndex (b0)
+			16,     // Num32BitValues
+			&worldT,// 16 floats contiguous
+			0
+		);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
@@ -582,14 +604,20 @@ void AppD3D::OnKeyDown(WPARAM key)
 	else if (key == 'D') md = 4;
 	else if (key == 'Q') md = 5;
 	else if (key == 'E') md = 6;
+	else isMoving = false;
 }
 
 void AppD3D::OnKeyboardInput(const GameTimer& gt)
 {
-	if (GetAsyncKeyState('1') & 0x8000)
-		mIsWireframe = true;
-	else
-		mIsWireframe = false;
+	static bool prevKeyDown = false;
+
+	bool currKeyDown = (GetAsyncKeyState('1') & 0x8000) != 0;
+
+	// 키가 "눌린 순간"만 감지
+	if (currKeyDown && !prevKeyDown)
+		mIsWireframe = !mIsWireframe;
+
+	prevKeyDown = currKeyDown;
 }
 
 void AppD3D::UpdateCamera(const GameTimer& gt)
