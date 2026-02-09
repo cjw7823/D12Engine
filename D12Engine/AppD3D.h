@@ -5,6 +5,7 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 #include "RenderItem.h"
+#include "GeometryGenerator.h"
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -61,6 +62,9 @@ private:
 	void BuildFrameResources();
 	void BuildConstantsBufferView();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
+
+	//연습문제
+	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;

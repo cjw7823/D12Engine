@@ -1,5 +1,4 @@
 #include "AppD3D.h"
-#include "GeometryGenerator.h"
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
@@ -234,6 +233,8 @@ void AppD3D::BuildShadersAndInputLayout()
 
 void AppD3D::BuildShapeGeometry()
 {
+	GeometryGenerator::MeshData skull = LoadModelFile(L"../skull.txt");
+
 	GeometryGenerator geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5, 0.5, 1.5, 3);
 	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20, 30, 60, 40);
@@ -245,11 +246,13 @@ void AppD3D::BuildShapeGeometry()
 	UINT gridVertexOffset = (UINT)box.Vertices.size();
 	UINT sphereVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
 	UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
+	UINT skullVertexOffset = cylinderVertexOffset + (UINT)cylinder.Vertices.size();
 
 	UINT boxIndexOffset = 0;
 	UINT gridIndexOffset = (UINT)box.Indices32.size();
 	UINT sphereIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
 	UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
+	UINT skullIndexOffset = cylinderIndexOffset + (UINT)cylinder.Indices32.size();
 
 	SubmeshGeometry boxSubmesh;
 	boxSubmesh.IndexCount = (UINT)box.Indices32.size();
@@ -271,12 +274,18 @@ void AppD3D::BuildShapeGeometry()
 	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
 	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 
+	SubmeshGeometry skullSubmesh;
+	skullSubmesh.IndexCount = (UINT)skull.Indices32.size();
+	skullSubmesh.StartIndexLocation = skullIndexOffset;
+	skullSubmesh.BaseVertexLocation = skullVertexOffset;
+
 	//여러 메시들을 한 버퍼에 관리.
 	auto totalVertexCount =
 		box.Vertices.size() +
 		grid.Vertices.size() +
 		sphere.Vertices.size() +
-		cylinder.Vertices.size();
+		cylinder.Vertices.size() +
+		skull.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
@@ -301,15 +310,21 @@ void AppD3D::BuildShapeGeometry()
 		vertices[k].Pos = cylinder.Vertices[i].Position;
 		vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
 	}
+	for (size_t i = 0; i < skull.Vertices.size(); i++, k++)
+	{
+		vertices[k].Pos = skull.Vertices[i].Position;
+		vertices[k].Color = XMFLOAT4(Colors::GhostWhite);
+	}
 
-	std::vector<std::uint16_t> indices;
-	indices.insert(indices.end(), box.GetIndices16().begin(), box.GetIndices16().end());
-	indices.insert(indices.end(), grid.GetIndices16().begin(), grid.GetIndices16().end());
-	indices.insert(indices.end(), sphere.GetIndices16().begin(), sphere.GetIndices16().end());
-	indices.insert(indices.end(), cylinder.GetIndices16().begin(), cylinder.GetIndices16().end());
+	std::vector<std::uint32_t> indices;
+	indices.insert(indices.end(), box.Indices32.begin(), box.Indices32.end());
+	indices.insert(indices.end(), grid.Indices32.begin(), grid.Indices32.end());
+	indices.insert(indices.end(), sphere.Indices32.begin(), sphere.Indices32.end());
+	indices.insert(indices.end(), cylinder.Indices32.begin(), cylinder.Indices32.end());
+	indices.insert(indices.end(), skull.Indices32.begin(), skull.Indices32.end());
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint32_t);
 
 	auto geo = std::make_unique<MeshGeometry>();
 	geo->Name = "shapeGeo";
@@ -326,13 +341,14 @@ void AppD3D::BuildShapeGeometry()
 
 	geo->VertexByteStride = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
-	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexFormat = DXGI_FORMAT_R32_UINT;
 	geo->IndexBufferByteSize = ibByteSize;
 
 	geo->DrawArgs["box"] = boxSubmesh;
 	geo->DrawArgs["grid"] = gridSubmesh;
 	geo->DrawArgs["sphere"] = sphereSubmesh;
 	geo->DrawArgs["cylinder"] = cylinderSubmesh;
+	geo->DrawArgs["skull"] = skullSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -444,6 +460,17 @@ void AppD3D::BuildRenderItems()
 		mAllRenderItems.push_back(std::move(rightSphereRitem));
 	}
 
+	//skull용
+	auto skullRI = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&skullRI->World, XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f));
+	skullRI->ObjCBIndex = objCBIndex++;
+	skullRI->Geo = mGeometries["shapeGeo"].get();
+	skullRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	skullRI->IndexCount = skullRI->Geo->DrawArgs["skull"].IndexCount;
+	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
+	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
+	mAllRenderItems.push_back(std::move(skullRI));
+
 	for (auto& e : mAllRenderItems)
 		mOpaqueRenderItems.push_back(e.get());
 }
@@ -466,7 +493,7 @@ void AppD3D::BuildConstantsBufferView()
 	UINT objCount = (UINT)mOpaqueRenderItems.size();
 
 	//// |(Frame i) -> (Obj0)(Obj1)(Obj2)...| for i in [0, gNumFrameResources) 꼴의 구조
-	for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
+	/*for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
 	{
 		auto objectCB = mFrameResources[frameIndex]->ObjectCB->Resource();
 		for (UINT i = 0; i < objCount; i++)
@@ -485,7 +512,7 @@ void AppD3D::BuildConstantsBufferView()
 
 			md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
 		}
-	}
+	}*/
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
@@ -543,6 +570,60 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
+}
+
+GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
+{
+	std::ifstream file(path);
+	if (!file)
+	{
+		std::wstring wfn = AnsiToWString(__FILE__);
+		throw DxException(1, path, wfn, __LINE__);
+	}
+
+	std::vector<std::string> lines;
+	std::string line;
+
+	while (std::getline(file, line))
+	{
+		lines.push_back(line);
+	}
+
+	std::string label;
+	int vertexCount=0;
+	int indexCount=0;
+
+	std::istringstream iss(lines[0]);
+	iss >> label >> vertexCount;
+	iss.str(lines[1]); iss.clear();
+	iss >> label >> indexCount;
+	indexCount;
+
+	// 메시 생성
+	GeometryGenerator::MeshData meshData;
+
+	for (int i = 4; i < 4 + vertexCount; i++)
+	{
+		iss.str(lines[i]); iss.clear();
+		float v1, v2, v3, n1, n2, n3;
+		iss >> v1 >> v2 >> v3 >> n1 >> n2 >> n3;
+
+		GeometryGenerator::Vertex v;
+		v.Position = { v1,v2,v3 };
+		meshData.Vertices.push_back(v);
+	}
+	for (int i = 31083; i < 31083 + indexCount; i++)
+	{
+		iss.str(lines[i]); iss.clear();
+		int i1, i2, i3;
+		iss >> i1 >> i2 >> i3;
+
+		meshData.Indices32.push_back(i1);
+		meshData.Indices32.push_back(i2);
+		meshData.Indices32.push_back(i3);
+	}
+
+	return meshData;
 }
 
 void AppD3D::OnMouseDown(WPARAM btnState, int x, int y)
