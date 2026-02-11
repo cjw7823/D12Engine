@@ -6,6 +6,7 @@
 #include "FrameResource.h"
 #include "RenderItem.h"
 #include "GeometryGenerator.h"
+#include "Waves.h"
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -57,13 +58,14 @@ private:
 	void BuildRootsignature();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
+	void BuildLandGeometry();
+	void BuildWavesGeometryBuffers();
 	void BuildPSO();
 	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildConstantsBufferView();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
 
-	//연습문제
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
@@ -77,6 +79,12 @@ private:
 	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
+
+	inline float GetHillsHeight(float x, float z)const
+	{
+		return 0.3 * (z * sinf(0.05f * x) + x * cosf(0.1f * z));
+	}
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
@@ -89,7 +97,12 @@ private:
 
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
 	//Observer pointer 이므로 const강제.
-	std::vector<const RenderItem*> mOpaqueRenderItems;
+	//렌더 아이템을 유형별로 보관.
+	std::vector<const RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
+
+	//추후 동적 메시 일반화 수정 필요.
+	std::unique_ptr<Waves> mWaves;
+	RenderItem* mWavesRenderItem = nullptr;
 
 	UINT mPassCbvOffset = 0;
 	PassConstants mMainPassCB;
@@ -106,7 +119,7 @@ private:
 
 	float mTheta = 1.55f * DirectX::XM_PI;
 	float mPhi = DirectX::XM_PIDIV4;
-	float mRadius = 15.0f;
+	float mRadius = 50.0f;
 
 	bool mIsWireframe = false;
 	bool isMoving = false;

@@ -37,7 +37,7 @@ struct Vertex
 struct FrameResource
 {
 public:
-	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
+	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
 	FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource() {};
@@ -48,6 +48,9 @@ public:
 	//cbuffer도 마찬가지로 프레임마다 존재.
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+	//정점 위치가 프레임마다 달라지므로 프레임마다 존재.
+	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 
 	//해당 프레임 리소스가 GPU에서 여전히 사용 중인지 확인
 	UINT64 Fence = 0;

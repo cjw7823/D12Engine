@@ -35,11 +35,18 @@ struct RenderItem
 	//포인터를 사용하여 하나의 메시를 여러 RenderItem으로 그려낼 수 있음.
 	MeshGeometry* Geo = nullptr;
 
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 	//Geo의 특정 서브메시를 그리도록 책임.
 	//추후 LOD 등 해당 서브메시에서 또 인덱스 제한을 둘 수도 있음.
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	int BaseVertexLocation = 0;
+};
+
+//지속적으로 추가될 예정.
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Count
 };

@@ -125,6 +125,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Waves.h" />
     <None Include="..\SampleSrc\Camera.h" />
     <None Include="..\SampleSrc\d3dUtil.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -157,6 +158,7 @@
     <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Waves.cpp" />
     <None Include="..\SampleSrc\Camera.cpp" />
     <None Include="..\SampleSrc\d3dUtil.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
