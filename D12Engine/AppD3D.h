@@ -64,6 +64,7 @@ private:
 	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildConstantsBufferView();
+	void BuildMaterials();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
 
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
@@ -80,10 +81,25 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateWaves(const GameTimer& gt);
+	void UpdateMaterialCBs(const GameTimer& gt);
 
 	inline float GetHillsHeight(float x, float z)const
 	{
 		return 0.3 * (z * sinf(0.05f * x) + x * cosf(0.1f * z));
+	}
+
+	inline DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const
+	{
+		// n = (-df/dx, 1, -df/dz)
+		DirectX::XMFLOAT3 n(
+			-0.03f * z * cosf(0.1f * x) - 0.3f * cosf(0.1f * z),
+			1.0f,
+			-0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
+
+		DirectX::XMVECTOR unitNormal = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&n));
+		DirectX::XMStoreFloat3(&n, unitNormal);
+
+		return n;
 	}
 
 private:
@@ -94,6 +110,7 @@ private:
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
 	//Observer pointer 이므로 const강제.

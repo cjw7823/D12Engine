@@ -21,6 +21,10 @@
 #include <sstream>
 #include <cassert> // For assert
 
+#include "MathHelper.h"
+
+extern const int gNumFrameResources;
+
 class DxException
 {
 public:
@@ -146,4 +150,50 @@ struct MeshGeometry
 		VertexBufferUploader = nullptr;
 		IndexBufferUploader = nullptr;
 	}
+};
+
+struct Light
+{
+	DirectX::XMFLOAT3 Strength = { 0.5f, 0.5f, 0.5f };
+	//point / spot
+	float FalloffStart = 1.0f;
+	//directional / spot
+	DirectX::XMFLOAT3 Direction = { 0.f, -1.f, 0.f };
+	//point / spot
+	float FalloffEnd = 10.0f;
+	//point / spot
+	DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
+	//spot
+	float SpotPower = 64.0f;
+};
+
+#define MaxLights 16
+
+// 실제 엔진에서는 Material 클래스 계층 구조로 존재할 수 있다.
+struct Material
+{
+	std::string Name;
+	int MatCBIndex = -1;
+	//디퓨즈 텍스처에 대한 SRV 힙 인덱스.
+	int DiffuseSrvHeapIndex = -1;
+	//노멀 텍스처에 대한 SRV 힙 인덱스.
+	int NormalSrvHeapIndex = -1;
+
+	int NumFramesDirty = gNumFrameResources;
+
+	//HLSL에서 사용되는 상수 버퍼에 대한 데이터.
+	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f , 1.0f , 1.0f };
+	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
+	float Roughness = 0.25f;
+	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
+};
+
+struct MaterialConstants
+{
+	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f , 1.0f , 1.0f };
+	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f};
+	float Roughness = 0.25f;
+
+	//텍스쳐 매핑에 사용.
+	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };

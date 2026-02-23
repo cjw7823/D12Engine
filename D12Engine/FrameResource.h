@@ -25,19 +25,27 @@ struct PassConstants
 	float FarZ = 0.0f;
 	float TotalTime = 0.0f;
 	float DeltaTime = 0.0f;
+
+	DirectX::XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+	// 인덱스 [0, NUM_DIR_LIGHTS)는 방향광입니다.
+	// 인덱스[NUM_DIR_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHTS)는 점광원입니다.
+	// 인덱스[NUM_DIR_LIGHTS + NUM_POINT_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHT + NUM_SPOT_LIGHTS)는 스포트라이트이며, 객체당 최대 MaxLights 개수까지 사용할 수 있습니다.
+	Light Lights[MaxLights];
 };
 
 struct Vertex
 {
 	DirectX::XMFLOAT3 Pos;
-	DirectX::XMFLOAT4 Color;
+	DirectX::XMFLOAT3 Normal;
+	//DirectX::XMFLOAT4 Color;
 };
 
 //CPU가 한 프레임에 대한 명령 목록을 구성하는 데 필요한 리소스 묶음.
 struct FrameResource
 {
 public:
-	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount, UINT materialCount);
 	FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource() {};
@@ -48,6 +56,7 @@ public:
 	//cbuffer도 마찬가지로 프레임마다 존재.
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
 
 	//정점 위치가 프레임마다 달라지므로 프레임마다 존재.
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;

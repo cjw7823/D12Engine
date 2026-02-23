@@ -81,6 +81,12 @@
     <CopyFileToFolders Include="Shaders\color.hlsl">
       <Filter>Shader</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\GeometryShader.hlsl">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\LightingUtil.hlsli">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\SampleSrc\Camera.cpp">

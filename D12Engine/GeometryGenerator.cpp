@@ -105,7 +105,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 			XMVECTOR T = XMLoadFloat3(&v.TangentU);
 			XMStoreFloat3(&v.TangentU, XMVector3Normalize(T));
 			XMVECTOR p = XMLoadFloat3(&v.Position);
-			XMStoreFloat3(&v.Position, XMVector3Normalize(p));
+			XMStoreFloat3(&v.Normal, XMVector3Normalize(p));
 
 			v.TexC.x = theta / XM_2PI;
 			v.TexC.y = phi / XM_PI;
@@ -222,6 +222,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uin
 	return meshData;
 }
 
+//노멀, 탄젠트 공부 필요.
 GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount)
 {
 	MeshData meshData;
@@ -247,7 +248,26 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 			vertex.Position = XMFLOAT3(r * c, y, r * s);
 			vertex.TexC.x = (float)j / sliceCount;
 			vertex.TexC.y = 1.0f - (float)i / stackCount;
-			vertex.TangentU = XMFLOAT3(-3, 0.0f, c);
+			// 원기둥은 다음과 같이 매개변수화할 수 있습니다. 여기서 v 매개변수는 v 텍스처 좌표와 같은 방향으로 증가하도록 두어,
+			// 비탄젠트(bitangent)가 v 텍스처 좌표와 같은 방향을 갖도록 합니다.
+			//   r0는 아래쪽 반지름(bottom radius), r1은 위쪽 반지름(top radius)입니다.
+			//   y(v) = h - h v,   v ∈ [0,1].
+			//   r(v) = r1 + (r0 - r1) v
+			//
+			//   x(t, v) = r(v) * cos(t)
+			//   y(t, v) = h - h v
+			//   z(t, v) = r(v) * sin(t)
+			//
+			//  dx/dt = -r(v) * sin(t)
+			//  dy/dt = 0
+			//  dz/dt = +r(v) * cos(t)
+			//
+			//  dx/dv = (r0 - r1) * cos(t)
+			//  dy/dv = -h
+			//  dz/dv = (r0 - r1) * sin(t)
+			//
+			// 이 벡터는 단위 길이입니다.
+			vertex.TangentU = XMFLOAT3(-s, 0.0f, c);
 
 			float dr = bottomRadius - topRadius;
 			XMFLOAT3 bitangent(dr * c, -height, dr * s);

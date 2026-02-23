@@ -23,10 +23,11 @@ bool AppD3D::Initialize()
 	BuildShapeGeometry();
 	BuildLandGeometry();
 	BuildWavesGeometryBuffers();
+	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
-	BuildDescriptorHeaps();
-	BuildConstantsBufferView();
+	//BuildDescriptorHeaps();
+	//BuildConstantsBufferView();
 	BuildPSO();
 
 	ThrowIfFailed(mCommandList->Close());
@@ -66,6 +67,7 @@ void AppD3D::Update(const GameTimer& gt)
 	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateWaves(gt);
+	UpdateMaterialCBs(gt);
 
 	//이동 로직. 회전과 연동 안됨.
 	float dt = gt.DeltaTime();
@@ -130,17 +132,18 @@ void AppD3D::Draw(const GameTimer& gt)
 		nullptr);
 	mCommandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 	
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	//지금은 힙안씀. 디스크립터 테이블->루트 디스크립터로 변경
+	//ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
+	//mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	int passCbvIndex = mPassCbvOffset + mCurrFrameResourceIndex;
+	/*int passCbvIndex = mPassCbvOffset + mCurrFrameResourceIndex;
 	auto passCbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
-	passCbvHandle.Offset(passCbvIndex, mCbvSrvUavDescriptorSize);
+	passCbvHandle.Offset(passCbvIndex, mCbvSrvUavDescriptorSize);*/
 	//mCommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle);
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
 	DrawRenderItems(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Opaque]);
 
@@ -182,10 +185,10 @@ void AppD3D::BuildDescriptorHeaps()
 
 void AppD3D::BuildRootsignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
-	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); //b0 매핑
-	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
-	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); //b1 매핑
+	//CD3DX12_DESCRIPTOR_RANGE cbvTable0;
+	//cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); //b0 매핑
+	//CD3DX12_DESCRIPTOR_RANGE cbvTable1;
+	//cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); //b1 매핑
 
 	/*CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
@@ -195,13 +198,14 @@ void AppD3D::BuildRootsignature()
 	slotRootParameter[0].InitAsConstants(16, 0);
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);*/
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2] = {};
+	CD3DX12_ROOT_PARAMETER slotRootParameter[3] = {};
 	slotRootParameter[0].InitAsConstantBufferView(0);
 	slotRootParameter[1].InitAsConstantBufferView(1);
+	slotRootParameter[2].InitAsConstantBufferView(2);
 
 	//그래프 구조.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-		2,
+		3,
 		slotRootParameter,
 		0,
 		nullptr,
@@ -231,13 +235,21 @@ void AppD3D::BuildRootsignature()
 
 void AppD3D::BuildShadersAndInputLayout()
 {
-	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
+	//매크로 테스트. HLSL에서 #ifdef ALPHA_TEST으로 분기 가능.
+	const D3D_SHADER_MACRO alphaTestDefines[] =
+	{
+		"ALPHA_TEST", "1",
+		NULL, NULL
+	};
+
+	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\GeometryShader.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\GeometryShader.hlsl", nullptr, "PS", "ps_5_1");
 
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
@@ -311,32 +323,38 @@ void AppD3D::BuildShapeGeometry()
 	for (size_t i = 0; i < box.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = box.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::DarkGreen);
+		vertices[k].Normal = box.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::DarkGreen);
 	}
 	for (size_t i = 0; i < grid.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = grid.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::ForestGreen);
+		vertices[k].Normal = grid.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::ForestGreen);
 	}
 	for (size_t i = 0; i < sphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = sphere.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::Crimson);
+		vertices[k].Normal = sphere.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 	for (size_t i = 0; i < geoSphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = geoSphere.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::Crimson);
+		vertices[k].Normal = geoSphere.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 	for (size_t i = 0; i < cylinder.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = cylinder.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
+		vertices[k].Normal = cylinder.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
 	}
 	for (size_t i = 0; i < skull.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = skull.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::GhostWhite);
+		vertices[k].Normal = skull.Vertices[i].Normal;
+		//vertices[k].Color = XMFLOAT4(Colors::GhostWhite);
 	}
 
 	std::vector<std::uint32_t> indices;
@@ -391,8 +409,9 @@ void AppD3D::BuildLandGeometry()
 		auto& p = grid.Vertices[i].Position;
 		vertices[i].Pos = p;
 		vertices[i].Pos.y = GetHillsHeight(p.x, p.z);
+		vertices[i].Normal = GetHillsNormal(p.x, p.z);
 
-		auto& pos = vertices[i].Pos.y;
+		/*auto& pos = vertices[i].Pos.y;
 		auto& col = vertices[i].Color;
 		if (pos < -10.f)
 			col = XMFLOAT4(1.0, 0.96f, 0.62f, 1.0f);
@@ -403,7 +422,7 @@ void AppD3D::BuildLandGeometry()
 		else if (pos < 20.0f)
 			col = XMFLOAT4(0.45f, 0.39f, 0.34f, 1.0f);
 		else
-			col = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+			col = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);*/
 	}
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
@@ -531,6 +550,7 @@ void AppD3D::BuildRenderItems()
 	XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, 0.f));
 	boxRI->ObjCBIndex = 0;
 	boxRI->Geo = mGeometries["shapeGeo"].get();
+	boxRI->Mat = mMaterials["stone0"].get();
 	boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
 	boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
@@ -541,6 +561,7 @@ void AppD3D::BuildRenderItems()
 	gridRI->World = MathHelper::Identity4x4();
 	gridRI->ObjCBIndex = 1;
 	gridRI->Geo = mGeometries["shapeGeo"].get();
+	gridRI->Mat = mMaterials["tile0"].get();
 	gridRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	gridRI->IndexCount = gridRI->Geo->DrawArgs["grid"].IndexCount;
 	gridRI->StartIndexLocation = gridRI->Geo->DrawArgs["grid"].StartIndexLocation;
@@ -558,20 +579,22 @@ void AppD3D::BuildRenderItems()
 		XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
 		XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
 
-		XMMATRIX leftSphereWorld = XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
+		XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
 		XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
 
-		XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
+		XMStoreFloat4x4(&leftCylRitem->World, leftCylWorld);
 		leftCylRitem->ObjCBIndex = objCBIndex++;
 		leftCylRitem->Geo = mGeometries["shapeGeo"].get();
+		leftCylRitem->Mat = mMaterials["bricks0"].get();
 		leftCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
 		leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
 		leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
 
-		XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
+		XMStoreFloat4x4(&rightCylRitem->World, rightCylWorld);
 		rightCylRitem->ObjCBIndex = objCBIndex++;
 		rightCylRitem->Geo = mGeometries["shapeGeo"].get();
+		rightCylRitem->Mat = mMaterials["bricks0"].get();
 		rightCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
 		rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
@@ -580,6 +603,7 @@ void AppD3D::BuildRenderItems()
 		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
 		leftSphereRitem->ObjCBIndex = objCBIndex++;
 		leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
+		leftSphereRitem->Mat = mMaterials["stone0"].get();
 		leftSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
 		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
@@ -588,6 +612,7 @@ void AppD3D::BuildRenderItems()
 		XMStoreFloat4x4(&rightGeoSphereRitem->World, rightSphereWorld);
 		rightGeoSphereRitem->ObjCBIndex = objCBIndex++;
 		rightGeoSphereRitem->Geo = mGeometries["shapeGeo"].get();
+		rightGeoSphereRitem->Mat = mMaterials["stone0"].get();
 		rightGeoSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		rightGeoSphereRitem->IndexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
 		rightGeoSphereRitem->StartIndexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
@@ -604,6 +629,7 @@ void AppD3D::BuildRenderItems()
 	XMStoreFloat4x4(&skullRI->World, XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f));
 	skullRI->ObjCBIndex = objCBIndex++;
 	skullRI->Geo = mGeometries["shapeGeo"].get();
+	skullRI->Mat = mMaterials["skullMat"].get();
 	skullRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	skullRI->IndexCount = skullRI->Geo->DrawArgs["skull"].IndexCount;
 	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
@@ -616,6 +642,7 @@ void AppD3D::BuildRenderItems()
 	XMStoreFloat4x4(&landRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -5, 0));
 	landRI->ObjCBIndex = objCBIndex++;
 	landRI->Geo = mGeometries["landGeo"].get();
+	landRI->Mat = mMaterials["grass0"].get();
 	landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
 	landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
@@ -627,6 +654,7 @@ void AppD3D::BuildRenderItems()
 	XMStoreFloat4x4(&waveRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -1, 0));
 	waveRI->ObjCBIndex = objCBIndex++;
 	waveRI->Geo = mGeometries["waterGeo"].get();
+	waveRI->Mat = mMaterials["water0"].get();
 	waveRI->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
 	waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
@@ -648,7 +676,8 @@ void AppD3D::BuildFrameResources()
 				md3dDevice.Get(),
 				1,
 				(UINT)mAllRenderItems.size(),
-				mWaves->VertexCount()));
+				(UINT)mWaves->VertexCount(),
+				(UINT)mMaterials.size()));
 	}
 }
 
@@ -699,11 +728,71 @@ void AppD3D::BuildConstantsBufferView()
 	}
 }
 
+void AppD3D::BuildMaterials()
+{
+	auto skullMat = std::make_unique<Material>();
+	skullMat->Name = "skullMat";
+	skullMat->MatCBIndex = 0;
+	skullMat->DiffuseSrvHeapIndex = 0;
+	skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+	skullMat->Roughness = 0.3f;
+
+	auto tileMat = std::make_unique<Material>();
+	tileMat->Name = "tile0";
+	tileMat->MatCBIndex = 1;
+	tileMat->DiffuseSrvHeapIndex = 1;
+	tileMat->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
+	tileMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	tileMat->Roughness = 0.2f;
+
+	auto brickMat = std::make_unique<Material>();
+	brickMat->Name = "bricks0";
+	brickMat->MatCBIndex = 2;
+	brickMat->DiffuseSrvHeapIndex = 2;
+	brickMat->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
+	brickMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	brickMat->Roughness = 0.1f;
+
+	auto stoneMat = std::make_unique<Material>();
+	stoneMat->Name = "stone0";
+	stoneMat->MatCBIndex = 3;
+	stoneMat->DiffuseSrvHeapIndex = 3;
+	stoneMat->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
+	stoneMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+	stoneMat->Roughness = 0.3f;
+
+	auto grassMat = std::make_unique<Material>();
+	grassMat->Name = "grass0";
+	grassMat->MatCBIndex = 4;
+	grassMat->DiffuseSrvHeapIndex = 4;
+	grassMat->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
+	grassMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	grassMat->Roughness = 0.1f;
+	auto waterMat = std::make_unique<Material>();
+
+	waterMat->Name = "water0";
+	waterMat->MatCBIndex = 5;
+	waterMat->DiffuseSrvHeapIndex = 5;
+	waterMat->DiffuseAlbedo = XMFLOAT4(Colors::LightBlue);
+	waterMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+	waterMat->Roughness = 0.0f;
+
+	mMaterials[skullMat->Name] = std::move(skullMat);
+	mMaterials[tileMat->Name] = std::move(tileMat);
+	mMaterials[brickMat->Name] = std::move(brickMat);
+	mMaterials[stoneMat->Name] = std::move(stoneMat);
+	mMaterials[grassMat->Name] = std::move(grassMat);
+	mMaterials[waterMat->Name] = std::move(waterMat);
+}
+
 void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
 	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto matCB = mCurrFrameResource->MaterialCB->Resource();
 
 	for (size_t i = 0; i < rItems.size(); i++)
 	{
@@ -712,7 +801,7 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 		auto vbv = ri->Geo->VertexBufferView();
 		auto ibv = ri->Geo->IndexBufferView();
 
-		cmdList->IASetVertexBuffers(0,1,&vbv);
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
@@ -735,7 +824,10 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
 		objCBAddress += ri->ObjCBIndex * objCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
+		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
 		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
@@ -757,6 +849,7 @@ GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
 	{
 		lines.push_back(line);
 	}
+	file.close();
 
 	std::string label;
 	int vertexCount=0;
@@ -766,7 +859,6 @@ GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
 	iss >> label >> vertexCount;
 	iss.str(lines[1]); iss.clear();
 	iss >> label >> indexCount;
-	indexCount;
 
 	// 메시 생성
 	GeometryGenerator::MeshData meshData;
@@ -779,6 +871,7 @@ GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
 
 		GeometryGenerator::Vertex v;
 		v.Position = { v1,v2,v3 };
+		v.Normal = { n1,n2,n3 };
 		meshData.Vertices.push_back(v);
 	}
 	for (int i = 31083; i < 31083 + indexCount; i++)
@@ -872,8 +965,13 @@ void AppD3D::OnKeyboardInput(const GameTimer& gt)
 
 void AppD3D::UpdateCamera(const GameTimer& gt)
 {
-	XMVECTOR v = MathHelper::SphericalToCatesian(mRadius, mTheta, mPhi);
-	XMVECTOR pos = XMVectorSetW(v, 1.0f);
+	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
+	mEyePos.z = mRadius * sinf(mPhi) * sinf(mTheta);
+	mEyePos.y = mRadius * cosf(mPhi);
+	auto eye = XMLoadFloat3(&mEyePos);
+
+	//XMVECTOR v = MathHelper::SphericalToCatesian(mRadius, mTheta, mPhi);
+	XMVECTOR pos = XMVectorSetW(eye, 1.0f);
 	XMVECTOR target = XMVectorZero();
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -929,7 +1027,45 @@ void AppD3D::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.FarZ = 1000.0f;
 	mMainPassCB.TotalTime = gt.TotalTime();
 	mMainPassCB.DeltaTime = gt.DeltaTime();
+	mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 
+	/*for (int i = 0; i < 5; ++i)
+	{
+		auto& L0 = mMainPassCB.Lights[i];
+		L0.Position = { 5.0f, 3.5f, -10.0f + i * 5.0f };
+		L0.FalloffStart = 1.0f;
+		L0.FalloffEnd = 50.0f;
+		L0.SpotPower = 1;
+
+		auto& L1 = mMainPassCB.Lights[i + 5];
+		L1.Position = { -5.0f, 3.5f, -10.0f + i * 5.0f };
+		L1.FalloffStart = 1.0f;
+		L1.FalloffEnd = 50.0f;
+		L1.SpotPower = 1;
+	}
+
+	for (int i = 0; i < 5; ++i)
+	{
+		auto& L0 = mMainPassCB.Lights[i];
+		L0.Position = { 5.0f, 3.5f, -10.0f + i * 5.0f };
+		L0.FalloffStart = 1.0f;
+		L0.FalloffEnd = 10.0f;
+		L0.Strength = { 0.6f, 0.6f, 0.6f };
+
+		auto& L1 = mMainPassCB.Lights[i + 5];
+		L1.Position = { -5.0f, 3.5f, -10.0f + i * 5.0f };
+		L1.FalloffStart = 1.0f;
+		L1.FalloffEnd = 10.0f;
+		L1.Strength = { 0.6f, 0.6f, 0.6f };
+	}*/
+
+	mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
+	mMainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+	mMainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
+	mMainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
 }
@@ -945,8 +1081,7 @@ void AppD3D::UpdateWaves(const GameTimer& gt)
 		int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
 		int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
 
-		//float r = MathHelper::RandF(0.2f, 0.5f);
-		float r = MathHelper::RandF(0.8f, 1.5f);
+		float r = MathHelper::RandF(0.2f, 0.5f);
 
 		mWaves->Disturb(i, j, r);
 	}
@@ -958,10 +1093,32 @@ void AppD3D::UpdateWaves(const GameTimer& gt)
 	{
 		Vertex v;
 		v.Pos = mWaves->Position(i);
-		v.Color = XMFLOAT4(DirectX::Colors::Blue);
+		v.Normal = mWaves->Normal(i);
 
 		currWavesVB->CopyData(i, v);
 	}
 
 	mWavesRenderItem->Geo->VertexBufferGPU = currWavesVB->Resource();
+}
+
+void AppD3D::UpdateMaterialCBs(const GameTimer& gt)
+{
+	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
+	for (auto& e : mMaterials)
+	{
+		Material* mat = e.second.get();
+		if (mat->NumFramesDirty > 0)
+		{
+			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
+
+			MaterialConstants matConstants;
+			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
+			matConstants.FresnelR0 = mat->FresnelR0;
+			matConstants.Roughness = mat->Roughness;
+			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
+
+			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
+			mat->NumFramesDirty--;
+		}
+	}
 }

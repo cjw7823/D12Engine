@@ -34,6 +34,7 @@ struct RenderItem
 
 	//포인터를 사용하여 하나의 메시를 여러 RenderItem으로 그려낼 수 있음.
 	MeshGeometry* Geo = nullptr;
+	Material* Mat = nullptr;
 
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
