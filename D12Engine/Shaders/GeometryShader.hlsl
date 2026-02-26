@@ -97,6 +97,6 @@ float4 PS(VertexOut pin) : SV_Target
 
     //일반적으로 알파 값은 디퓨즈 머티리얼의 알파 값을 사용한다.
     litColor.a = gDiffuseAlbedo.a;
-
+    
     return litColor;
 }

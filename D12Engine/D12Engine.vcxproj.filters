@@ -18,6 +18,9 @@
     <Filter Include="Shader">
       <UniqueIdentifier>{5df7dd8d-198f-49d6-8b4b-e3c3526d1722}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{335fb8e3-23f0-4a1c-abd9-d6bf1f7418ce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dUtil.h">
@@ -50,6 +53,9 @@
     <ClInclude Include="Waves.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DDSTextureLoader.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -76,6 +82,9 @@
     <ClCompile Include="Waves.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="DDSTextureLoader.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Shaders\color.hlsl">
@@ -85,6 +94,12 @@
       <Filter>Shader</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\LightingUtil.hlsli">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\skull.txt">
+      <Filter>Resource</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\Default.hlsl">
       <Filter>Shader</Filter>
     </CopyFileToFolders>
   </ItemGroup>
@@ -99,12 +114,6 @@
       <Filter>SampleSrc</Filter>
     </None>
     <None Include="..\SampleSrc\d3dUtil.h">
-      <Filter>SampleSrc</Filter>
-    </None>
-    <None Include="..\SampleSrc\DDSTextureLoader.cpp">
-      <Filter>SampleSrc</Filter>
-    </None>
-    <None Include="..\SampleSrc\DDSTextureLoader.h">
       <Filter>SampleSrc</Filter>
     </None>
   </ItemGroup>

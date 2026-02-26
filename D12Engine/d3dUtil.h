@@ -22,6 +22,7 @@
 #include <cassert> // For assert
 
 #include "MathHelper.h"
+#include "DDSTextureLoader.h"
 
 extern const int gNumFrameResources;
 
@@ -196,4 +197,15 @@ struct MaterialConstants
 
 	//텍스쳐 매핑에 사용.
 	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
+};
+
+struct Texture
+{
+	std::string Name;
+	std::wstring Filename;
+	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
+
+	//srv 힙에서 텍스처에 대한 인덱스. 텍스처가 여러개일 경우 배열로 관리할 수 있다.
+	int DiffuseSrvHeapIndex = -1;
 };

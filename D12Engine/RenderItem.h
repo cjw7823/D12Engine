@@ -23,6 +23,7 @@ struct RenderItem
 
 	//같은 메시라도 world 행렬만 다르면 서로 다른 위치에 배치 가능.
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 
 	//FrameResource마다 object cbuffer가 존재한다.
 	//객체의 데이터가 수정되면 NumFramesDirty = NumFrameResources 설정 한다.

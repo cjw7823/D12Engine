@@ -66,6 +66,7 @@ private:
 	void BuildConstantsBufferView();
 	void BuildMaterials();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
+	void LoadTextures();
 
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
 
@@ -82,6 +83,7 @@ private:
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
+	void AnimateMaterials(const GameTimer& gt);
 
 	inline float GetHillsHeight(float x, float z)const
 	{
@@ -102,6 +104,8 @@ private:
 		return n;
 	}
 
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
@@ -111,6 +115,7 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
+	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
 
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
 	//Observer pointer 이므로 const강제.
@@ -126,6 +131,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mCbvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
@@ -137,6 +143,9 @@ private:
 	float mTheta = 1.55f * DirectX::XM_PI;
 	float mPhi = DirectX::XM_PIDIV4;
 	float mRadius = 50.0f;
+
+	float mSunTheta = 1.25f * DirectX::XM_PI;
+	float mSunPhi = DirectX::XM_PIDIV4;
 
 	bool mIsWireframe = false;
 	bool isMoving = false;

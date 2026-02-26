@@ -96,11 +96,12 @@ float3 BlinnPhongToon(float3 lightStrength, float3 lightVec, float3 normal, floa
     float ks = pow(max(ndoth, 0), m); // 스펙큘러 강도의 핵심
     float ks_q = QuantizeKs(ks); // 이산화
 
+    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;
     // fresnel(색) + (필요하면) 정규화 계수는 취향
-    float3 F = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
+    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
 
     // ks_q를 spec에 반영
-    float3 specAlbedo = F * ks_q;
+    float3 specAlbedo = roughnessFactor * fresnelFactor * ks_q;
 
     // LDR clamp는 유지 가능
     specAlbedo = specAlbedo / (specAlbedo + 1.0f);

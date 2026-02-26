@@ -18,6 +18,8 @@ bool AppD3D::Initialize()
 	// OnResize()에서 close되었으므로 재사용을 위해 Reset.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
+	LoadTextures();
+	BuildDescriptorHeaps();
 	BuildRootsignature();
 	BuildShadersAndInputLayout();
 	BuildShapeGeometry();
@@ -26,7 +28,6 @@ bool AppD3D::Initialize()
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
-	//BuildDescriptorHeaps();
 	//BuildConstantsBufferView();
 	BuildPSO();
 
@@ -44,8 +45,8 @@ void AppD3D::OnResize()
 	__super::OnResize();	//InitAppD3D::OnResize();
 
 	//투영 행렬은 종횡비가 변할 때 한 번 초기화하므로 OnResize()에 위치.
-	DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
-	DirectX::XMStoreFloat4x4(&mProj, P);
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+	XMStoreFloat4x4(&mProj, P);
 }
 
 void AppD3D::Update(const GameTimer& gt)
@@ -64,6 +65,7 @@ void AppD3D::Update(const GameTimer& gt)
 		CloseHandle(eventHandle);
 	}
 
+	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateWaves(gt);
@@ -133,8 +135,8 @@ void AppD3D::Draw(const GameTimer& gt)
 	mCommandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 	
 	//지금은 힙안씀. 디스크립터 테이블->루트 디스크립터로 변경
-	//ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
-	//mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	/*int passCbvIndex = mPassCbvOffset + mCurrFrameResourceIndex;
@@ -143,7 +145,7 @@ void AppD3D::Draw(const GameTimer& gt)
 	//mCommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle);
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
+	mCommandList->SetGraphicsRootConstantBufferView(3, passCB->GetGPUVirtualAddress());
 
 	DrawRenderItems(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Opaque]);
 
@@ -167,6 +169,35 @@ void AppD3D::Draw(const GameTimer& gt)
 
 void AppD3D::BuildDescriptorHeaps()
 {
+	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+	srvHeapDesc.NumDescriptors = mTextures.size();
+	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	int i = 0;
+	for (auto& tex : mTextures)
+	{
+		auto resource = tex.second->Resource;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = resource->GetDesc().Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = resource->GetDesc().MipLevels;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+		md3dDevice->CreateShaderResourceView(resource.Get(), &srvDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+
+		tex.second->DiffuseSrvHeapIndex = i;
+		i++;
+	}
+
+	//------------------//
+
 	UINT objCount = (UINT)mRenderItemLayer[(int)RenderLayer::Opaque].size();
 
 	//각 프레임마다 objCount + PassCBV
@@ -198,17 +229,23 @@ void AppD3D::BuildRootsignature()
 	slotRootParameter[0].InitAsConstants(16, 0);
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);*/
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[3] = {};
-	slotRootParameter[0].InitAsConstantBufferView(0);
-	slotRootParameter[1].InitAsConstantBufferView(1);
-	slotRootParameter[2].InitAsConstantBufferView(2);
+	CD3DX12_DESCRIPTOR_RANGE texTable;
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); //t0 매핑
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[4] = {};
+	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[1].InitAsConstantBufferView(0);
+	slotRootParameter[2].InitAsConstantBufferView(1);
+	slotRootParameter[3].InitAsConstantBufferView(2);
+
+	auto staticsSamplers = GetStaticSamplers();
 
 	//그래프 구조.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-		3,
+		4,
 		slotRootParameter,
-		0,
-		nullptr,
+		staticsSamplers.size(),
+		staticsSamplers.data(),
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	//루트 시그니처는 보통 DESC → Serialize(Blob) → Create
@@ -242,8 +279,8 @@ void AppD3D::BuildShadersAndInputLayout()
 		NULL, NULL
 	};
 
-	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\GeometryShader.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\GeometryShader.hlsl", nullptr, "PS", "ps_5_1");
+	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_1");
 
 	mInputLayout =
 	{
@@ -255,7 +292,7 @@ void AppD3D::BuildShadersAndInputLayout()
 
 void AppD3D::BuildShapeGeometry()
 {
-	GeometryGenerator::MeshData skull = LoadModelFile(L"../skull.txt");
+	GeometryGenerator::MeshData skull = LoadModelFile(L"Resource/skull.txt");
 
 	GeometryGenerator geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5, 0.5, 1.5, 3);
@@ -324,36 +361,42 @@ void AppD3D::BuildShapeGeometry()
 	{
 		vertices[k].Pos = box.Vertices[i].Position;
 		vertices[k].Normal = box.Vertices[i].Normal;
+		vertices[k].TexC = box.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::DarkGreen);
 	}
 	for (size_t i = 0; i < grid.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = grid.Vertices[i].Position;
 		vertices[k].Normal = grid.Vertices[i].Normal;
+		vertices[k].TexC = grid.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::ForestGreen);
 	}
 	for (size_t i = 0; i < sphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = sphere.Vertices[i].Position;
 		vertices[k].Normal = sphere.Vertices[i].Normal;
+		vertices[k].TexC = sphere.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 	for (size_t i = 0; i < geoSphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = geoSphere.Vertices[i].Position;
 		vertices[k].Normal = geoSphere.Vertices[i].Normal;
+		vertices[k].TexC = geoSphere.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 	for (size_t i = 0; i < cylinder.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = cylinder.Vertices[i].Position;
 		vertices[k].Normal = cylinder.Vertices[i].Normal;
+		vertices[k].TexC = cylinder.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
 	}
 	for (size_t i = 0; i < skull.Vertices.size(); i++, k++)
 	{
 		vertices[k].Pos = skull.Vertices[i].Position;
 		vertices[k].Normal = skull.Vertices[i].Normal;
+		vertices[k].TexC = skull.Vertices[i].TexC;
 		//vertices[k].Color = XMFLOAT4(Colors::GhostWhite);
 	}
 
@@ -410,6 +453,7 @@ void AppD3D::BuildLandGeometry()
 		vertices[i].Pos = p;
 		vertices[i].Pos.y = GetHillsHeight(p.x, p.z);
 		vertices[i].Normal = GetHillsNormal(p.x, p.z);
+		vertices[i].TexC = grid.Vertices[i].TexC;
 
 		/*auto& pos = vertices[i].Pos.y;
 		auto& col = vertices[i].Color;
@@ -556,9 +600,10 @@ void AppD3D::BuildRenderItems()
 	boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
 	boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
 	mAllRenderItems.push_back(std::move(boxRI));
-
+	
 	auto gridRI = std::make_unique<RenderItem>();
 	gridRI->World = MathHelper::Identity4x4();
+	XMStoreFloat4x4(&gridRI->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
 	gridRI->ObjCBIndex = 1;
 	gridRI->Geo = mGeometries["shapeGeo"].get();
 	gridRI->Mat = mMaterials["tile0"].get();
@@ -638,8 +683,8 @@ void AppD3D::BuildRenderItems()
 
 	//land용
 	auto landRI = std::make_unique<RenderItem>();
-	//landRI->World = MathHelper::Identity4x4();
 	XMStoreFloat4x4(&landRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -5, 0));
+	XMStoreFloat4x4(&landRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 	landRI->ObjCBIndex = objCBIndex++;
 	landRI->Geo = mGeometries["landGeo"].get();
 	landRI->Mat = mMaterials["grass0"].get();
@@ -652,6 +697,7 @@ void AppD3D::BuildRenderItems()
 	//waves용
 	auto waveRI = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&waveRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -1, 0));
+	XMStoreFloat4x4(&waveRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 	waveRI->ObjCBIndex = objCBIndex++;
 	waveRI->Geo = mGeometries["waterGeo"].get();
 	waveRI->Mat = mMaterials["water0"].get();
@@ -659,7 +705,7 @@ void AppD3D::BuildRenderItems()
 	waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
 	waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-
+	
 	mWavesRenderItem = waveRI.get();
 	mAllRenderItems.push_back(std::move(waveRI));
 
@@ -733,7 +779,7 @@ void AppD3D::BuildMaterials()
 	auto skullMat = std::make_unique<Material>();
 	skullMat->Name = "skullMat";
 	skullMat->MatCBIndex = 0;
-	skullMat->DiffuseSrvHeapIndex = 0;
+	skullMat->DiffuseSrvHeapIndex = mTextures["defaultTex"]->DiffuseSrvHeapIndex; //텍스처 없음.
 	skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
 	skullMat->Roughness = 0.3f;
@@ -741,7 +787,7 @@ void AppD3D::BuildMaterials()
 	auto tileMat = std::make_unique<Material>();
 	tileMat->Name = "tile0";
 	tileMat->MatCBIndex = 1;
-	tileMat->DiffuseSrvHeapIndex = 1;
+	tileMat->DiffuseSrvHeapIndex = mTextures["tileTex"]->DiffuseSrvHeapIndex;
 	tileMat->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
 	tileMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	tileMat->Roughness = 0.2f;
@@ -749,15 +795,15 @@ void AppD3D::BuildMaterials()
 	auto brickMat = std::make_unique<Material>();
 	brickMat->Name = "bricks0";
 	brickMat->MatCBIndex = 2;
-	brickMat->DiffuseSrvHeapIndex = 2;
-	brickMat->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
+	brickMat->DiffuseSrvHeapIndex = mTextures["brickTex"]->DiffuseSrvHeapIndex;
+	brickMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	brickMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	brickMat->Roughness = 0.1f;
 
 	auto stoneMat = std::make_unique<Material>();
 	stoneMat->Name = "stone0";
 	stoneMat->MatCBIndex = 3;
-	stoneMat->DiffuseSrvHeapIndex = 3;
+	stoneMat->DiffuseSrvHeapIndex = mTextures["stoneTex"]->DiffuseSrvHeapIndex;
 	stoneMat->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
 	stoneMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
 	stoneMat->Roughness = 0.3f;
@@ -765,17 +811,17 @@ void AppD3D::BuildMaterials()
 	auto grassMat = std::make_unique<Material>();
 	grassMat->Name = "grass0";
 	grassMat->MatCBIndex = 4;
-	grassMat->DiffuseSrvHeapIndex = 4;
-	grassMat->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
-	grassMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	grassMat->Roughness = 0.1f;
-	auto waterMat = std::make_unique<Material>();
+	grassMat->DiffuseSrvHeapIndex = mTextures["grassTex"]->DiffuseSrvHeapIndex;
+	grassMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	grassMat->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	grassMat->Roughness = 0.125f;
 
+	auto waterMat = std::make_unique<Material>();
 	waterMat->Name = "water0";
 	waterMat->MatCBIndex = 5;
-	waterMat->DiffuseSrvHeapIndex = 5;
-	waterMat->DiffuseAlbedo = XMFLOAT4(Colors::LightBlue);
-	waterMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+	waterMat->DiffuseSrvHeapIndex = mTextures["waterTex"]->DiffuseSrvHeapIndex;
+	waterMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	waterMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
 	waterMat->Roughness = 0.0f;
 
 	mMaterials[skullMat->Name] = std::move(skullMat);
@@ -822,15 +868,66 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 			0
 		);*/
 
+		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
+
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
 		objCBAddress += ri->ObjCBIndex * objCBByteSize;
 		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
 		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
-		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-		cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+
+		cmdList->SetGraphicsRootDescriptorTable(0, tex);
+		cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(2, matCBAddress);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
+}
+
+void AppD3D::LoadTextures()
+{
+	auto defaultTex = std::make_unique<Texture>();
+	defaultTex->Name = "defaultTex";
+	defaultTex->Filename = L"../Textures/white1x1.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), defaultTex->Filename.c_str(), defaultTex->Resource, defaultTex->UploadHeap));
+
+	auto woodCrateTex = std::make_unique<Texture>();
+	woodCrateTex->Name = "woodCrateTex";
+	woodCrateTex->Filename = L"../Textures/WoodCrate01.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), woodCrateTex->Filename.c_str(), woodCrateTex->Resource, woodCrateTex->UploadHeap));
+
+	auto brickTex = std::make_unique<Texture>();
+	brickTex->Name = "brickTex";
+	brickTex->Filename = L"../Textures/bricks.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), brickTex->Filename.c_str(), brickTex->Resource, brickTex->UploadHeap));
+
+	auto stoneTex = std::make_unique<Texture>();
+	stoneTex->Name = "stoneTex";
+	stoneTex->Filename = L"../Textures/stone.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), stoneTex->Filename.c_str(), stoneTex->Resource, stoneTex->UploadHeap));
+
+	auto tileTex = std::make_unique<Texture>();
+	tileTex->Name = "tileTex";
+	tileTex->Filename = L"../Textures/tile.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), tileTex->Filename.c_str(), tileTex->Resource, tileTex->UploadHeap));
+
+	auto grassTex = std::make_unique<Texture>();
+	grassTex->Name = "grassTex";
+	grassTex->Filename = L"../Textures/grass.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), grassTex->Filename.c_str(), grassTex->Resource, grassTex->UploadHeap));
+
+	auto waterTex = std::make_unique<Texture>();
+	waterTex->Name = "waterTex";
+	waterTex->Filename = L"../Textures/water1.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), waterTex->Filename.c_str(), waterTex->Resource, waterTex->UploadHeap));
+
+	mTextures[defaultTex->Name] = std::move(defaultTex);
+	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
+	mTextures[brickTex->Name] = std::move(brickTex);
+	mTextures[stoneTex->Name] = std::move(stoneTex);
+	mTextures[tileTex->Name] = std::move(tileTex);
+	mTextures[grassTex->Name] = std::move(grassTex);
+	mTextures[waterTex->Name] = std::move(waterTex);
 }
 
 GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
@@ -961,6 +1058,22 @@ void AppD3D::OnKeyboardInput(const GameTimer& gt)
 		mIsWireframe = !mIsWireframe;
 
 	prevKeyDown = currKeyDown;
+
+	const float dt = gt.DeltaTime();
+
+	if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+		mSunTheta -= 1.0f * dt;
+
+	if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+		mSunTheta += 1.0f * dt;
+
+	if (GetAsyncKeyState(VK_UP) & 0x8000)
+		mSunPhi -= 1.0f * dt;
+
+	if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+		mSunPhi += 1.0f * dt;
+
+	mSunPhi = MathHelper::Clamp(mSunPhi, 0.1f, XM_PIDIV2);
 }
 
 void AppD3D::UpdateCamera(const GameTimer& gt)
@@ -988,9 +1101,11 @@ void AppD3D::UpdateObjectCBs(const GameTimer& gt)
 		if (e->NumFramesDirty > 0)
 		{
 			XMMATRIX world = XMLoadFloat4x4(&e->World);
+			XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
 			ObjectConstants objConstants;
 			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
 
 			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 			e->NumFramesDirty--;
@@ -1065,6 +1180,12 @@ void AppD3D::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
 	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
 	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+
+	XMVECTOR lightDir = -MathHelper::SphericalToCatesian(1.0, mSunTheta, mSunPhi);
+	XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
+
+	//XMStoreFloat3(&mMainPassCB.Lights[1].Direction, lightDir);
+	//XMStoreFloat3(&mMainPassCB.Lights[2].Direction, lightDir);
 	
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
@@ -1095,6 +1216,9 @@ void AppD3D::UpdateWaves(const GameTimer& gt)
 		v.Pos = mWaves->Position(i);
 		v.Normal = mWaves->Normal(i);
 
+		v.TexC.x = 0.5f + v.Pos.x / mWaves->Width();
+		v.TexC.y = 0.5f - v.Pos.z / mWaves->Depth();
+
 		currWavesVB->CopyData(i, v);
 	}
 
@@ -1121,4 +1245,77 @@ void AppD3D::UpdateMaterialCBs(const GameTimer& gt)
 			mat->NumFramesDirty--;
 		}
 	}
+}
+
+void AppD3D::AnimateMaterials(const GameTimer& gt)
+{
+	auto waterMat = mMaterials["water0"].get(); 
+	
+	//변환행렬의 x,y 이동 부분
+	float& tu = waterMat->MatTransform(3, 0);
+	float& tv = waterMat->MatTransform(3, 1);
+
+	tu += 0.1f * gt.DeltaTime();
+	tv += 0.02f * gt.DeltaTime();
+
+	if (tu >= 1.0f) tu -= 1.0f;
+	if (tv >= 1.0f) tv -= 1.0f;
+
+	waterMat->NumFramesDirty = gNumFrameResources;
+}
+
+//앱에서는 일반적으로 몇 개의 샘플러만 필요하다.
+//따라서 미리 정의해 두고 루트 시그니처에서 사용할 수 있도록 유지한다.
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> AppD3D::GetStaticSamplers()
+{
+	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+		0, // shaderRegister
+		D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+	const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+		1,
+		D3D12_FILTER_MIN_MAG_MIP_POINT,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+
+	const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+		2,
+		D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+
+	const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+		3,
+		D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+	
+	const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+		4,
+		D3D12_FILTER_ANISOTROPIC,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+		0,
+		8);
+
+	const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+		5,
+		D3D12_FILTER_ANISOTROPIC,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		0.0f,
+		8);
+
+	return {
+		pointWrap, pointClamp,
+		linearWrap, linearClamp,
+		anisotropicWrap, anisotropicClamp };
 }
