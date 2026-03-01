@@ -13,6 +13,8 @@
 #include "LightingUtil.hlsli"
 
 Texture2D gDiffuseMap : register(t0);
+Texture2D gDiffuseMap2 : register(t1);
+
 SamplerState gsamLinear : register(s0);
 
 cbuffer cbPerObject : register(b0)
@@ -107,6 +109,29 @@ float4 PS(VertexOut pin) : SV_Target
     float4 litColor = ambient + directLight;
 
     //일반적으로 알파 값은 디퓨즈 머티리얼의 알파 값을 사용한다.
+    litColor.a = diffuseAlbedo.a;
+    
+    return litColor;
+}
+
+float4 PS_multiTexture(VertexOut pin) : SV_Target
+{
+    float4 diffuseAlbedo1 = gDiffuseMap.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo2 = gDiffuseMap2.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = diffuseAlbedo1 * diffuseAlbedo2.r;
+    
+    pin.NormalW = normalize(pin.NormalW);
+    //광원에서 카메라로 향하는 벡터.
+    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    float4 ambient = gAmbientLight * diffuseAlbedo;
+    const float shininess = 1.0f - gRoughness;
+    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    float3 shadowFactor = 1.0f;
+    
+    float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
+        pin.NormalW, toEyeW, shadowFactor);
+    float4 litColor = ambient + directLight;
+    
     litColor.a = diffuseAlbedo.a;
     
     return litColor;

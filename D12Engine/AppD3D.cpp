@@ -101,15 +101,15 @@ void AppD3D::Draw(const GameTimer& gt)
 {
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 	ThrowIfFailed(cmdListAlloc->Reset());
-
-	if (mIsWireframe)
+	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), nullptr));
+	/*if (mIsWireframe)
 	{
 		ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque_wireframe"].Get()));
 	}
 	else
 	{
 		ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
-	}
+	}*/
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);	//Rasterizer 단계
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
@@ -145,9 +145,9 @@ void AppD3D::Draw(const GameTimer& gt)
 	//mCommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle);
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(3, passCB->GetGPUVirtualAddress());
+	mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
 
-	DrawRenderItems(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Opaque]);
+	DrawRenderItems(mCommandList.Get(), mRenderItemLayer);
 
 	auto barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		CurrentBackBuffer(),
@@ -196,9 +196,11 @@ void AppD3D::BuildDescriptorHeaps()
 		i++;
 	}
 
-	//------------------//
+	//---------현재 mCbvHeap 미사용---------//
 
-	UINT objCount = (UINT)mRenderItemLayer[(int)RenderLayer::Opaque].size();
+	UINT objCount = 0;
+	for(auto l : mRenderItemLayer)
+		objCount += l.size();
 
 	//각 프레임마다 objCount + PassCBV
 	UINT numDescriptors = (objCount + 1) * gNumFrameResources;
@@ -229,20 +231,23 @@ void AppD3D::BuildRootsignature()
 	slotRootParameter[0].InitAsConstants(16, 0);
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);*/
 
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); //t0 매핑
+	CD3DX12_DESCRIPTOR_RANGE texTable1;
+	texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); //t0 매핑
+	CD3DX12_DESCRIPTOR_RANGE texTable2;
+	texTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1); //t1 매핑
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[4] = {};
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[1].InitAsConstantBufferView(0);
-	slotRootParameter[2].InitAsConstantBufferView(1);
-	slotRootParameter[3].InitAsConstantBufferView(2);
+	CD3DX12_ROOT_PARAMETER slotRootParameter[5] = {};
+	slotRootParameter[0].InitAsDescriptorTable(1, &texTable1, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[1].InitAsDescriptorTable(1, &texTable2, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[2].InitAsConstantBufferView(0);
+	slotRootParameter[3].InitAsConstantBufferView(1);
+	slotRootParameter[4].InitAsConstantBufferView(2);
 
 	auto staticsSamplers = GetStaticSamplers();
 
 	//그래프 구조.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-		4,
+		5,
 		slotRootParameter,
 		staticsSamplers.size(),
 		staticsSamplers.data(),
@@ -281,6 +286,7 @@ void AppD3D::BuildShadersAndInputLayout()
 
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_1");
+	mShaders["multiPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS_multiTexture", "ps_5_1");
 
 	mInputLayout =
 	{
@@ -586,21 +592,30 @@ void AppD3D::BuildPSO()
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaqueWireframePsoDesc = opaquePsoDesc;
 	opaqueWireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaqueWireframePsoDesc, IID_PPV_ARGS(&mPSOs["opaque_wireframe"])));
+	
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC multiPsoDesc = opaquePsoDesc;
+	multiPsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["multiPS"]->GetBufferPointer()),
+		mShaders["multiPS"]->GetBufferSize()
+	};
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&multiPsoDesc, IID_PPV_ARGS(&mPSOs["multiPSO"])));
 }
 
 void AppD3D::BuildRenderItems()
 {
 	auto boxRI = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, 0.f));
+	//XMStoreFloat4x4(&boxRI->TexTransform, XMMatrixScaling(5.f, 5.f, 1.0f) * XMMatrixTranslation(-1, -1, 0.f));
 	boxRI->ObjCBIndex = 0;
 	boxRI->Geo = mGeometries["shapeGeo"].get();
-	boxRI->Mat = mMaterials["stone0"].get();
+	boxRI->Mat = mMaterials["woodCrate"].get();
 	boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
 	boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
 	boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
 	mAllRenderItems.push_back(std::move(boxRI));
-	
+
 	auto gridRI = std::make_unique<RenderItem>();
 	gridRI->World = MathHelper::Identity4x4();
 	XMStoreFloat4x4(&gridRI->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
@@ -705,12 +720,24 @@ void AppD3D::BuildRenderItems()
 	waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
 	waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	
 	mWavesRenderItem = waveRI.get();
 	mAllRenderItems.push_back(std::move(waveRI));
 
 	for (auto& e : mAllRenderItems)
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(e.get());
+
+	auto boxRI2 = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&boxRI2->World, XMMatrixScaling(2.f, 6.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 5.f));
+	////XMStoreFloat4x4(&boxRI->TexTransform, XMMatrixScaling(5.f, 5.f, 1.0f) * XMMatrixTranslation(-1, -1, 0.f));
+	boxRI2->ObjCBIndex = objCBIndex++;
+	boxRI2->Geo = mGeometries["shapeGeo"].get();
+	boxRI2->Mat = mMaterials["swirling"].get();
+	boxRI2->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	boxRI2->IndexCount = boxRI2->Geo->DrawArgs["box"].IndexCount;
+	boxRI2->StartIndexLocation = boxRI2->Geo->DrawArgs["box"].StartIndexLocation;
+	boxRI2->BaseVertexLocation = boxRI2->Geo->DrawArgs["box"].BaseVertexLocation;
+	mRenderItemLayer[(int)RenderLayer::Multi].push_back(boxRI2.get());
+	mAllRenderItems.push_back(std::move(boxRI2));
 }
 
 void AppD3D::BuildFrameResources()
@@ -730,7 +757,9 @@ void AppD3D::BuildFrameResources()
 void AppD3D::BuildConstantsBufferView()
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-	UINT objCount = (UINT)mRenderItemLayer[(int)RenderLayer::Opaque].size();
+	UINT objCount = 0;
+	for (auto l : mRenderItemLayer)
+		objCount += l.size();
 
 	//// |(Frame i) -> (Obj0)(Obj1)(Obj2)...| for i in [0, gNumFrameResources) 꼴의 구조
 	/*for (int frameIndex = 0; frameIndex < gNumFrameResources; frameIndex++)
@@ -824,15 +853,42 @@ void AppD3D::BuildMaterials()
 	waterMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
 	waterMat->Roughness = 0.0f;
 
+	auto woodCrateMat = std::make_unique<Material>();
+	woodCrateMat->Name = "woodCrate";
+	woodCrateMat->MatCBIndex = 6;
+	woodCrateMat->DiffuseSrvHeapIndex = mTextures["woodCrateTex"]->DiffuseSrvHeapIndex;
+	woodCrateMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	woodCrateMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+	woodCrateMat->Roughness = 0.0f;
+
+	auto swirlingMat = std::make_unique<Material>();
+	swirlingMat->Name = "swirling";
+	swirlingMat->MatCBIndex = 7;
+	swirlingMat->DiffuseSrvHeapIndex = mTextures["swirlingTex"]->DiffuseSrvHeapIndex;
+	swirlingMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	swirlingMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+	swirlingMat->Roughness = 0.0f;
+
+	auto swirlingMaskMat = std::make_unique<Material>();
+	swirlingMaskMat->Name = "swirlingMask";
+	swirlingMaskMat->MatCBIndex = 8;
+	swirlingMaskMat->DiffuseSrvHeapIndex = mTextures["swirlingMaskTex"]->DiffuseSrvHeapIndex;
+	swirlingMaskMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	swirlingMaskMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+	swirlingMaskMat->Roughness = 0.0f;
+
 	mMaterials[skullMat->Name] = std::move(skullMat);
 	mMaterials[tileMat->Name] = std::move(tileMat);
 	mMaterials[brickMat->Name] = std::move(brickMat);
 	mMaterials[stoneMat->Name] = std::move(stoneMat);
 	mMaterials[grassMat->Name] = std::move(grassMat);
 	mMaterials[waterMat->Name] = std::move(waterMat);
+	mMaterials[woodCrateMat->Name] = std::move(woodCrateMat);
+	mMaterials[swirlingMat->Name] = std::move(swirlingMat);
+	mMaterials[swirlingMaskMat->Name] = std::move(swirlingMaskMat);
 }
 
-void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems)
+void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>* allRenderItem)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -840,47 +896,68 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
 	auto matCB = mCurrFrameResource->MaterialCB->Resource();
 
-	for (size_t i = 0; i < rItems.size(); i++)
+	for (size_t layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
-		auto ri = rItems[i];
+		auto rItems = allRenderItem[layer];
 
-		auto vbv = ri->Geo->VertexBufferView();
-		auto ibv = ri->Geo->IndexBufferView();
+		switch (layer)
+		{
+			case (int)RenderLayer::Opaque:
+				cmdList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
+				break;
+			case (int)RenderLayer::Multi:
+				cmdList->SetPipelineState(mPSOs["multiPSO"].Get());
+				break;
+		default:
+			break;
+		}
 
-		cmdList->IASetVertexBuffers(0, 1, &vbv);
-		cmdList->IASetIndexBuffer(&ibv);
-		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE hT1(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+		hT1.Offset(mTextures["swirlingMaskTex"]->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
+		cmdList->SetGraphicsRootDescriptorTable(1, hT1);
 
-		/*UINT cbvIndex = mCurrFrameResourceIndex * (UINT)mRenderItemLayer[(int)RenderLayer::Opaque].size() + ri->ObjCBIndex;
-		auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
-		cbvHandle.Offset(cbvIndex, mCbvSrvUavDescriptorSize);
+		for (size_t i = 0; i < rItems.size(); i++)
+		{
+			auto ri = rItems[i];
 
-		cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);*/
+			auto vbv = ri->Geo->VertexBufferView();
+			auto ibv = ri->Geo->IndexBufferView();
 
-		/*XMMATRIX world = XMLoadFloat4x4(&ri->World);
-		XMFLOAT4X4 worldT;
-		XMStoreFloat4x4(&worldT, XMMatrixTranspose(world));
+			cmdList->IASetVertexBuffers(0, 1, &vbv);
+			cmdList->IASetIndexBuffer(&ibv);
+			cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-		cmdList->SetGraphicsRoot32BitConstants(
-			0,      // RootParamIndex (b0)
-			16,     // Num32BitValues
-			&worldT,// 16 floats contiguous
-			0
-		);*/
+			/*UINT cbvIndex = mCurrFrameResourceIndex * (UINT)mRenderItemLayer[(int)RenderLayer::Opaque].size() + ri->ObjCBIndex;
+			auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+			cbvHandle.Offset(cbvIndex, mCbvSrvUavDescriptorSize);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
+			cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);*/
 
-		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
-		objCBAddress += ri->ObjCBIndex * objCBByteSize;
-		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
-		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
+			/*XMMATRIX world = XMLoadFloat4x4(&ri->World);
+			XMFLOAT4X4 worldT;
+			XMStoreFloat4x4(&worldT, XMMatrixTranspose(world));
 
-		cmdList->SetGraphicsRootDescriptorTable(0, tex);
-		cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
-		cmdList->SetGraphicsRootConstantBufferView(2, matCBAddress);
+			cmdList->SetGraphicsRoot32BitConstants(
+				0,      // RootParamIndex (b0)
+				16,     // Num32BitValues
+				&worldT,// 16 floats contiguous
+				0
+			);*/
 
-		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+			tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
+
+			D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
+			objCBAddress += ri->ObjCBIndex * objCBByteSize;
+			D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
+			matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
+
+			cmdList->SetGraphicsRootDescriptorTable(0, tex);
+			cmdList->SetGraphicsRootConstantBufferView(2, objCBAddress);
+			cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
+
+			cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+		}
 	}
 }
 
@@ -893,7 +970,7 @@ void AppD3D::LoadTextures()
 
 	auto woodCrateTex = std::make_unique<Texture>();
 	woodCrateTex->Name = "woodCrateTex";
-	woodCrateTex->Filename = L"../Textures/WoodCrate01.dds";
+	woodCrateTex->Filename = L"../Textures/MipmapTest.dds";
 	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), woodCrateTex->Filename.c_str(), woodCrateTex->Resource, woodCrateTex->UploadHeap));
 
 	auto brickTex = std::make_unique<Texture>();
@@ -921,6 +998,16 @@ void AppD3D::LoadTextures()
 	waterTex->Filename = L"../Textures/water1.dds";
 	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), waterTex->Filename.c_str(), waterTex->Resource, waterTex->UploadHeap));
 
+	auto swirlingTex = std::make_unique<Texture>();
+	swirlingTex->Name = "swirlingTex";
+	swirlingTex->Filename = L"../Textures/swirling.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), swirlingTex->Filename.c_str(), swirlingTex->Resource, swirlingTex->UploadHeap));
+
+	auto swirlingMaskTex = std::make_unique<Texture>();
+	swirlingMaskTex->Name = "swirlingMaskTex";
+	swirlingMaskTex->Filename = L"../Textures/swirling_Mask.dds";
+	ThrowIfFailed(CreateDDSTextureFromFile12(md3dDevice.Get(), mCommandList.Get(), swirlingMaskTex->Filename.c_str(), swirlingMaskTex->Resource, swirlingMaskTex->UploadHeap));
+
 	mTextures[defaultTex->Name] = std::move(defaultTex);
 	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
 	mTextures[brickTex->Name] = std::move(brickTex);
@@ -928,6 +1015,8 @@ void AppD3D::LoadTextures()
 	mTextures[tileTex->Name] = std::move(tileTex);
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
+	mTextures[swirlingTex->Name] = std::move(swirlingTex);
+	mTextures[swirlingMaskTex->Name] = std::move(swirlingMaskTex);
 }
 
 GeometryGenerator::MeshData AppD3D::LoadModelFile(const std::wstring& path)
@@ -1262,11 +1351,21 @@ void AppD3D::AnimateMaterials(const GameTimer& gt)
 	if (tv >= 1.0f) tv -= 1.0f;
 
 	waterMat->NumFramesDirty = gNumFrameResources;
+
+
+	//파이어볼 회전 애니메이션
+	auto swirlingMat = mMaterials["swirling"].get();
+	XMMATRIX R = XMMatrixRotationZ(1.5f * gt.TotalTime());
+	XMMATRIX T0 = XMMatrixTranslation(-0.5f, -0.5f, 0.0f);
+	XMMATRIX T1 = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
+	XMMATRIX M = T0 * R * T1;
+	XMStoreFloat4x4(&swirlingMat->MatTransform, M);
+	swirlingMat->NumFramesDirty = gNumFrameResources;
 }
 
 //앱에서는 일반적으로 몇 개의 샘플러만 필요하다.
 //따라서 미리 정의해 두고 루트 시그니처에서 사용할 수 있도록 유지한다.
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> AppD3D::GetStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> AppD3D::GetStaticSamplers()
 {
 	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
 		0, // shaderRegister
@@ -1314,8 +1413,17 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> AppD3D::GetStaticSamplers()
 		0.0f,
 		8);
 
+	const CD3DX12_STATIC_SAMPLER_DESC testSampler(
+		6,
+		D3D12_FILTER_ANISOTROPIC,
+		D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		0.0f,
+		8);
+
 	return {
 		pointWrap, pointClamp,
 		linearWrap, linearClamp,
-		anisotropicWrap, anisotropicClamp };
+		anisotropicWrap, anisotropicClamp, testSampler };
 }

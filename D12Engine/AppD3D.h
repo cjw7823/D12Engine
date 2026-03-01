@@ -65,7 +65,7 @@ private:
 	void BuildFrameResources();
 	void BuildConstantsBufferView();
 	void BuildMaterials();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>& rItems);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>* allRenderItem);
 	void LoadTextures();
 
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
@@ -104,7 +104,7 @@ private:
 		return n;
 	}
 
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
