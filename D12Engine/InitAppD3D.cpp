@@ -17,6 +17,10 @@ InitAppD3D::InitAppD3D(HINSTANCE hInstance) : mhAppInst(hInstance)
 
 InitAppD3D::~InitAppD3D()
 {
+	// Exclusive fullscreen 상태면 반드시 먼저 해제
+	if (mSwapChain)
+		mSwapChain->SetFullscreenState(FALSE, nullptr);
+
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
@@ -227,7 +231,7 @@ void InitAppD3D::OnResize()
 		SwapChainBufferCount,
 		mClientWidth, mClientHeight,
 		mBackBufferFormat,
-		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
+		0));
 	mCurrBackBuffer = 0;
 
 	//스왑체인의 백버퍼들은 실제로 GPU메모리의 텍스처 리소스.
@@ -511,7 +515,7 @@ void InitAppD3D::CreateSwapChain()
 	//어짜피 매 프레인 전체를 다시 그리므로 상관없음.
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	//전체 화면 전환 시 디스플레이 모드 스위치를 허용.
-	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	sd.Flags = 0;
 
 	ThrowIfFailed(mdxgiFactory->CreateSwapChain(mCommandQueue.Get(), &sd, mSwapChain.GetAddressOf()));
 }
