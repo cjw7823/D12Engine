@@ -125,5 +125,11 @@
     <None Include="..\SampleSrc\d3dUtil.h">
       <Filter>SampleSrc</Filter>
     </None>
+    <None Include="..\SampleSrc\DDSTextureLoader.cpp">
+      <Filter>SampleSrc</Filter>
+    </None>
+    <None Include="..\SampleSrc\DDSTextureLoader.h">
+      <Filter>SampleSrc</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -126,6 +126,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h" />
+    <None Include="..\SampleSrc\DDSTextureLoader.h" />
     <ClInclude Include="TextureLoader_Blocking.h" />
     <ClInclude Include="Waves.h" />
     <None Include="..\SampleSrc\Camera.h" />
@@ -156,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <None Include="..\SampleSrc\DDSTextureLoader.cpp" />
     <ClCompile Include="TextureLoader_Blocking.cpp" />
     <ClCompile Include="Waves.cpp" />
     <None Include="..\SampleSrc\Camera.cpp" />
