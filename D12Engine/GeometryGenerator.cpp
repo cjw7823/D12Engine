@@ -1,10 +1,10 @@
 #include "GeometryGenerator.h"
-#include <algorithm>
 
 using namespace DirectX;
 using Vertex = GeometryGenerator::Vertex;
+using MeshData = GeometryGenerator::MeshData;
 
-GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float height, float depth, uint32 numSubdivisions)
+MeshData GeometryGenerator::CreateBox(float width, float height, float depth, uint32 numSubdivisions)
 {
 	MeshData meshData;
 
@@ -69,7 +69,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float heig
 	return meshData;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32 sliceCount, uint32 stackCount)
+MeshData GeometryGenerator::CreateSphere(float radius, uint32 sliceCount, uint32 stackCount)
 {
 	MeshData meshData;
 
@@ -77,10 +77,9 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	//직사각형 텍스처를 구에 매핑할 때 텍스처 맵에서 극점에 할당할 고유한 지점이 없으므로 텍스처 좌표 왜곡이 발생할 수 있다.
 	Vertex topVertex(0.0f, +radius, 0.0f, 0.0f, +1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	Vertex bottomVertex(0.0f, -radius, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-
 	meshData.Vertices.push_back(topVertex);
 
-	float phiStep	= XM_PI / stackCount;
+	float phiStep = XM_PI / stackCount;
 	float thetaStep = 2.0f * XM_PI / sliceCount;
 
 	//stack ring 마다 vertex계산
@@ -119,7 +118,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	for (uint32 i = 1; i <= sliceCount; i++)
 	{
 		meshData.Indices32.push_back(0);
-		meshData.Indices32.push_back(i+1);
+		meshData.Indices32.push_back(i + 1);
 		meshData.Indices32.push_back(i);
 	}
 
@@ -127,19 +126,19 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	uint32 baseIndex = 1;
 	// 시작과 끝점은 같은 위치지만 다른 정점.
 	// 텍스처 좌표가 다르기 때문.
-	uint32 ringVertexCount = sliceCount + 1; 
+	uint32 ringVertexCount = sliceCount + 1;
 
 	for (uint32 i = 0; i < stackCount - 2; i++)
 	{
 		for (uint32 j = 0; j < sliceCount; j++)
 		{
 			meshData.Indices32.push_back(baseIndex + i * ringVertexCount + j);
-			meshData.Indices32.push_back(baseIndex + i * ringVertexCount + (j+1));
-			meshData.Indices32.push_back(baseIndex + (i+1) * ringVertexCount + j);
+			meshData.Indices32.push_back(baseIndex + i * ringVertexCount + (j + 1));
+			meshData.Indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
 
-			meshData.Indices32.push_back(baseIndex + (i+1) * ringVertexCount + j);
-			meshData.Indices32.push_back(baseIndex + i * ringVertexCount + (j+1));
-			meshData.Indices32.push_back(baseIndex + (i+1) * ringVertexCount + (j+1));
+			meshData.Indices32.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			meshData.Indices32.push_back(baseIndex + i * ringVertexCount + (j + 1));
+			meshData.Indices32.push_back(baseIndex + (i + 1) * ringVertexCount + (j + 1));
 		}
 	}
 
@@ -157,7 +156,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
 	return meshData;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uint32 numSubdivisions)
+MeshData GeometryGenerator::CreateGeosphere(float radius, uint32 numSubdivisions)
 {
 	MeshData meshData;
 
@@ -223,7 +222,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGeosphere(float radius, uin
 }
 
 //노멀, 탄젠트 공부 필요.
-GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount)
+MeshData GeometryGenerator::CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount)
 {
 	MeshData meshData;
 
@@ -306,12 +305,12 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 	return meshData;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float depth, uint32 m, uint32 n)
+MeshData GeometryGenerator::CreateGrid(float width, float depth, uint32 m, uint32 n)
 {
 	MeshData meshData;
 
 	uint32 vertexCount = m * n;
-	uint32 faceCount   = (m - 1) * (n - 1) * 2;
+	uint32 faceCount = (m - 1) * (n - 1) * 2;
 
 	float halfWidth = 0.5f * width;
 	float halfDepth = 0.5f * depth;
@@ -331,7 +330,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 			float x = -halfWidth + j * dx;
 
 			meshData.Vertices[i * n + j].Position = XMFLOAT3(x, 0.0f, z);
-			meshData.Vertices[i * n + j].Normal	  = XMFLOAT3(0.0f, 1.0f, 0.0f);
+			meshData.Vertices[i * n + j].Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
 			meshData.Vertices[i * n + j].TangentU = XMFLOAT3(1.0f, 0.0f, 0.0f);
 
 			meshData.Vertices[i * n + j].TexC.x = j * du;
@@ -346,7 +345,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 	{
 		for (uint32 j = 0; j < n - 1; j++)
 		{
-			meshData.Indices32[k]	  = i * n + j;
+			meshData.Indices32[k] = i * n + j;
 			meshData.Indices32[k + 1] = i * n + j + 1;
 			meshData.Indices32[k + 2] = (i + 1) * n + j;
 
@@ -361,13 +360,13 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 	return meshData;
 }
 
-GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, float w, float h, float depth)
+MeshData GeometryGenerator::CreateQuad(float x, float y, float w, float h, float depth)
 {
 	MeshData meshData;
 
 	meshData.Vertices.resize(4);
 	meshData.Indices32.resize(6);
-	
+
 	meshData.Vertices[0] = Vertex(
 		x, y - h, depth,
 		0.0f, 0.0f, -1.0f,
@@ -391,7 +390,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 		0.0f, 0.0f, -1.0f,
 		1.0f, 0.0f, 0.0f,
 		1.0f, 1.0f);
-	
+
 	meshData.Indices32[0] = 0;
 	meshData.Indices32[1] = 1;
 	meshData.Indices32[2] = 2;
@@ -456,7 +455,7 @@ void GeometryGenerator::Subdivide(MeshData& meshData)
 	}
 }
 
-GeometryGenerator::Vertex GeometryGenerator::MidPoint(const Vertex& v0, const Vertex& v1)
+Vertex GeometryGenerator::MidPoint(const Vertex& v0, const Vertex& v1)
 {
 	XMVECTOR p0 = XMLoadFloat3(&v0.Position);
 	XMVECTOR p1 = XMLoadFloat3(&v1.Position);

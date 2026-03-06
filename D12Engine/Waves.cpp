@@ -1,12 +1,8 @@
 #include "Waves.h"
-#include <cassert>
 #include <ppl.h> //Parallel Patterns Library
 
 using namespace DirectX;
 
-/*
-    파동 방정식 사용.
-*/
 Waves::Waves(int m, int n, float dx, float dt, float speed, float damping)
 {
     mNumRows = m;
@@ -76,6 +72,21 @@ float Waves::Depth() const
     return mNumRows * mSpatialStep;
 }
 
+const DirectX::XMFLOAT3& Waves::Position(int i)
+{
+    return mCurrSolution[i];
+}
+
+const DirectX::XMFLOAT3& Waves::Normal(int i)
+{
+    return mNormals[i];
+}
+
+const DirectX::XMFLOAT3& Waves::TangentX(int i)
+{
+    return mTangentX[i];
+}
+
 void Waves::Update(float dt)
 {
     static float t = 0;
@@ -87,7 +98,7 @@ void Waves::Update(float dt)
             {
                 for (int j = 1; j < mNumCols - 1; j++)
                 {
-                    //+z축은 아래쪽. 행 인덱스가 아래쪽으로 향하는 것과 일관성 유지.
+                    //grid에서 행이 증가하는 방향을 world의 +z 방향으로 대응.
                     mPrevSolution[i * mNumCols + j].y =
                         mK1 * mPrevSolution[i * mNumCols + j].y +
                         mK2 * mCurrSolution[i * mNumCols + j].y +
@@ -98,7 +109,6 @@ void Waves::Update(float dt)
                 }
             });
 
-        //U^(t-1) / U^(t) / U^(t+1) 3개 버퍼가 필요하지만 2개 버퍼로 연산 가능.
         std::swap(mPrevSolution, mCurrSolution);
         t = 0;
 

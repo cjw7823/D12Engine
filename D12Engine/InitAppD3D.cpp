@@ -1,26 +1,21 @@
 #include "InitAppD3D.h"
-#include <iostream>
-#include <WindowsX.h> // For GET_X_LPARAM, GET_Y_LPARAM, #include <Window.h> 선행 필수.
+#include <windowsX.h>
 
 using namespace Microsoft::WRL;
 
-LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
 {
-	return InitAppD3D::GetApp()->MsgProc(hWnd, msg, wParam, lParam);
+	return InitAppD3D::GetApp()->MsgProc(hWnd, msg, wParam, lparam);
 }
 
-InitAppD3D::InitAppD3D(HINSTANCE hInstance) : mhAppInst(hInstance)
+InitAppD3D::InitAppD3D(HINSTANCE hInstance) : mhInstance(hInstance)
 {
-	assert(mApp == nullptr); //프로그램 당 하나의 인스턴스만 허용
+	assert(mApp == nullptr);
 	mApp = this;
 }
 
 InitAppD3D::~InitAppD3D()
 {
-	// Exclusive fullscreen 상태면 반드시 먼저 해제
-	if (mSwapChain)
-		mSwapChain->SetFullscreenState(FALSE, nullptr);
-
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
@@ -35,14 +30,12 @@ int InitAppD3D::Run()
 	{
 		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
 		{
-			//키보드 이벤트의 경우 WM_CHAR 또는 WM_SYSCHAR 를 메시지 큐에 추가
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 		else
 		{
 			mTimer.Tick();
-
 			if (!mAppPaused)
 			{
 				CalculateFrameStats();
@@ -50,7 +43,7 @@ int InitAppD3D::Run()
 				Draw(mTimer);
 			}
 			else
-				Sleep(100); //앱이 일시정지 상태면 CPU점유율 낮춤.
+				Sleep(100); //앱이 일시 정지된 경우 CPU 점유율 낮춤.
 		}
 	}
 
@@ -59,21 +52,21 @@ int InitAppD3D::Run()
 
 bool InitAppD3D::Initialize()
 {
-	if (!InitMainWindow())
+	if(!InitMainWindow())
 		return false;
-	if (!InitDirect3D())
+	if(!InitDirect3D())
 		return false;
 
-	OnResize(); //SwapChain과 관련된 자원들을 초기화
-	
+	OnResize();
+
 	return true;
 }
 
-LRESULT InitAppD3D::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT InitAppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
-	case WM_ACTIVATE:	//윈도우 포커스가 변경되었을 경우
+	case WM_ACTIVATE:
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
 			mAppPaused = true;
@@ -86,7 +79,7 @@ LRESULT InitAppD3D::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		return 0;
 
-	case WM_SIZE:		//윈도우 크기가 변경될 경우
+	case WM_SIZE:
 		mClientWidth = LOWORD(lParam);
 		mClientHeight = HIWORD(lParam);
 		if (md3dDevice)
@@ -104,7 +97,7 @@ LRESULT InitAppD3D::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				mMaximized = true;
 				OnResize();
 			}
-			else if (wParam == SIZE_RESTORED)//정상 크기 상태로 복귀/변경
+			else if (wParam == SIZE_RESTORED)
 			{
 				if (mMinimized)
 				{
@@ -141,17 +134,16 @@ LRESULT InitAppD3D::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		mAppPaused = false;
 		mResizing = false;
 		mTimer.Start();
-		OnResize();
 		return 0;
 
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
 
-	case WM_MENUCHAR: // 메뉴가 활성화된 상태에서 사용자가 니모닉 키나 가속기 키에 해당하지 않는 키를 누를 때 전송됩니다.
+	case WM_MENUCHAR:  // 메뉴가 활성화된 상태에서 사용자가 니모닉 키나 가속기 키에 해당하지 않는 키를 누를 때 전송됩니다.
 		return MAKELRESULT(0, MNC_CLOSE); //삐 소리 방지.
 
-	case WM_GETMINMAXINFO: //윈도우가 크기를 바꾸기 전에 최소/최대 크기 제약.
+	case WM_GETMINMAXINFO:
 		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 200;
 		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 200;
 		return 0;
@@ -190,7 +182,7 @@ LRESULT InitAppD3D::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	return DefWindowProc(hWnd, msg, wParam, lParam);
+	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
 void InitAppD3D::Set4xMsaaState(bool value)
@@ -203,7 +195,7 @@ void InitAppD3D::Set4xMsaaState(bool value)
 		OutputDebugString(debug.c_str());
 
 		FlushCommandQueue();
-		CreateSwapChain(); //테스트 필요. msaa설정에 스왑체인 재설정 필요 없음.
+		CreateSwapChain(); //테스트 필요.
 		OnResize();
 	}
 }
@@ -213,16 +205,25 @@ float InitAppD3D::AspectRatio() const
 	return static_cast<float>(mClientWidth) / mClientHeight;
 }
 
+/*
+	창 크기 변경 시 렌더링에 필요한 리소스들을 새 해상도에 맞게 재생성한다.
+	1. 스왑체인 ResizeBuffers() 호출
+		→ 백버퍼(Color buffer)는 DXGI가 자동으로 새 크기로 재생성함.
+	2. Depth-Stencil 리소스는 스왑체인이 관리하지 않으므로
+		→ 새 크기에 맞게 직접 CreateCommittedResource()로 재생성
+		→ DSV 디스크립터도 다시 생성
+	Color는 DXGI가 관리, Depth는 앱이 직접 관리한다.
+*/
 void InitAppD3D::OnResize()
 {
 	assert(md3dDevice);
 	assert(mSwapChain);
-	assert(mDirectCmdListAlloc);
+	assert(mCommandAlloc);
 
 	FlushCommandQueue();
 
-	ThrowIfFailed(mDirectCmdListAlloc->Reset());
-	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+	ThrowIfFailed(mCommandAlloc->Reset());
+	ThrowIfFailed(mCommandList->Reset(mCommandAlloc.Get(), nullptr));
 	for (auto& buffer : mSwapChainBuffer)
 		buffer.Reset();
 	mDepthStencilBuffer.Reset();
@@ -234,13 +235,11 @@ void InitAppD3D::OnResize()
 		0));
 	mCurrBackBuffer = 0;
 
-	//스왑체인의 백버퍼들은 실제로 GPU메모리의 텍스처 리소스.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < SwapChainBufferCount; i++)
 	{
-		//이를 별도로 mSwapChainBuffer에 관리.
-		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])));
-		//해당 리소스를 Desc에 맞게 해석해서 디스크립터 슬롯에 RTV를 만들어라.
+		//스왑체인->백버퍼는 텍스쳐 리소스.
+		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mSwapChainBuffer[i].GetAddressOf())));
 		//디스크립터가 nullptr -> 백퍼버는 RTV의 기본형에 속하므로 기본형으로 만들라는 의미.
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, mRtvDescriptorSize);
@@ -266,7 +265,7 @@ void InitAppD3D::OnResize()
 	depthStencilDesc.Width = mClientWidth;
 	depthStencilDesc.Height = mClientHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
-	depthStencilDesc.MipLevels = 1; // 0은 가능한 모든 밉맵을 자동 생성한다는 의미.
+	depthStencilDesc.MipLevels = 1; //0은 가능한 모든 밉맵을 자동 생성한다는 의미.
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 	depthStencilDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
 	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
@@ -274,26 +273,25 @@ void InitAppD3D::OnResize()
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 	D3D12_CLEAR_VALUE optClear;
-	optClear.Format = mDepthStencilFormat;
-	optClear.DepthStencil.Depth = 1.0f;
+	optClear.Format = mdepthStencilFormat;
+	optClear.DepthStencil.Depth = 1.f;
 	optClear.DepthStencil.Stencil = 0;
-	//D3D12_HEAP_TYPE_DEFAULT는 GPU 전용 메모리(실제 VRAM 또는 드라이버가 관리하는 GPU-local)
+	
 	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
 
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		&heapProps,
 		D3D12_HEAP_FLAG_NONE,
 		&depthStencilDesc,
-		D3D12_RESOURCE_STATE_COMMON, //생성 시 보통 commom 상태. 사용 직전에 필요한 상태로 전환.
+		D3D12_RESOURCE_STATE_COMMON, // 실제 사용 직전에 필요한 상태로 전환.
 		&optClear,
 		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
-
-	//위에서는 리소스를 생성했고 그 리소스를 어떻게 사용할지에 대한 Desc 생성.
-	//여기선 추후 해당 리소스를 DSV로써 사용할 때 사용.(SRV로써 사용할 수도 있기 때문)
+	 
+	//추후 해당 리소스를 DSV로써 사용할 때 사용.(SRV로써 사용할 수도 있음)
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Format = mDepthStencilFormat;
+	dsvDesc.Format = mdepthStencilFormat;
 	dsvDesc.Texture2D.MipSlice = 0;
 
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), &dsvDesc, mDsvHeap->GetCPUDescriptorHandleForHeapStart());
@@ -302,11 +300,9 @@ void InitAppD3D::OnResize()
 		mDepthStencilBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
 	mCommandList->ResourceBarrier(1, &depthBarrier);
 	ThrowIfFailed(mCommandList->Close());
 
-	//여러 개의 커맨드 리스트 객체를 순서대로 GPU 큐에 제출.
 	ID3D12CommandList* cmdLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 
@@ -316,10 +312,10 @@ void InitAppD3D::OnResize()
 	mScreenViewport.TopLeftY = 0;
 	mScreenViewport.Width = static_cast<float>(mClientWidth);
 	mScreenViewport.Height = static_cast<float>(mClientHeight);
-	mScreenViewport.MinDepth = 0.0f;
-	mScreenViewport.MaxDepth = 1.0f;
+	mScreenViewport.MinDepth = 0.f;
+	mScreenViewport.MaxDepth = 1.f;
 
-	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
+	mScissorRect = { 0,0,mClientWidth,mClientHeight };
 }
 
 void InitAppD3D::CreateRtvDsvDescriptorHeaps()
@@ -341,32 +337,32 @@ void InitAppD3D::CreateRtvDsvDescriptorHeaps()
 
 bool InitAppD3D::InitMainWindow()
 {
-	WNDCLASSEX wc = {};					//윈도우 객체의 공통 속성 정의서.
+	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(WNDCLASSEX);
-	wc.style = CS_HREDRAW | CS_VREDRAW; //가로/세로 크기 변경 시 전체 다시 그리기.
+	wc.style = CS_HREDRAW | CS_VREDRAW;	//가로,세로 크기 변경 시 전체 ReDraw
 	wc.lpfnWndProc = MainWndProc;
 
 	//win16과의 호환 가능성을 위해 예약된 필드.
 	wc.cbClsExtra = 0;					//클래스 메모리 추가 할당 없음.
 	wc.cbWndExtra = 0;					//윈도우 메모리 추가 할당 없음.
 
-	wc.hInstance = mhAppInst;
+	wc.hInstance = mhInstance;
 	wc.hIcon = LoadIcon(0, IDI_APPLICATION);
 	wc.hIconSm = LoadIcon(0, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(0, IDC_ARROW);
-	//윈도우가 배경을 칠하지 않음. dx가 직접 백버퍼 그림. flickering방지.
+	//os가 배경을 칠하지 않음. dx가 직접 백버퍼 그림. flickering방지.
 	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
 	wc.lpszClassName = L"MainWindowClass";
 	wc.lpszMenuName = 0; //메뉴 없음.
 
 	//윈도우 설계도 등록. CreateWindow 호출 전 반드시 필요.
-	if(!RegisterClassEx(&wc))
+	if (!RegisterClassEx(&wc))
 	{
 		MessageBox(0, L"RegisterClass 실패", 0, 0);
 		return false;
 	}
 
-	RECT R = { 0, 0, mClientWidth, mClientHeight };
+	RECT R = { 0,0,mClientWidth, mClientHeight };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
@@ -379,8 +375,8 @@ bool InitAppD3D::InitMainWindow()
 		height,								//윈도우 높이
 		0,									//부모 윈도우 핸들
 		0,									//메뉴 핸들
-		mhAppInst,							//애플리케이션 인스턴스 핸들
-		0);									//추가 생성 매개변수
+		mhInstance,							//애플리케이션 인스턴스 핸들
+		0);
 
 	if (!mhMainWnd)
 	{
@@ -399,17 +395,21 @@ bool InitAppD3D::InitDirect3D()
 //디버그 레이어 활성화. CreateDevice 호출 전에 해야 함.
 #if defined(DEBUG) || defined(_DEBUG)
 	{
-		ComPtr<ID3D12Debug> debugController;
-		ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
-		debugController->EnableDebugLayer();
+		ComPtr<ID3D12Debug> debugController1;
+		ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(debugController1.GetAddressOf())));
+		// D3D12 Debug Layer 활성화: API 사용 오류, 리소스 상태 전이/바인딩 규칙 위반 등을 런타임에 검출.
+		debugController1->EnableDebugLayer();
 
-		ComPtr<ID3D12Debug1> debugController1;
-		ThrowIfFailed(debugController.As(&debugController1));
+		ComPtr<ID3D12Debug1> debugController2;
+		ThrowIfFailed(debugController1.As(&debugController2));
 
-		// GPU가 실제로 명령 실행 중 발생하는 메모리 접근 오류 검출. (리소스 바인딩 등..)
-		debugController1->SetEnableGPUBasedValidation(TRUE);
-		// 커맨드 큐, 펜스 사용시 오류로 인한 크래시 분석. (GPU hang)
-		debugController1->SetEnableSynchronizedCommandQueueValidation(TRUE);
+		// GPU-Based Validation(GBV) 활성화: 디스크립터/리소스 바인딩 유효성(범위, 타입, 접근 규칙 등)을 GPU 실행 관점에서 추가 검증.
+		// 성능 오버헤드가 매우 큼(디버그 전용 권장).
+		debugController2->SetEnableGPUBasedValidation(TRUE);
+
+		// Synchronized Command Queue Validation 활성화: 커맨드 큐/동기화 관련 검증을 더 동기적으로 수행해 오류 위치 리포팅을 개선.
+		// 오버헤드 증가 가능. GPU hang/타임아웃 원인 추적에 도움이 될 수 있음.
+		debugController2->SetEnableSynchronizedCommandQueueValidation(TRUE);
 	}
 #endif
 
@@ -419,26 +419,24 @@ bool InitAppD3D::InitDirect3D()
 	* - 스왑체인 생성 인터페이스 제공
 	* - 전체화면 전환 및 디스플레이 관련 관리
 	*/
-	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)));
+	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(mdxgiFactory.GetAddressOf())));
 
-	//GPU 자원 및 파이프라인 객체의 생성 주체
-	HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&md3dDevice));
+	HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(md3dDevice.GetAddressOf()));
 	if (FAILED(hardwareResult))
 	{
 		//WARP는 CPU로 동작하는 Direct3D 12용 소프트웨어 GPU
 		ComPtr<IDXGIAdapter> pWarpAdapter;
-		ThrowIfFailed(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)));
-		ThrowIfFailed(D3D12CreateDevice(pWarpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&md3dDevice)));
+		ThrowIfFailed(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(pWarpAdapter.GetAddressOf())));
+		ThrowIfFailed(D3D12CreateDevice(pWarpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(md3dDevice.GetAddressOf())));
 	}
 
-	ThrowIfFailed(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
+	ThrowIfFailed(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(mFence.GetAddressOf())));
 
 	//GPU(드라이버) 구현에 따라 달라지므로 초기화 시 디바이스에서 조회.
 	mRtvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	mDsvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	//현재 GPU가 mBackBufferFormat 포맷에서 4xMSAA를 지원하는지 확인.
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
 	msQualityLevels.Format = mBackBufferFormat;
 	msQualityLevels.SampleCount = 4;
@@ -451,7 +449,7 @@ bool InitAppD3D::InitDirect3D()
 
 #ifdef _DEBUG
 	LogAdapters();
-#endif
+#endif // _DEBUG
 
 	CreateCommandObjects();
 	CreateSwapChain();
@@ -470,26 +468,27 @@ void InitAppD3D::CreateCommandObjects()
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	ThrowIfFailed(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)));
 
-	ThrowIfFailed(md3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(mDirectCmdListAlloc.GetAddressOf())));
+	ThrowIfFailed(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(mCommandQueue.GetAddressOf())));
+
+	ThrowIfFailed(md3dDevice->CreateCommandAllocator(queueDesc.Type, IID_PPV_ARGS(mCommandAlloc.GetAddressOf())));
 
 	ThrowIfFailed(md3dDevice->CreateCommandList(
-		0,	//노드 마스크. 첫번째 GPU사용.
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		mDirectCmdListAlloc.Get(),
+		0,	// 첫번째 GPU사용.
+		queueDesc.Type,
+		mCommandAlloc.Get(),
 		nullptr,
 		IID_PPV_ARGS(mCommandList.GetAddressOf())));
-	
+
 	mCommandList->Close();
 }
 
 void InitAppD3D::CreateSwapChain()
 {
 	/*
-	스왑체인은 GPU 리소스를 포함하지만,
-	윈도우·모니터·VSync 등 OS 그래픽 시스템과 직접 결합된 객체이기 때문에
-	API 공통 계층인 DXGI Factory에서 생성
+		스왑체인은 GPU 리소스를 포함하지만,
+		윈도우·모니터·VSync 등 OS 그래픽 시스템과 직접 결합된 객체이기 때문에
+		API 공통 계층인 DXGI Factory에서 생성
 	*/
 	mSwapChain.Reset();
 
@@ -499,14 +498,11 @@ void InitAppD3D::CreateSwapChain()
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.Format = mBackBufferFormat;
-	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED; //DXGI에 맞김. 그냥 확정적.
+	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED; //DXGI에 맞김. 해당 값 고정.
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	//SwapChain에서는 SampleDesc를 절대 토글하지 않는다.
-	//항상 Count = 1, Quality = 0. MSAA는 "렌더 타깃 + 뎁스"에서만 처리한다.
+	//이슈. 스왑체인의 샘플링 변경안에 대해서.
 	sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
 	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
-	//sd.SampleDesc.Count = 1;
-	//sd.SampleDesc.Quality = 0;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
 	sd.OutputWindow = mhMainWnd;
@@ -514,37 +510,37 @@ void InitAppD3D::CreateSwapChain()
 	//DISCARD 는 Present 후 버퍼 내용이 보존되지 않아도 된다는 의미.
 	//어짜피 매 프레인 전체를 다시 그리므로 상관없음.
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	//전체 화면 전환 시 디스플레이 모드 스위치를 허용.
+	//전체 화면 전환 시 디스플레이 모드 스위치 허용 여부.
+	//DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH -> Exclusive fullscreen
 	sd.Flags = 0;
 
 	ThrowIfFailed(mdxgiFactory->CreateSwapChain(mCommandQueue.Get(), &sd, mSwapChain.GetAddressOf()));
 }
 
-//매번 이벤트 생성/제거 로직 -> 이벤트핸들을 멤버변수로 만들어 개선
 void InitAppD3D::FlushCommandQueue()
 {
 	mCurrentFence++;
-	//실패시 회복 불가능한 os레벨 작업이므로 ThrowIfFailed 사용.
+	//실패시 회복 불가능한 os레벨 작업.
 	ThrowIfFailed(mCommandQueue->Signal(mFence.Get(), mCurrentFence));
 
 	if (mFence->GetCompletedValue() < mCurrentFence)
 	{
 		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrentFence, mFenceEvent.Get()));
-		::WaitForSingleObject(mFenceEvent.Get(), INFINITE);
+		WaitForSingleObject(mFenceEvent.Get(), INFINITE);
 	}
 }
 
 void InitAppD3D::CalculateFrameStats()
 {
 	static int frameCnt = 0;
-	static double timeElapsed = 0.0f;
+	static double timeElapsed = mTimer.TotalTime();
 
 	frameCnt++;
 
-	if ((mTimer.TotalTime() - timeElapsed) >= 1.0f)
+	if ((mTimer.TotalTime() - timeElapsed) >= 1.f)
 	{
-		float fps = static_cast<float>(frameCnt);
-		float mfps = 1000.0f / fps;
+		float fps = (float)frameCnt;
+		float mfps = 1000.f / fps;
 
 		std::wstring fpsStr = std::to_wstring(fps);
 		std::wstring mfpsStr = std::to_wstring(mfps);
@@ -592,7 +588,7 @@ void InitAppD3D::LogAdapterOutputs(IDXGIAdapter* adapter)
 		DXGI_OUTPUT_DESC desc;
 		output->GetDesc(&desc);
 
-		std::wstring text = L"------------- Output -------------";
+		std::wstring text = L"--------------------Output--------------------";
 		text += desc.DeviceName;
 		text += L"\n\n";
 
@@ -611,15 +607,31 @@ void InitAppD3D::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
 
 	output->GetDisplayModeList(format, flags, &count, nullptr); //nullptr로 개수만 조회.
 	std::vector<DXGI_MODE_DESC> modeList(count);
-	output->GetDisplayModeList(format, flags, &count, &modeList[0]);
+	output->GetDisplayModeList(format, flags, &count, modeList.data());
 
 	for (auto& x : modeList)
 	{
 		UINT n = x.RefreshRate.Numerator;
 		UINT d = x.RefreshRate.Denominator;
 		std::wstring text = L"Width: " + std::to_wstring(x.Width) +
-							L" Height: " + std::to_wstring(x.Height) +
-							L" Refresh Rate: " + std::to_wstring(n) + L"/" + std::to_wstring(d) + L"\n";
+			L" Height: " + std::to_wstring(x.Height) +
+			L" Refresh Rate: " + std::to_wstring(n) + L"/" + std::to_wstring(d) + L"\n";
+
 		OutputDebugString(text.c_str());
 	}
+}
+
+ID3D12Resource* InitAppD3D::CurrentBackBuffer() const
+{
+	return mSwapChainBuffer[mCurrBackBuffer].Get();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE InitAppD3D::CurrentBackBufferView() const
+{
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), mCurrBackBuffer, mRtvDescriptorSize);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE InitAppD3D::DepthStencilView() const
+{
+	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();;
 }

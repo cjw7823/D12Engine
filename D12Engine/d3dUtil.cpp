@@ -1,5 +1,5 @@
 #include "d3dUtil.h"
-#include <comdef.h> // For _com_error
+#include <comdef.h>
 
 using namespace Microsoft::WRL;
 
@@ -7,8 +7,18 @@ std::wstring DxException::ToString() const
 {
 	_com_error err(ErrorCode);
 	std::wstring msg = err.ErrorMessage();
+	return FunctionName + L" failed in " + FileName + L";\nline " + std::to_wstring(LineNumber) + L";\nerror: " + msg;
+}
 
-	return FunctionName + L" failed in " + FileName + L"; line " + std::to_wstring(LineNumber) + L"; error: " + msg;
+bool d3dUtil::IsKeyDown(int vkeyCode)
+{
+	return (GetAsyncKeyState(vkeyCode) & 0x8000) != 0;
+}
+
+UINT d3dUtil::CalcConstantBufferByteSize(UINT byteSize)
+{
+	//상수 버퍼는 최소 하드웨어 할당 크기(256바이트)의 배수여야 함.
+	return (byteSize + 255) & ~255;
 }
 
 /*
@@ -39,8 +49,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(const std::wstring& file
 		&errors);
 
 	if (errors != nullptr)
-		OutputDebugStringA((char*)errors->GetBufferPointer());
-
+		OutputDebugString((wchar_t*)errors->GetBufferPointer());
 	ThrowIfFailed(hr);
 
 	return byteCode;
@@ -85,7 +94,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 	cmdList->ResourceBarrier(1, &barrier1);
 
 	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
-	
+
 	CD3DX12_RESOURCE_BARRIER barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		defaultBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST,

@@ -21,6 +21,9 @@
     <Filter Include="Resource">
       <UniqueIdentifier>{335fb8e3-23f0-4a1c-abd9-d6bf1f7418ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DDSTextureLoader">
+      <UniqueIdentifier>{8f2af240-7d2e-44a8-8386-d51f93e9ac2c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dUtil.h">
@@ -53,8 +56,11 @@
     <ClInclude Include="Waves.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DDSTextureLoader.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h">
+      <Filter>DDSTextureLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureLoader_Blocking.h">
+      <Filter>DDSTextureLoader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -82,8 +88,11 @@
     <ClCompile Include="Waves.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="DDSTextureLoader.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>DDSTextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureLoader_Blocking.cpp">
+      <Filter>DDSTextureLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

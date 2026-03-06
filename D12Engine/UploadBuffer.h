@@ -6,25 +6,23 @@ template<typename T>
 class UploadBuffer
 {
 public:
-	UploadBuffer(ID3D12Device* device, UINT elementCount, bool isConstantBuffer) : mIsconstantBuffer(isConstantBuffer)
+	UploadBuffer(ID3D12Device* device, UINT elementCount, bool isConstantBuffer) : mIsConstantBuffer(isConstantBuffer)
 	{
 		mElementByteSize = sizeof(T);
 
-		// 상수 버퍼 요소는 256바이트의 배수여야 합니다.
-		// 이는 하드웨어가 상수 데이터를 m * 256바이트 오프셋과 n * 256바이트 길이로만 볼 수 있기 때문입니다.
 		if (isConstantBuffer)
 			mElementByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(T));
-
+		
 		CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
 		CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Buffer(mElementByteSize * elementCount);
 
 		ThrowIfFailed(device->CreateCommittedResource(
 			&heapProps,
-			D3D12_HEAP_FLAG_NONE,				//힙(메모리) 정책. 예) 텍스처만.
+			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,	//리소스 정책. 예) RT 텍스처, DS 텍스처 등등..
+			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&mUploadBuffer)));
+			IID_PPV_ARGS(mUploadBuffer.GetAddressOf())));
 
 		ThrowIfFailed(mUploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mMappedData)));
 
@@ -34,7 +32,6 @@ public:
 
 	UploadBuffer(const UploadBuffer& rhs) = delete;
 	UploadBuffer& operator=(const UploadBuffer& rhs) = delete;
-	
 	~UploadBuffer()
 	{
 		if (mUploadBuffer != nullptr)
@@ -56,5 +53,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mUploadBuffer;
 	BYTE* mMappedData = nullptr;
 	UINT mElementByteSize = 0;
-	bool mIsconstantBuffer = false;
+	bool mIsConstantBuffer = false;
 };

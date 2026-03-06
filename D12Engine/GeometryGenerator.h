@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include <cstdint>
 
-//TangentU/TexC/Normal 은 추후 공부.
 class GeometryGenerator
 {
 public:
@@ -13,7 +12,7 @@ public:
 
 	struct Vertex
 	{
-		Vertex() {}
+		Vertex() = default;
 		Vertex(
 			const DirectX::XMFLOAT3& p,
 			const DirectX::XMFLOAT3& n,
@@ -31,9 +30,8 @@ public:
 			Position(px, py, pz),
 			Normal(nx, ny, nz),
 			TangentU(tx, ty, tz),
-			TexC(u, v) {
-		}
-
+			TexC(u, v) {}
+		
 		DirectX::XMFLOAT3 Position;
 		DirectX::XMFLOAT3 Normal;
 		DirectX::XMFLOAT3 TangentU;
@@ -55,26 +53,20 @@ public:
 			}
 			return mIndices16;
 		}
-
+		
 	private:
 		std::vector<uint16> mIndices16;
 	};
 
-	//지정된 크기로 원점을 중심으로 하는 상자를 생성.
 	MeshData CreateBox(float width, float height, float depth, uint32 numSubdivisions);
 
-	//지정된 반지름으로 원점을 중심으로 하는 구를 생성.
 	//slices 및 stacks 매개변수는 테셀레이션 정도를 제어.
 	//삼각형이 극점 근처에 정점 과밀.
 	MeshData CreateSphere(float radius, uint32 sliceCount, uint32 stackCount);
 
 	//삼각형이 균등분포.
-	//깊이가 테셀레이션 제어.
 	MeshData CreateGeosphere(float radius, uint32 numSubdivisions);
-
-	//y축에 평행하고 원점을 중심으로 하는 원기둥을 생성.
 	MeshData CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount);
-
 	MeshData CreateGrid(float width, float depth, uint32 m, uint32 n);
 
 	//화면에 맞춰 정렬된 사각형 영역을 생성합니다. 이는 후처리 및 화면 효과에 유용

@@ -125,7 +125,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="DDSTextureLoader.h" />
+    <ClInclude Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="TextureLoader_Blocking.h" />
     <ClInclude Include="Waves.h" />
     <None Include="..\SampleSrc\Camera.h" />
     <None Include="..\SampleSrc\d3dUtil.h">
@@ -154,7 +155,8 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DDSTextureLoader.cpp" />
+    <ClCompile Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <ClCompile Include="TextureLoader_Blocking.cpp" />
     <ClCompile Include="Waves.cpp" />
     <None Include="..\SampleSrc\Camera.cpp" />
     <None Include="..\SampleSrc\d3dUtil.cpp">

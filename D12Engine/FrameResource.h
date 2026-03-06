@@ -32,7 +32,7 @@ struct PassConstants
 	// 인덱스 [0, NUM_DIR_LIGHTS)는 방향광입니다.
 	// 인덱스[NUM_DIR_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHTS)는 점광원입니다.
 	// 인덱스[NUM_DIR_LIGHTS + NUM_POINT_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHT + NUM_SPOT_LIGHTS)는 스포트라이트이며, 객체당 최대 MaxLights 개수까지 사용할 수 있습니다.
-	Light Lights[MaxLights];
+	Light Lights[MAXLIGHTS];
 };
 
 struct Vertex
@@ -40,29 +40,24 @@ struct Vertex
 	DirectX::XMFLOAT3 Pos;
 	DirectX::XMFLOAT3 Normal;
 	DirectX::XMFLOAT2 TexC;
-	//DirectX::XMFLOAT4 Color;
 };
 
-//CPU가 한 프레임에 대한 명령 목록을 구성하는 데 필요한 리소스 묶음.
 struct FrameResource
 {
 public:
-	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount, UINT materialCount);
+	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertexCount, UINT materialCount);
 	FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource() {};
 
-	//GPU가 명령을 완료할 때까지 Alloc을 수정하면 안되므로 프레임마다 Alloc 존재.
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CmdListAlloc;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdListAlloc;
 
-	//cbuffer도 마찬가지로 프레임마다 존재.
-	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
 
-	//정점 위치가 프레임마다 달라지므로 프레임마다 존재.
+	//정점 위치가 프레임마다 달라짐.
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 
-	//해당 프레임 리소스가 GPU에서 여전히 사용 중인지 확인
 	UINT64 Fence = 0;
 };

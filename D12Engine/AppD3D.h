@@ -1,12 +1,11 @@
 ﻿#pragma once
 
 #include "InitAppD3D.h"
-#include "MathHelper.h"
-#include "UploadBuffer.h"
 #include "FrameResource.h"
 #include "RenderItem.h"
 #include "GeometryGenerator.h"
 #include "Waves.h"
+#include "TextureLoader_Blocking.h"
 
 /*
 	GPU 관련 메모리 (개념적 분류)
@@ -54,28 +53,24 @@ private:
 	virtual void Update(const GameTimer& gt) override;
 	virtual void Draw(const GameTimer& gt) override;
 
-	void BuildDescriptorHeaps();
-	void BuildRootsignature();
-	void BuildShadersAndInputLayout();
-	void BuildShapeGeometry();
-	void BuildLandGeometry();
-	void BuildWavesGeometryBuffers();
-	void BuildPSO();
-	void BuildRenderItems();
-	void BuildFrameResources();
-	void BuildConstantsBufferView();
-	void BuildMaterials();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<const RenderItem*>* allRenderItem);
-	void LoadTextures();
-
-	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
-
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseWheel(short zDelta, int x, int y) override;
 	virtual void OnKeyUp(WPARAM key) override;
 	virtual void OnKeyDown(WPARAM key) override;
+
+	void LoadTexture();
+	void BuildDescriptorHeaps();
+	void BuildMaterials();
+	void BuildRootsignature();
+	void BuildShadersAndInputLayout();
+	void BuildShapeGeometry();
+	void BuildLandGeometry();
+	void BuildWavesGeometryBuffers();
+	void BuildRenderItems();
+	void BuildFrameResources();
+	void BuildPSO();
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void UpdateCamera(const GameTimer& gt);
@@ -84,10 +79,14 @@ private:
 	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<std::unique_ptr<RenderItem>>& allRenderItem);
+
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
+	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
 
 	inline float GetHillsHeight(float x, float z)const
 	{
-		return 0.3 * (z * sinf(0.05f * x) + x * cosf(0.1f * z));
+		return 0.3f * (z * sinf(0.05f * x) + x * cosf(0.1f * z));
 	}
 
 	inline DirectX::XMFLOAT3 GetHillsNormal(float x, float z)const
@@ -104,51 +103,44 @@ private:
 		return n;
 	}
 
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
-
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
 	int mCurrFrameResourceIndex = 0;
 
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
-	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
 
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
-	//Observer pointer 이므로 const강제.
-	//렌더 아이템을 유형별로 보관.
-	std::vector<const RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.
 	std::unique_ptr<Waves> mWaves;
 	RenderItem* mWavesRenderItem = nullptr;
-
-	UINT mPassCbvOffset = 0;
 	PassConstants mMainPassCB;
+	std::unique_ptr<TextureLoader_Blocking> mTexLoader;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mCbvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-	DirectX::XMFLOAT4X4 mView= MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mCamPos = MathHelper::Identity4x4();
-	DirectX::XMFLOAT3 mEyePos = { 0.f,0.f,0.f };
+	DirectX::XMFLOAT3 mEyePos = { 0.f, 0.f, 0.f };
 
 	float mTheta = 1.55f * DirectX::XM_PI;
 	float mPhi = DirectX::XM_PIDIV4;
-	float mRadius = 50.0f;
+	float mRadius = 50.f;
 
 	float mSunTheta = 1.25f * DirectX::XM_PI;
 	float mSunPhi = DirectX::XM_PIDIV4;
 
 	bool mIsWireframe = false;
 	bool isMoving = false;
+
 	/*
 		1 : w
 		2 : s
@@ -159,4 +151,3 @@ private:
 
 	POINT mLastMousePos = {};
 };
-
