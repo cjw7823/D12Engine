@@ -5,10 +5,13 @@
 
 extern const int gNumFrameResources;
 
+//렌더링 순서에 영향
 enum class RenderLayer : int
 {
 	Opaque = 0,
 	Multi,
+	Transparent,
+	AlphaTest,
 	Count
 };
 
@@ -34,5 +37,5 @@ struct RenderItem
 	UINT StartIndexLocation = 0;
 	int BaseVertexLocation = 0;
 
-	RenderLayer layer = RenderLayer::Opaque;
+	//RenderLayer layer = RenderLayer::Opaque;
 };

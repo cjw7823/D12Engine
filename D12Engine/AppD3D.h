@@ -79,7 +79,7 @@ private:
 	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<std::unique_ptr<RenderItem>>& allRenderItem);
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
@@ -115,6 +115,7 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
 
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
+	std::vector<RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.

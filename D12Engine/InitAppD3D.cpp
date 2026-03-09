@@ -36,7 +36,8 @@ int InitAppD3D::Run()
 		else
 		{
 			mTimer.Tick();
-			if (!mAppPaused)
+			//if (!mAppPaused)
+			if(true)
 			{
 				CalculateFrameStats();
 				Update(mTimer);
@@ -70,7 +71,7 @@ LRESULT InitAppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
 			mAppPaused = true;
-			mTimer.Stop();
+			//mTimer.Stop();
 		}
 		else
 		{
@@ -127,7 +128,7 @@ LRESULT InitAppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_ENTERSIZEMOVE:
 		mAppPaused = true;
 		mResizing = true;
-		mTimer.Stop();
+		//mTimer.Stop();
 		return 0;
 
 	case WM_EXITSIZEMOVE:

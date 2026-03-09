@@ -53,6 +53,13 @@ cbuffer cbPass : register(b2)
 	// 인덱스[NUM_DIR_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHTS)는 점광원입니다.
 	// 인덱스[NUM_DIR_LIGHTS + NUM_POINT_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHT + NUM_SPOT_LIGHTS)는 스포트라이트이며, 객체당 최대 MaxLights 개수까지 사용할 수 있습니다.
     Light gLights[MaxLights];
+    
+    //앱이 프레임당 한 번씩 안개 매개변수를 변경할 수 있도록 합니다.
+    //특정 시간대에만 안개를 사용할 수 있습니다.
+    float4 gFogColor;
+    float gFogStart;
+    float gFogRange;
+    float2 cbPerObjectPad2;
 };
 
 struct VertexIn
@@ -93,11 +100,19 @@ float4 PS(VertexOut pin) : SV_Target
 {
     float4 diffuseAlbedo = gDiffuseMap.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo;
     
+#ifdef ALPHA_TEST
+	//value < 0 이면 현재 픽셀을 버리고 더 이상 렌더 타깃에 기록하지 않는다.
+	clip(diffuseAlbedo.a - 0.1f);
+#endif
+    
     //보간된 법선 벡터는 길이가 1이 아닐 수 있으므로.
     pin.NormalW = normalize(pin.NormalW);
 
     //광원에서 카메라로 향하는 벡터.
-    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    float3 toEyeW = gEyePosW - pin.PosW;
+    float distToEye = length(toEyeW);
+    toEyeW /= distToEye; //normalize
+    
     float4 ambient = gAmbientLight * diffuseAlbedo;
     const float shininess = 1.0f - gRoughness;
     Material mat = { diffuseAlbedo, gFresnelR0, shininess };
@@ -107,6 +122,11 @@ float4 PS(VertexOut pin) : SV_Target
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
+    
+#ifdef FOG
+    float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
+    litColor = lerp(litColor, gFogColor, fogAmount);
+#endif
 
     //일반적으로 알파 값은 디퓨즈 머티리얼의 알파 값을 사용한다.
     litColor.a = diffuseAlbedo.a;
