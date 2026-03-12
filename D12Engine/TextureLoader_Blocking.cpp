@@ -66,7 +66,7 @@ HRESULT TextureLoader_Blocking::LoadDDS(Texture& outTex, UINT64& fence)
     std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 
     //만들어진 텍스처는 D3D12_RESOURCE_STATE_COMMON 상태.
-    ThrowIfFailed(DirectX::LoadDDSTextureFromFile(
+    HRESULT hr =  DirectX::LoadDDSTextureFromFile(
         mDevice.Get(),
         outTex.Filename.c_str(),
         outTex.Resource.GetAddressOf(),
@@ -74,7 +74,10 @@ HRESULT TextureLoader_Blocking::LoadDDS(Texture& outTex, UINT64& fence)
         subresources,
         0,          // maxsize=0(제한 없음)
         nullptr,
-        nullptr));
+        nullptr);
+
+    if (hr != S_OK)
+        return hr;
 
     //업로드 버퍼(UPLOAD heap buffer) 생성
     const UINT numSubs = (UINT)subresources.size();

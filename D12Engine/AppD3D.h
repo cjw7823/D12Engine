@@ -60,7 +60,7 @@ private:
 	virtual void OnKeyUp(WPARAM key) override;
 	virtual void OnKeyDown(WPARAM key) override;
 
-	void LoadTexture();
+	void LoadTextures();
 	void BuildDescriptorHeaps();
 	void BuildMaterials();
 	void BuildRootsignature();
@@ -72,10 +72,13 @@ private:
 	void BuildFrameResources();
 	void BuildPSO();
 
+	DirectX::XMVECTOR GetMirrorPlane();
+
 	void OnKeyboardInput(const GameTimer& gt);
 	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateReflectedPassCB(const GameTimer& gt);
 	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
@@ -122,7 +125,10 @@ private:
 	std::unique_ptr<Waves> mWaves;
 	RenderItem* mWavesRenderItem = nullptr;
 	PassConstants mMainPassCB;
+	PassConstants mReflectedPassCB;
 	std::unique_ptr<TextureLoader_Blocking> mTexLoader;
+
+	RenderItem* mMirror = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;

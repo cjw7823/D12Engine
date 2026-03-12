@@ -10,8 +10,12 @@ enum class RenderLayer : int
 {
 	Opaque = 0,
 	Multi,
+	MirrorStencil,
+	MirrorWall,
+	Reflected,
 	Transparent,
 	AlphaTest,
+	Shadow,
 	Count
 };
 

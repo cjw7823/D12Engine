@@ -17,7 +17,7 @@ bool AppD3D::Initialize()
 	ThrowIfFailed(mCommandAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mCommandAlloc.Get(), nullptr));
 
-	LoadTexture();
+	LoadTextures();
 	BuildDescriptorHeaps();
 	BuildRootsignature();
 	BuildShadersAndInputLayout();
@@ -64,6 +64,7 @@ void AppD3D::Update(const GameTimer& gt)
 	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
+	UpdateReflectedPassCB(gt);
 	UpdateWaves(gt);
 	UpdateMaterialCBs(gt);
 
@@ -110,7 +111,7 @@ void AppD3D::Draw(const GameTimer& gt)
 	auto dsvHandle = DepthStencilView();
 	mCommandList->ClearRenderTargetView(
 		rtvHandle,
-		Colors::LightSteelBlue,
+		(float*)&mMainPassCB.gFogColor,
 		0, nullptr);
 	mCommandList->ClearDepthStencilView(
 		dsvHandle,
@@ -126,29 +127,45 @@ void AppD3D::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
-
+	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
 		if (mIsWireframe)
 			mCommandList->SetPipelineState(mPSOs["opaque_wireframe"].Get());
 		else
 		{
+			mCommandList->OMSetStencilRef(0);
 			switch (layer)
 			{
 			case (int)RenderLayer::Opaque :
 				mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
 				break;
 			case (int)RenderLayer::Multi:
 				mCommandList->SetPipelineState(mPSOs["multiPSO"].Get());
 				break;
+			case (int)RenderLayer::MirrorStencil:
+				mCommandList->OMSetStencilRef(1);
+				mCommandList->SetPipelineState(mPSOs["mirrorStencil"].Get());
+				break;
+			case (int)RenderLayer::MirrorWall:
+				mCommandList->OMSetStencilRef(1);
+				mCommandList->SetPipelineState(mPSOs["mirrorWall"].Get());
+				break;
+			case (int)RenderLayer::Reflected:
+				mCommandList->OMSetStencilRef(1);
+				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
+				mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
+				break;
 			case (int)RenderLayer::Transparent:
+				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
 				mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 				break;
 			case (int)RenderLayer::AlphaTest:
 				mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 				break;
 			default:
+				mCommandList->SetPipelineState(mPSOs["opaque"].Get());
 				break;
 			}
 		}
@@ -235,7 +252,7 @@ void AppD3D::OnKeyDown(WPARAM key)
 	else isMoving = false;
 }
 
-void AppD3D::LoadTexture()
+void AppD3D::LoadTextures()
 {
 	if (!mTexLoader)
 		mTexLoader = std::make_unique<TextureLoader_Blocking>(
@@ -251,10 +268,10 @@ void AppD3D::LoadTexture()
 	woodCrateTex->Filename = L"../Textures/MipmapTest.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*woodCrateTex, mCurrentFence));
 
-	auto brickTex = std::make_unique<Texture>();
-	brickTex->Name = "brickTex";
-	brickTex->Filename = L"../Textures/bricks.dds";
-	ThrowIfFailed(mTexLoader->LoadDDS(*brickTex, mCurrentFence));
+	auto bricksTex0 = std::make_unique<Texture>();
+	bricksTex0->Name = "bricksTex0";
+	bricksTex0->Filename = L"../Textures/bricks.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*bricksTex0, mCurrentFence));
 
 	auto stoneTex = std::make_unique<Texture>();
 	stoneTex->Name = "stoneTex";
@@ -291,9 +308,24 @@ void AppD3D::LoadTexture()
 	fenceTex->Filename = L"../Textures/WireFence.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*fenceTex, mCurrentFence));
 
+	auto bricksTex1 = std::make_unique<Texture>();
+	bricksTex1->Name = "bricksTex1";
+	bricksTex1->Filename = L"../Textures/bricks3.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*bricksTex1, mCurrentFence));
+
+	auto checkboardTex = std::make_unique<Texture>();
+	checkboardTex->Name = "checkboardTex";
+	checkboardTex->Filename = L"../Textures/checkboard.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*checkboardTex, mCurrentFence));
+
+	auto iceTex = std::make_unique<Texture>();
+	iceTex->Name = "iceTex";
+	iceTex->Filename = L"../Textures/ice.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*iceTex, mCurrentFence));
+
 	mTextures[defaultTex->Name] = std::move(defaultTex);
 	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
-	mTextures[brickTex->Name] = std::move(brickTex);
+	mTextures[bricksTex0->Name] = std::move(bricksTex0);
 	mTextures[stoneTex->Name] = std::move(stoneTex);
 	mTextures[tileTex->Name] = std::move(tileTex);
 	mTextures[grassTex->Name] = std::move(grassTex);
@@ -301,6 +333,9 @@ void AppD3D::LoadTexture()
 	mTextures[swirlingTex->Name] = std::move(swirlingTex);
 	mTextures[swirlingMaskTex->Name] = std::move(swirlingMaskTex);
 	mTextures[fenceTex->Name] = std::move(fenceTex);
+	mTextures[bricksTex1->Name] = std::move(bricksTex1);
+	mTextures[checkboardTex->Name] = std::move(checkboardTex);
+	mTextures[iceTex->Name] = std::move(iceTex);
 }
 
 void AppD3D::BuildDescriptorHeaps()
@@ -336,9 +371,11 @@ void AppD3D::BuildDescriptorHeaps()
 
 void AppD3D::BuildMaterials()
 {
+	UINT index = 0;
+
 	auto skullMat = std::make_unique<Material>();
 	skullMat->Name = "skullMat";
-	skullMat->MatCBIndex = 0;
+	skullMat->MatCBIndex = index++;
 	skullMat->DiffuseSrvHeapIndex = mTextures["defaultTex"]->DiffuseSrvHeapIndex; //텍스처 없음.
 	skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
@@ -346,23 +383,23 @@ void AppD3D::BuildMaterials()
 
 	auto tileMat = std::make_unique<Material>();
 	tileMat->Name = "tile0";
-	tileMat->MatCBIndex = 1;
+	tileMat->MatCBIndex = index++;
 	tileMat->DiffuseSrvHeapIndex = mTextures["tileTex"]->DiffuseSrvHeapIndex;
 	tileMat->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
 	tileMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	tileMat->Roughness = 0.2f;
 
-	auto brickMat = std::make_unique<Material>();
-	brickMat->Name = "bricks0";
-	brickMat->MatCBIndex = 2;
-	brickMat->DiffuseSrvHeapIndex = mTextures["brickTex"]->DiffuseSrvHeapIndex;
-	brickMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	brickMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	brickMat->Roughness = 0.1f;
+	auto bricksMat0 = std::make_unique<Material>();
+	bricksMat0->Name = "bricks0";
+	bricksMat0->MatCBIndex = index++;
+	bricksMat0->DiffuseSrvHeapIndex = mTextures["bricksTex0"]->DiffuseSrvHeapIndex;
+	bricksMat0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	bricksMat0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	bricksMat0->Roughness = 0.1f;
 
 	auto stoneMat = std::make_unique<Material>();
 	stoneMat->Name = "stone0";
-	stoneMat->MatCBIndex = 3;
+	stoneMat->MatCBIndex = index++;
 	stoneMat->DiffuseSrvHeapIndex = mTextures["stoneTex"]->DiffuseSrvHeapIndex;
 	stoneMat->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
 	stoneMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
@@ -370,7 +407,7 @@ void AppD3D::BuildMaterials()
 
 	auto grassMat = std::make_unique<Material>();
 	grassMat->Name = "grass0";
-	grassMat->MatCBIndex = 4;
+	grassMat->MatCBIndex = index++;
 	grassMat->DiffuseSrvHeapIndex = mTextures["grassTex"]->DiffuseSrvHeapIndex;
 	grassMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	grassMat->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
@@ -378,7 +415,7 @@ void AppD3D::BuildMaterials()
 
 	auto waterMat = std::make_unique<Material>();
 	waterMat->Name = "water0";
-	waterMat->MatCBIndex = 5;
+	waterMat->MatCBIndex = index++;
 	waterMat->DiffuseSrvHeapIndex = mTextures["waterTex"]->DiffuseSrvHeapIndex;
 	waterMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
 	waterMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
@@ -386,7 +423,7 @@ void AppD3D::BuildMaterials()
 
 	auto woodCrateMat = std::make_unique<Material>();
 	woodCrateMat->Name = "woodCrate";
-	woodCrateMat->MatCBIndex = 6;
+	woodCrateMat->MatCBIndex = index++;
 	woodCrateMat->DiffuseSrvHeapIndex = mTextures["woodCrateTex"]->DiffuseSrvHeapIndex;
 	woodCrateMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	woodCrateMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
@@ -394,7 +431,7 @@ void AppD3D::BuildMaterials()
 
 	auto swirlingMat = std::make_unique<Material>();
 	swirlingMat->Name = "swirling";
-	swirlingMat->MatCBIndex = 7;
+	swirlingMat->MatCBIndex = index++;
 	swirlingMat->DiffuseSrvHeapIndex = mTextures["swirlingTex"]->DiffuseSrvHeapIndex;
 	swirlingMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	swirlingMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
@@ -402,7 +439,7 @@ void AppD3D::BuildMaterials()
 
 	auto swirlingMaskMat = std::make_unique<Material>();
 	swirlingMaskMat->Name = "swirlingMask";
-	swirlingMaskMat->MatCBIndex = 8;
+	swirlingMaskMat->MatCBIndex = index++;
 	swirlingMaskMat->DiffuseSrvHeapIndex = mTextures["swirlingMaskTex"]->DiffuseSrvHeapIndex;
 	swirlingMaskMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	swirlingMaskMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
@@ -410,15 +447,47 @@ void AppD3D::BuildMaterials()
 
 	auto wireFence = std::make_unique<Material>();
 	wireFence->Name = "wireFence";
-	wireFence->MatCBIndex = 9;
+	wireFence->MatCBIndex = index++;
 	wireFence->DiffuseSrvHeapIndex = mTextures["fenceTex"]->DiffuseSrvHeapIndex;
 	wireFence->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	wireFence->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	wireFence->Roughness = 0.25f;
 
+	auto bricksMat1 = std::make_unique<Material>();
+	bricksMat1->Name = "bricks1";
+	bricksMat1->MatCBIndex = index++;
+	bricksMat1->DiffuseSrvHeapIndex = mTextures["bricksTex1"]->DiffuseSrvHeapIndex;
+	bricksMat1->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	bricksMat1->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+	bricksMat1->Roughness = 0.25f;
+
+	auto checkerTileMat = std::make_unique<Material>();
+	checkerTileMat->Name = "checkerTileMat";
+	checkerTileMat->MatCBIndex = index++;
+	checkerTileMat->DiffuseSrvHeapIndex = mTextures["checkboardTex"]->DiffuseSrvHeapIndex;
+	checkerTileMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	checkerTileMat->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+	checkerTileMat->Roughness = 0.3f;
+
+	auto iceMirrorMat = std::make_unique<Material>();
+	iceMirrorMat->Name = "iceMirrorMat";
+	iceMirrorMat->MatCBIndex = index++;
+	iceMirrorMat->DiffuseSrvHeapIndex = mTextures["iceTex"]->DiffuseSrvHeapIndex;
+	iceMirrorMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.3f);
+	iceMirrorMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
+	iceMirrorMat->Roughness = 0.5f;
+
+	auto shadowMat_skull = std::make_unique<Material>();
+	shadowMat_skull->Name = "shadowMat_skull";
+	shadowMat_skull->MatCBIndex = index++;
+	shadowMat_skull->DiffuseSrvHeapIndex = mTextures["defaultTex"]->DiffuseSrvHeapIndex;
+	shadowMat_skull->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.5f);
+	shadowMat_skull->FresnelR0 = XMFLOAT3(0.001f, 0.001f, 0.001f);
+	shadowMat_skull->Roughness = 0.0f;
+
 	mMaterials[skullMat->Name] = std::move(skullMat);
 	mMaterials[tileMat->Name] = std::move(tileMat);
-	mMaterials[brickMat->Name] = std::move(brickMat);
+	mMaterials[bricksMat0->Name] = std::move(bricksMat0);
 	mMaterials[stoneMat->Name] = std::move(stoneMat);
 	mMaterials[grassMat->Name] = std::move(grassMat);
 	mMaterials[waterMat->Name] = std::move(waterMat);
@@ -426,6 +495,10 @@ void AppD3D::BuildMaterials()
 	mMaterials[swirlingMat->Name] = std::move(swirlingMat);
 	mMaterials[swirlingMaskMat->Name] = std::move(swirlingMaskMat);
 	mMaterials[wireFence->Name] = std::move(wireFence);
+	mMaterials[bricksMat1->Name] = std::move(bricksMat1);
+	mMaterials[checkerTileMat->Name] = std::move(checkerTileMat);
+	mMaterials[iceMirrorMat->Name] = std::move(iceMirrorMat);
+	mMaterials[shadowMat_skull->Name] = std::move(shadowMat_skull);
 }
 
 void AppD3D::BuildRootsignature()
@@ -749,95 +822,186 @@ void AppD3D::BuildWavesGeometryBuffers()
 
 void AppD3D::BuildRenderItems()
 {
-	auto boxRI = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f/3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, 0.f));
-	//XMStoreFloat4x4(&boxRI->TexTransform, XMMatrixScaling(5.f, 5.f, 1.0f) * XMMatrixTranslation(-1, -1, 0.f));
-	boxRI->ObjCBIndex = 0;
-	boxRI->Geo = mGeometries["shapeGeo"].get();
-	boxRI->Mat = mMaterials["woodCrate"].get();
-	boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
-	boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(boxRI.get());
-	mAllRenderItems.push_back(std::move(boxRI));
-
-	auto gridRI = std::make_unique<RenderItem>();
-	gridRI->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&gridRI->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-	gridRI->ObjCBIndex = 1;
-	gridRI->Geo = mGeometries["shapeGeo"].get();
-	gridRI->Mat = mMaterials["tile0"].get();
-	gridRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	gridRI->IndexCount = gridRI->Geo->DrawArgs["grid"].IndexCount;
-	gridRI->StartIndexLocation = gridRI->Geo->DrawArgs["grid"].StartIndexLocation;
-	gridRI->BaseVertexLocation = gridRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(gridRI.get());
-	mAllRenderItems.push_back(std::move(gridRI));
-
-	UINT objCBIndex = 2;
-	for (int i = 0; i < 5; ++i)
+	UINT objCBIndex = 0;
 	{
-		auto leftCylRitem = std::make_unique<RenderItem>();
-		auto rightCylRitem = std::make_unique<RenderItem>();
-		auto leftSphereRitem = std::make_unique<RenderItem>();
-		auto rightGeoSphereRitem = std::make_unique<RenderItem>();
+		auto boxRI = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, 0.f));
+		//XMStoreFloat4x4(&boxRI->TexTransform, XMMatrixScaling(5.f, 5.f, 1.0f) * XMMatrixTranslation(-1, -1, 0.f));
+		boxRI->ObjCBIndex = objCBIndex++;
+		boxRI->Geo = mGeometries["shapeGeo"].get();
+		boxRI->Mat = mMaterials["woodCrate"].get();
+		boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
+		boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
+		boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(boxRI.get());
+		mAllRenderItems.push_back(std::move(boxRI));
 
-		XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
+		auto gridRI = std::make_unique<RenderItem>();
+		gridRI->World = MathHelper::Identity4x4();
+		XMStoreFloat4x4(&gridRI->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
+		gridRI->ObjCBIndex = objCBIndex++;
+		gridRI->Geo = mGeometries["shapeGeo"].get();
+		gridRI->Mat = mMaterials["tile0"].get();
+		gridRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		gridRI->IndexCount = gridRI->Geo->DrawArgs["grid"].IndexCount;
+		gridRI->StartIndexLocation = gridRI->Geo->DrawArgs["grid"].StartIndexLocation;
+		gridRI->BaseVertexLocation = gridRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(gridRI.get());
+		mAllRenderItems.push_back(std::move(gridRI));
 
-		XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
+		for (int i = 0; i < 5; ++i)
+		{
+			auto leftCylRitem = std::make_unique<RenderItem>();
+			auto rightCylRitem = std::make_unique<RenderItem>();
+			auto leftSphereRitem = std::make_unique<RenderItem>();
+			auto rightGeoSphereRitem = std::make_unique<RenderItem>();
 
-		XMStoreFloat4x4(&leftCylRitem->World, leftCylWorld);
-		leftCylRitem->ObjCBIndex = objCBIndex++;
-		leftCylRitem->Geo = mGeometries["shapeGeo"].get();
-		leftCylRitem->Mat = mMaterials["bricks0"].get();
-		leftCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
+			XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
+			XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
 
-		XMStoreFloat4x4(&rightCylRitem->World, rightCylWorld);
-		rightCylRitem->ObjCBIndex = objCBIndex++;
-		rightCylRitem->Geo = mGeometries["shapeGeo"].get();
-		rightCylRitem->Mat = mMaterials["bricks0"].get();
-		rightCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
+			XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
+			XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
 
-		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
-		leftSphereRitem->ObjCBIndex = objCBIndex++;
-		leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
-		leftSphereRitem->Mat = mMaterials["stone0"].get();
-		leftSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
+			XMStoreFloat4x4(&leftCylRitem->World, leftCylWorld);
+			leftCylRitem->ObjCBIndex = objCBIndex++;
+			leftCylRitem->Geo = mGeometries["shapeGeo"].get();
+			leftCylRitem->Mat = mMaterials["bricks0"].get();
+			leftCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
+			leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
+			leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
 
-		XMStoreFloat4x4(&rightGeoSphereRitem->World, rightSphereWorld);
-		rightGeoSphereRitem->ObjCBIndex = objCBIndex++;
-		rightGeoSphereRitem->Geo = mGeometries["shapeGeo"].get();
-		rightGeoSphereRitem->Mat = mMaterials["stone0"].get();
-		rightGeoSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightGeoSphereRitem->IndexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
-		rightGeoSphereRitem->StartIndexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
-		rightGeoSphereRitem->BaseVertexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
-		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightGeoSphereRitem.get());
+			XMStoreFloat4x4(&rightCylRitem->World, rightCylWorld);
+			rightCylRitem->ObjCBIndex = objCBIndex++;
+			rightCylRitem->Geo = mGeometries["shapeGeo"].get();
+			rightCylRitem->Mat = mMaterials["bricks0"].get();
+			rightCylRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
+			rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
+			rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
 
-		mAllRenderItems.push_back(std::move(leftCylRitem));
-		mAllRenderItems.push_back(std::move(rightCylRitem));
-		mAllRenderItems.push_back(std::move(leftSphereRitem));
-		mAllRenderItems.push_back(std::move(rightGeoSphereRitem));
+			XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
+			leftSphereRitem->ObjCBIndex = objCBIndex++;
+			leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
+			leftSphereRitem->Mat = mMaterials["stone0"].get();
+			leftSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+			leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+			leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
+
+			XMStoreFloat4x4(&rightGeoSphereRitem->World, rightSphereWorld);
+			rightGeoSphereRitem->ObjCBIndex = objCBIndex++;
+			rightGeoSphereRitem->Geo = mGeometries["shapeGeo"].get();
+			rightGeoSphereRitem->Mat = mMaterials["stone0"].get();
+			rightGeoSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			rightGeoSphereRitem->IndexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
+			rightGeoSphereRitem->StartIndexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
+			rightGeoSphereRitem->BaseVertexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
+			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightGeoSphereRitem.get());
+
+			mAllRenderItems.push_back(std::move(leftCylRitem));
+			mAllRenderItems.push_back(std::move(rightCylRitem));
+			mAllRenderItems.push_back(std::move(leftSphereRitem));
+			mAllRenderItems.push_back(std::move(rightGeoSphereRitem));
+		}
+
+		//land용
+		auto landRI = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&landRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -5, 0));
+		XMStoreFloat4x4(&landRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+		landRI->ObjCBIndex = objCBIndex++;
+		landRI->Geo = mGeometries["landGeo"].get();
+		landRI->Mat = mMaterials["grass0"].get();
+		landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
+		landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
+		landRI->BaseVertexLocation = landRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(landRI.get());
+		mAllRenderItems.push_back(std::move(landRI));
+
+		//waves용
+		auto waveRI = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&waveRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -1, 0));
+		XMStoreFloat4x4(&waveRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+		waveRI->ObjCBIndex = objCBIndex++;
+		waveRI->Geo = mGeometries["waterGeo"].get();
+		waveRI->Mat = mMaterials["water0"].get();
+		waveRI->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
+		waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
+		waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Transparent].push_back(waveRI.get());
+		mWavesRenderItem = waveRI.get();
+		mAllRenderItems.push_back(std::move(waveRI));
+
+		//회전 텍스쳐 박스
+		auto boxRI2 = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&boxRI2->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 5.f));
+		boxRI2->ObjCBIndex = objCBIndex++;
+		boxRI2->Geo = mGeometries["shapeGeo"].get();
+		boxRI2->Mat = mMaterials["swirling"].get();
+		boxRI2->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		boxRI2->IndexCount = boxRI2->Geo->DrawArgs["box"].IndexCount;
+		boxRI2->StartIndexLocation = boxRI2->Geo->DrawArgs["box"].StartIndexLocation;
+		boxRI2->BaseVertexLocation = boxRI2->Geo->DrawArgs["box"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Multi].push_back(boxRI2.get());
+		mAllRenderItems.push_back(std::move(boxRI2));
+
+		//철망 박스
+		auto boxRI3 = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&boxRI3->World, XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(0.f, 1.f, -5.f));
+		boxRI3->ObjCBIndex = objCBIndex++;
+		boxRI3->Geo = mGeometries["shapeGeo"].get();
+		boxRI3->Mat = mMaterials["wireFence"].get();
+		boxRI3->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		boxRI3->IndexCount = boxRI3->Geo->DrawArgs["box"].IndexCount;
+		boxRI3->StartIndexLocation = boxRI3->Geo->DrawArgs["box"].StartIndexLocation;
+		boxRI3->BaseVertexLocation = boxRI3->Geo->DrawArgs["box"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::AlphaTest].push_back(boxRI3.get());
+		mAllRenderItems.push_back(std::move(boxRI3));
 	}
+	
+	//거울 벽
+	auto mirrorWallRI = std::make_unique<RenderItem>();
+	XMMATRIX M1 = XMMatrixScaling(0.3f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10.001, 3, 0);
+	XMStoreFloat4x4(&mirrorWallRI->World, M1);
+	XMMATRIX M2 = XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2);
+	XMStoreFloat4x4(&mirrorWallRI->TexTransform, M2);
+	mirrorWallRI->ObjCBIndex = objCBIndex++;
+	mirrorWallRI->Geo = mGeometries["shapeGeo"].get();
+	mirrorWallRI->Mat = mMaterials["bricks1"].get();
+	mirrorWallRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	mirrorWallRI->IndexCount = mirrorWallRI->Geo->DrawArgs["grid"].IndexCount;
+	mirrorWallRI->StartIndexLocation = mirrorWallRI->Geo->DrawArgs["grid"].StartIndexLocation;
+	mirrorWallRI->BaseVertexLocation = mirrorWallRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+	mRenderItemLayer[(int)RenderLayer::MirrorWall].push_back(mirrorWallRI.get());
+	mAllRenderItems.push_back(std::move(mirrorWallRI));
+
+	//거울
+	auto mirrorRI = std::make_unique<RenderItem>();
+	XMMATRIX mirrorM1 = XMMatrixScaling(0.2f, 1.0f, 0.5f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10, 2, 0);
+	XMStoreFloat4x4(&mirrorRI->World, mirrorM1);
+	XMMATRIX mirrorM2 = XMMatrixScaling(1.0f, 2.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2);
+	XMStoreFloat4x4(&mirrorRI->TexTransform, mirrorM2);
+	mirrorRI->ObjCBIndex = objCBIndex++;
+	mirrorRI->Geo = mGeometries["shapeGeo"].get();
+	mirrorRI->Mat = mMaterials["iceMirrorMat"].get();
+	mirrorRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	mirrorRI->IndexCount = mirrorRI->Geo->DrawArgs["grid"].IndexCount;
+	mirrorRI->StartIndexLocation = mirrorRI->Geo->DrawArgs["grid"].StartIndexLocation;
+	mirrorRI->BaseVertexLocation = mirrorRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+	mMirror = mirrorRI.get();
+	mRenderItemLayer[(int)RenderLayer::MirrorStencil].push_back(mirrorRI.get());
+	mRenderItemLayer[(int)RenderLayer::Transparent].push_back(mirrorRI.get());
+	mAllRenderItems.push_back(std::move(mirrorRI));
 
 	//skull용
 	auto skullRI = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&skullRI->World, XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f));
+	XMStoreFloat4x4(&skullRI->World, XMMatrixScaling(0.2f, 0.2f, 0.2f)* XMMatrixTranslation(0.f, 1.f, 0.f));
 	skullRI->ObjCBIndex = objCBIndex++;
 	skullRI->Geo = mGeometries["shapeGeo"].get();
 	skullRI->Mat = mMaterials["skullMat"].get();
@@ -846,60 +1010,32 @@ void AppD3D::BuildRenderItems()
 	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
 	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
 	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(skullRI.get());
+
+	//거울 속 해골
+	XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
+	XMMATRIX R = XMMatrixReflect(mirrorPlane);
+	XMMATRIX skullWorldM = XMLoadFloat4x4(&skullRI->World);
+	auto reflectedSkullRitem = std::make_unique<RenderItem>();
+	*reflectedSkullRitem = *skullRI;	//멤버 단위 복사
+	reflectedSkullRitem->ObjCBIndex = objCBIndex++;
+	XMStoreFloat4x4(&reflectedSkullRitem->World, skullWorldM * R);
+	mRenderItemLayer[(int)RenderLayer::Reflected].push_back(reflectedSkullRitem.get());
 	mAllRenderItems.push_back(std::move(skullRI));
+	mAllRenderItems.push_back(std::move(reflectedSkullRitem));
 
-	//land용
-	auto landRI = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&landRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -5, 0));
-	XMStoreFloat4x4(&landRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	landRI->ObjCBIndex = objCBIndex++;
-	landRI->Geo = mGeometries["landGeo"].get();
-	landRI->Mat = mMaterials["grass0"].get();
-	landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
-	landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
-	landRI->BaseVertexLocation = landRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(landRI.get());
-	mAllRenderItems.push_back(std::move(landRI));
-
-	//waves용
-	auto waveRI = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&waveRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -1, 0));
-	XMStoreFloat4x4(&waveRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	waveRI->ObjCBIndex = objCBIndex++;
-	waveRI->Geo = mGeometries["waterGeo"].get();
-	waveRI->Mat = mMaterials["water0"].get();
-	waveRI->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
-	waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
-	waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Transparent].push_back(waveRI.get());
-	mWavesRenderItem = waveRI.get();
-	mAllRenderItems.push_back(std::move(waveRI));
-
-	auto boxRI2 = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRI2->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 5.f));
-	boxRI2->ObjCBIndex = objCBIndex++;
-	boxRI2->Geo = mGeometries["shapeGeo"].get();
-	boxRI2->Mat = mMaterials["swirling"].get();
-	boxRI2->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRI2->IndexCount = boxRI2->Geo->DrawArgs["box"].IndexCount;
-	boxRI2->StartIndexLocation = boxRI2->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRI2->BaseVertexLocation = boxRI2->Geo->DrawArgs["box"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Multi].push_back(boxRI2.get());
-	mAllRenderItems.push_back(std::move(boxRI2));
-
-	auto boxRI3 = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRI3->World, XMMatrixScaling(1.f, 1.f, 1.f)* XMMatrixTranslation(0.f, 1.f, -5.f));
-	boxRI3->ObjCBIndex = objCBIndex++;
-	boxRI3->Geo = mGeometries["shapeGeo"].get();
-	boxRI3->Mat = mMaterials["wireFence"].get();
-	boxRI3->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRI3->IndexCount = boxRI3->Geo->DrawArgs["box"].IndexCount;
-	boxRI3->StartIndexLocation = boxRI3->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRI3->BaseVertexLocation = boxRI3->Geo->DrawArgs["box"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::AlphaTest].push_back(boxRI3.get());
-	mAllRenderItems.push_back(std::move(boxRI3));
+	//거울 백플레이트
+	auto mirrorBackRI = std::make_unique<RenderItem>();
+	XMMATRIX M = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-12, 3, 0);
+	XMStoreFloat4x4(&mirrorBackRI->World, M);
+	mirrorBackRI->ObjCBIndex = objCBIndex++;
+	mirrorBackRI->Geo = mGeometries["shapeGeo"].get();
+	mirrorBackRI->Mat = mMaterials["shadowMat_skull"].get();
+	mirrorBackRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	mirrorBackRI->IndexCount = mirrorBackRI->Geo->DrawArgs["grid"].IndexCount;
+	mirrorBackRI->StartIndexLocation = mirrorBackRI->Geo->DrawArgs["grid"].StartIndexLocation;
+	mirrorBackRI->BaseVertexLocation = mirrorBackRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(mirrorBackRI.get());
+	mAllRenderItems.push_back(std::move(mirrorBackRI));
 }
 
 void AppD3D::BuildFrameResources()
@@ -909,7 +1045,7 @@ void AppD3D::BuildFrameResources()
 		mFrameResources.push_back(
 			std::make_unique<FrameResource>(
 				md3dDevice.Get(),
-				1,
+				2,
 				(UINT)mAllRenderItems.size(),
 				(UINT)mWaves->VertexCount(),
 				(UINT)mMaterials.size()));
@@ -970,7 +1106,7 @@ void AppD3D::BuildPSO()
 	transparencyBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
 	transparencyBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-	transparentPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	//transparentPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	transparentPsoDesc.BlendState.RenderTarget[0] = transparencyBlendDesc;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&mPSOs["transparent"])));
 
@@ -982,6 +1118,105 @@ void AppD3D::BuildPSO()
 	};
 	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
+
+	CD3DX12_BLEND_DESC mirrorBlendState(D3D12_DEFAULT);
+	mirrorBlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+
+	D3D12_DEPTH_STENCIL_DESC mirrorDSS;
+	mirrorDSS.DepthEnable = true;
+	mirrorDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	mirrorDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	mirrorDSS.StencilEnable = true;
+	mirrorDSS.StencilReadMask = 0xff;
+	mirrorDSS.StencilWriteMask = 0xff;
+
+	mirrorDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+	mirrorDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+	mirrorDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+	mirrorDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorStencilPsoDesc = opaquePsoDesc;
+	mirrorStencilPsoDesc.BlendState = mirrorBlendState;
+	mirrorStencilPsoDesc.DepthStencilState = mirrorDSS;
+	mirrorStencilPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorStencilPsoDesc, IID_PPV_ARGS(mPSOs["mirrorStencil"].GetAddressOf())));
+
+	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
+	reflectionsDSS.DepthEnable = true;
+	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	reflectionsDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	reflectionsDSS.StencilEnable = true;
+	reflectionsDSS.StencilReadMask = 0xff;
+	reflectionsDSS.StencilWriteMask = 0x00;
+
+	reflectionsDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+	reflectionsDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
+	drawReflectionsPsoDesc.DepthStencilState = reflectionsDSS;
+	drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
+
+	//거울 벽용
+	D3D12_DEPTH_STENCIL_DESC mirrorWallDSS;
+	mirrorWallDSS.DepthEnable = true;
+	mirrorWallDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	mirrorWallDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	mirrorWallDSS.StencilEnable = true;
+	mirrorWallDSS.StencilReadMask = 0xff;
+	mirrorWallDSS.StencilWriteMask = 0xff;
+
+	mirrorWallDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorWallDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorWallDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	mirrorWallDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+
+	mirrorWallDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorWallDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorWallDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_ZERO;
+	mirrorWallDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorWallPsoDesc = opaquePsoDesc;
+	mirrorWallPsoDesc.DepthStencilState = mirrorWallDSS;
+	mirrorWallPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())))
+}
+
+XMVECTOR AppD3D::GetMirrorPlane()
+{
+	XMMATRIX W = XMLoadFloat4x4(&mMirror->World);
+
+	XMVECTOR pLocal = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	XMVECTOR nLocal = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); // grid가 XZ plane일 때
+
+	XMVECTOR pWorld = XMVector3TransformCoord(pLocal, W);
+
+	XMMATRIX invTransW = XMMatrixTranspose(XMMatrixInverse(nullptr, W));
+	XMVECTOR nWorld = XMVector3TransformNormal(nLocal, invTransW);
+	nWorld = XMVector3Normalize(nWorld);
+
+	float d = -XMVectorGetX(XMVector3Dot(nWorld, pWorld));
+
+	return XMVectorSet(
+		XMVectorGetX(nWorld),
+		XMVectorGetY(nWorld),
+		XMVectorGetZ(nWorld),
+		d);
 }
 
 void AppD3D::OnKeyboardInput(const GameTimer& gt)
@@ -1089,13 +1324,31 @@ void AppD3D::UpdateMainPassCB(const GameTimer& gt)
 
 	mMainPassCB.gFogColor = { 0.7f, 0.7f, 0.7f, 1.0f };
 	mMainPassCB.gFogStart = 5.f;
-	mMainPassCB.gFogRange = 100.f;
+	mMainPassCB.gFogRange = 150.f;
 
 	XMVECTOR lightDir = -MathHelper::SphericalToCatesian(1.0, mSunTheta, mSunPhi);
 	XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
+}
+
+void AppD3D::UpdateReflectedPassCB(const GameTimer& gt)
+{
+	mReflectedPassCB = mMainPassCB;
+
+	XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
+	XMMATRIX R = XMMatrixReflect(mirrorPlane);
+
+	for (int i = 0; i < 3; i++)
+	{
+		XMVECTOR lightDir = XMLoadFloat3(&mMainPassCB.Lights[i].Direction);
+		XMVECTOR reflectedLightDir = XMVector3TransformNormal(lightDir, R);
+		XMStoreFloat3(&mReflectedPassCB.Lights[i].Direction, reflectedLightDir);
+	}
+
+	auto currPassCB = mCurrFrameResource->PassCB.get();
+	currPassCB->CopyData(1, mReflectedPassCB);
 }
 
 void AppD3D::UpdateWaves(const GameTimer& gt)
