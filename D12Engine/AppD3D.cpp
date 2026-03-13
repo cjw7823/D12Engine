@@ -967,10 +967,10 @@ void AppD3D::BuildRenderItems()
 	
 	//거울 벽
 	auto mirrorWallRI = std::make_unique<RenderItem>();
-	XMMATRIX M1 = XMMatrixScaling(0.3f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10.001, 3, 0);
-	XMStoreFloat4x4(&mirrorWallRI->World, M1);
-	XMMATRIX M2 = XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2);
-	XMStoreFloat4x4(&mirrorWallRI->TexTransform, M2);
+	XMMATRIX wM1 = XMMatrixScaling(0.3f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10.001, 3, 0);
+	XMStoreFloat4x4(&mirrorWallRI->World, wM1);
+	XMMATRIX wM2 = XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2);
+	XMStoreFloat4x4(&mirrorWallRI->TexTransform, wM2);
 	mirrorWallRI->ObjCBIndex = objCBIndex++;
 	mirrorWallRI->Geo = mGeometries["shapeGeo"].get();
 	mirrorWallRI->Mat = mMaterials["bricks1"].get();
@@ -1023,19 +1023,64 @@ void AppD3D::BuildRenderItems()
 	mAllRenderItems.push_back(std::move(skullRI));
 	mAllRenderItems.push_back(std::move(reflectedSkullRitem));
 
-	//거울 백플레이트
-	auto mirrorBackRI = std::make_unique<RenderItem>();
-	XMMATRIX M = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-12, 3, 0);
-	XMStoreFloat4x4(&mirrorBackRI->World, M);
-	mirrorBackRI->ObjCBIndex = objCBIndex++;
-	mirrorBackRI->Geo = mGeometries["shapeGeo"].get();
-	mirrorBackRI->Mat = mMaterials["shadowMat_skull"].get();
-	mirrorBackRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	mirrorBackRI->IndexCount = mirrorBackRI->Geo->DrawArgs["grid"].IndexCount;
-	mirrorBackRI->StartIndexLocation = mirrorBackRI->Geo->DrawArgs["grid"].StartIndexLocation;
-	mirrorBackRI->BaseVertexLocation = mirrorBackRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(mirrorBackRI.get());
-	mAllRenderItems.push_back(std::move(mirrorBackRI));
+	{
+		//거울 백플레이트 - 바닥
+		auto mirrorBackRI1 = std::make_unique<RenderItem>();
+		XMMATRIX bM1 = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, 0) * XMMatrixTranslation(-15, 0.1f, 0);
+		XMStoreFloat4x4(&mirrorBackRI1->World, bM1);
+		mirrorBackRI1->ObjCBIndex = objCBIndex++;
+		mirrorBackRI1->Geo = mGeometries["shapeGeo"].get();
+		mirrorBackRI1->Mat = mMaterials["shadowMat_skull"].get();
+		mirrorBackRI1->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		mirrorBackRI1->IndexCount = mirrorBackRI1->Geo->DrawArgs["grid"].IndexCount;
+		mirrorBackRI1->StartIndexLocation = mirrorBackRI1->Geo->DrawArgs["grid"].StartIndexLocation;
+		mirrorBackRI1->BaseVertexLocation = mirrorBackRI1->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI1.get());
+		mAllRenderItems.push_back(std::move(mirrorBackRI1));
+
+		//거울 백플레이트 - 뒤
+		auto mirrorBackRI2 = std::make_unique<RenderItem>();
+		XMMATRIX bM2 = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-30, 3, 0);
+		XMStoreFloat4x4(&mirrorBackRI2->World, bM2);
+		mirrorBackRI2->ObjCBIndex = objCBIndex++;
+		mirrorBackRI2->Geo = mGeometries["shapeGeo"].get();
+		mirrorBackRI2->Mat = mMaterials["shadowMat_skull"].get();
+		mirrorBackRI2->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		mirrorBackRI2->IndexCount = mirrorBackRI2->Geo->DrawArgs["grid"].IndexCount;
+		mirrorBackRI2->StartIndexLocation = mirrorBackRI2->Geo->DrawArgs["grid"].StartIndexLocation;
+		mirrorBackRI2->BaseVertexLocation = mirrorBackRI2->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI2.get());
+		mAllRenderItems.push_back(std::move(mirrorBackRI2));
+
+		//거울 백플레이트 - 왼
+		auto mirrorBackRI3 = std::make_unique<RenderItem>();
+		XMMATRIX bM3 = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XM_PIDIV2, 0, 0) * XMMatrixTranslation(-20, 0, -15);
+		XMStoreFloat4x4(&mirrorBackRI3->World, bM3);
+		mirrorBackRI3->ObjCBIndex = objCBIndex++;
+		mirrorBackRI3->Geo = mGeometries["shapeGeo"].get();
+		mirrorBackRI3->Mat = mMaterials["shadowMat_skull"].get();
+		mirrorBackRI3->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		mirrorBackRI3->IndexCount = mirrorBackRI3->Geo->DrawArgs["grid"].IndexCount;
+		mirrorBackRI3->StartIndexLocation = mirrorBackRI3->Geo->DrawArgs["grid"].StartIndexLocation;
+		mirrorBackRI3->BaseVertexLocation = mirrorBackRI3->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI3.get());
+		mAllRenderItems.push_back(std::move(mirrorBackRI3));
+
+		//거울 백플레이트 - 오
+		auto mirrorBackRI4 = std::make_unique<RenderItem>();
+		XMMATRIX bM4 = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(-XM_PIDIV2, 0, 0) * XMMatrixTranslation(-20, 0, 15);
+		XMStoreFloat4x4(&mirrorBackRI4->World, bM4);
+		mirrorBackRI4->ObjCBIndex = objCBIndex++;
+		mirrorBackRI4->Geo = mGeometries["shapeGeo"].get();
+		mirrorBackRI4->Mat = mMaterials["shadowMat_skull"].get();
+		mirrorBackRI4->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		mirrorBackRI4->IndexCount = mirrorBackRI4->Geo->DrawArgs["grid"].IndexCount;
+		mirrorBackRI4->StartIndexLocation = mirrorBackRI4->Geo->DrawArgs["grid"].StartIndexLocation;
+		mirrorBackRI4->BaseVertexLocation = mirrorBackRI4->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI4.get());
+		mAllRenderItems.push_back(std::move(mirrorBackRI4));
+	}
+	
 }
 
 void AppD3D::BuildFrameResources()
@@ -1168,7 +1213,7 @@ void AppD3D::BuildPSO()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
 	drawReflectionsPsoDesc.DepthStencilState = reflectionsDSS;
-	drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
 
