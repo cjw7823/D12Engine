@@ -67,6 +67,7 @@ void AppD3D::Update(const GameTimer& gt)
 	UpdateReflectedPassCB(gt);
 	UpdateWaves(gt);
 	UpdateMaterialCBs(gt);
+	UpdateShadowTransform();
 
 	//이동 로직. 회전과 연동 안됨.
 	float dt = gt.DeltaTime();
@@ -153,6 +154,8 @@ void AppD3D::Draw(const GameTimer& gt)
 				mCommandList->SetPipelineState(mPSOs["mirrorWall"].Get());
 				break;
 			case (int)RenderLayer::Reflected:
+				//거울에 비친 반사 물체만 그림(스텐실 버퍼가 1인 픽셀에만 해당).
+				//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
 				mCommandList->OMSetStencilRef(1);
 				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
 				mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
@@ -163,6 +166,9 @@ void AppD3D::Draw(const GameTimer& gt)
 				break;
 			case (int)RenderLayer::AlphaTest:
 				mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
+				break;
+			case (int)RenderLayer::Shadow:
+				mCommandList->SetPipelineState(mPSOs["shadow"].Get());
 				break;
 			default:
 				mCommandList->SetPipelineState(mPSOs["opaque"].Get());
@@ -825,8 +831,7 @@ void AppD3D::BuildRenderItems()
 	UINT objCBIndex = 0;
 	{
 		auto boxRI = std::make_unique<RenderItem>();
-		XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, 0.f));
-		//XMStoreFloat4x4(&boxRI->TexTransform, XMMatrixScaling(5.f, 5.f, 1.0f) * XMMatrixTranslation(-1, -1, 0.f));
+		XMStoreFloat4x4(&boxRI->World, XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, -5.f));
 		boxRI->ObjCBIndex = objCBIndex++;
 		boxRI->Geo = mGeometries["shapeGeo"].get();
 		boxRI->Mat = mMaterials["woodCrate"].get();
@@ -940,7 +945,7 @@ void AppD3D::BuildRenderItems()
 
 		//회전 텍스쳐 박스
 		auto boxRI2 = std::make_unique<RenderItem>();
-		XMStoreFloat4x4(&boxRI2->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 5.f));
+		XMStoreFloat4x4(&boxRI2->World, XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 8.f));
 		boxRI2->ObjCBIndex = objCBIndex++;
 		boxRI2->Geo = mGeometries["shapeGeo"].get();
 		boxRI2->Mat = mMaterials["swirling"].get();
@@ -953,7 +958,7 @@ void AppD3D::BuildRenderItems()
 
 		//철망 박스
 		auto boxRI3 = std::make_unique<RenderItem>();
-		XMStoreFloat4x4(&boxRI3->World, XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(0.f, 1.f, -5.f));
+		XMStoreFloat4x4(&boxRI3->World, XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(0.f, 1.f, -10.f));
 		boxRI3->ObjCBIndex = objCBIndex++;
 		boxRI3->Geo = mGeometries["shapeGeo"].get();
 		boxRI3->Mat = mMaterials["wireFence"].get();
@@ -1001,7 +1006,8 @@ void AppD3D::BuildRenderItems()
 
 	//skull용
 	auto skullRI = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&skullRI->World, XMMatrixScaling(0.2f, 0.2f, 0.2f)* XMMatrixTranslation(0.f, 1.f, 0.f));
+	XMMATRIX skullWorld = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f);
+	XMStoreFloat4x4(&skullRI->World, skullWorld);
 	skullRI->ObjCBIndex = objCBIndex++;
 	skullRI->Geo = mGeometries["shapeGeo"].get();
 	skullRI->Mat = mMaterials["skullMat"].get();
@@ -1009,18 +1015,19 @@ void AppD3D::BuildRenderItems()
 	skullRI->IndexCount = skullRI->Geo->DrawArgs["skull"].IndexCount;
 	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
 	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
+	mSkull = skullRI.get();
 	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(skullRI.get());
+	mAllRenderItems.push_back(std::move(skullRI));
 
 	//거울 속 해골
 	XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
 	XMMATRIX R = XMMatrixReflect(mirrorPlane);
-	XMMATRIX skullWorldM = XMLoadFloat4x4(&skullRI->World);
+	XMMATRIX skullWorldM = XMLoadFloat4x4(&mSkull->World);
 	auto reflectedSkullRitem = std::make_unique<RenderItem>();
-	*reflectedSkullRitem = *skullRI;	//멤버 단위 복사
+	*reflectedSkullRitem = *mSkull;	//멤버 단위 복사
 	reflectedSkullRitem->ObjCBIndex = objCBIndex++;
 	XMStoreFloat4x4(&reflectedSkullRitem->World, skullWorldM * R);
 	mRenderItemLayer[(int)RenderLayer::Reflected].push_back(reflectedSkullRitem.get());
-	mAllRenderItems.push_back(std::move(skullRI));
 	mAllRenderItems.push_back(std::move(reflectedSkullRitem));
 
 	{
@@ -1081,6 +1088,14 @@ void AppD3D::BuildRenderItems()
 		mAllRenderItems.push_back(std::move(mirrorBackRI4));
 	}
 	
+	//해골 그림자
+	auto skullShadowRI = std::make_unique<RenderItem>();
+	*skullShadowRI = *mSkull;
+	skullShadowRI->ObjCBIndex = objCBIndex++;
+	skullShadowRI->Mat = mMaterials["shadowMat_skull"].get();
+	mSkullShadow = skullShadowRI.get();
+	mRenderItemLayer[(int)RenderLayer::Shadow].push_back(skullShadowRI.get());
+	mAllRenderItems.push_back(std::move(skullShadowRI));
 }
 
 void AppD3D::BuildFrameResources()
@@ -1239,7 +1254,31 @@ void AppD3D::BuildPSO()
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorWallPsoDesc = opaquePsoDesc;
 	mirrorWallPsoDesc.DepthStencilState = mirrorWallDSS;
 	mirrorWallPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())))
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())));
+
+	//투명도를 가진 그림자를 그릴 것이므로 투명도 설명을 기반으로 함.
+	D3D12_DEPTH_STENCIL_DESC shadowDSS;
+	shadowDSS.DepthEnable = true;
+	shadowDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	shadowDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	shadowDSS.StencilEnable = true;
+	shadowDSS.StencilReadMask = 0xff;
+	shadowDSS.StencilWriteMask = 0xff;
+
+	shadowDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;	//주의
+	shadowDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+	shadowDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+	shadowDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = transparentPsoDesc;
+	shadowPsoDesc.DepthStencilState = shadowDSS;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
 }
 
 XMVECTOR AppD3D::GetMirrorPlane()
@@ -1450,6 +1489,18 @@ void AppD3D::UpdateMaterialCBs(const GameTimer& gt)
 			mat->NumFramesDirty--;
 		}
 	}
+}
+
+void AppD3D::UpdateShadowTransform()
+{
+	//빛 전환에 따른 해골 그림자 변환.
+	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); // xz plane
+	XMVECTOR toMainLight = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
+	XMMATRIX S = XMMatrixShadow(shadowPlane, toMainLight);
+	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
+	XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->World);
+	XMStoreFloat4x4(&mSkullShadow->World, skullWorld * S * shadowOffsetY);
+	mSkullShadow->NumFramesDirty = gNumFrameResources;
 }
 
 void AppD3D::AnimateMaterials(const GameTimer& gt)

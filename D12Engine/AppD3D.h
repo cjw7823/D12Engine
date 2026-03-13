@@ -81,6 +81,7 @@ private:
 	void UpdateReflectedPassCB(const GameTimer& gt);
 	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateShadowTransform();
 	void AnimateMaterials(const GameTimer& gt);
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer);
 
@@ -129,6 +130,8 @@ private:
 	std::unique_ptr<TextureLoader_Blocking> mTexLoader;
 
 	RenderItem* mMirror = nullptr;
+	RenderItem* mSkull = nullptr;
+	RenderItem* mSkullShadow = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
