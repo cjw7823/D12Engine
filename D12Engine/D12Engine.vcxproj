@@ -180,14 +180,7 @@
     <ClCompile Include="MathHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="Shaders\color.hlsl">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Shaders</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)\Shaders</DestinationFolders>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="Shaders\GeometryShader.hlsl">
+    <CopyFileToFolders Include="Shaders\DepthComplexity.hlsl">
       <FileType>Document</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)\Shaders</DestinationFolders>

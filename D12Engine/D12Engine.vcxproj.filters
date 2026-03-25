@@ -96,10 +96,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="Shaders\color.hlsl">
-      <Filter>Shader</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="Shaders\GeometryShader.hlsl">
+    <CopyFileToFolders Include="Shaders\DepthComplexity.hlsl">
       <Filter>Shader</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\LightingUtil.hlsli">

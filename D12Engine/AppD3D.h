@@ -71,6 +71,9 @@ private:
 	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildPSO();
+	void SetDebugColorCB();
+
+	void DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList);
 
 	DirectX::XMVECTOR GetMirrorPlane();
 
@@ -134,6 +137,7 @@ private:
 	RenderItem* mSkullShadow = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_debug = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
@@ -149,6 +153,7 @@ private:
 	float mSunPhi = DirectX::XM_PIDIV4;
 
 	bool mIsWireframe = false;
+	bool mIsDepthComplexityDebug = false;
 	bool isMoving = false;
 
 	/*

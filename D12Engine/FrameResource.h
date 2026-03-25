@@ -39,7 +39,12 @@ struct PassConstants
 	DirectX::XMFLOAT4 gFogColor = { 0.7f, 0.7f, 0.7f, 1.0f};
 	float gFogStart = 5.0f;
 	float gFogRange = 150.f;
-	DirectX::XMFLOAT4 cbPerObjectPad2;
+	DirectX::XMFLOAT4 cbPerObjectPad2{};
+};
+
+struct DebugColorConstants
+{
+	DirectX::XMFLOAT4 debugColor;
 };
 
 struct Vertex
@@ -62,9 +67,11 @@ public:
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
+	std::unique_ptr<UploadBuffer<DebugColorConstants>> debugColorCB = nullptr;
 
 	//정점 위치가 프레임마다 달라짐.
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 
 	UINT64 Fence = 0;
+	UINT debugColorNum = 5;
 };

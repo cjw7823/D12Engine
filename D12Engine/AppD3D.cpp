@@ -29,6 +29,8 @@ bool AppD3D::Initialize()
 	BuildFrameResources();
 	BuildPSO();
 
+	SetDebugColorCB();
+
 	ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
@@ -125,57 +127,64 @@ void AppD3D::Draw(const GameTimer& gt)
 
 	ID3D12DescriptorHeap* descriptorHeap[] = { mSrvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeap), descriptorHeap);
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());	
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
+		mCommandList->OMSetStencilRef(0);
+		mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
+		switch (layer)
+		{
+		case (int)RenderLayer::Opaque :
+			mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+			break;
+		case (int)RenderLayer::Multi:
+			mCommandList->SetPipelineState(mPSOs["multiPSO"].Get());
+			break;
+		case (int)RenderLayer::MirrorStencil:
+			mCommandList->OMSetStencilRef(1);
+			mCommandList->SetPipelineState(mPSOs["mirrorStencil"].Get());
+			break;
+		case (int)RenderLayer::MirrorWall:
+			mCommandList->OMSetStencilRef(1);
+			mCommandList->SetPipelineState(mPSOs["mirrorWall"].Get());
+			break;
+		case (int)RenderLayer::Reflected:
+			//거울에 비친 반사 물체만 그림(스텐실 버퍼가 1인 픽셀에만 해당).
+			//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
+			mCommandList->OMSetStencilRef(1);
+			mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
+			mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
+			break;
+		case (int)RenderLayer::Transparent:
+			mCommandList->SetPipelineState(mPSOs["transparent"].Get());
+			break;
+		case (int)RenderLayer::AlphaTest:
+			mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
+			break;
+		case (int)RenderLayer::Shadow:
+			mCommandList->SetPipelineState(mPSOs["shadow"].Get());
+			break;
+		default:
+			mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+			break;
+		}
+
 		if (mIsWireframe)
 			mCommandList->SetPipelineState(mPSOs["opaque_wireframe"].Get());
-		else
-		{
-			mCommandList->OMSetStencilRef(0);
-			switch (layer)
-			{
-			case (int)RenderLayer::Opaque :
-				mCommandList->SetPipelineState(mPSOs["opaque"].Get());
-				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
-				break;
-			case (int)RenderLayer::Multi:
-				mCommandList->SetPipelineState(mPSOs["multiPSO"].Get());
-				break;
-			case (int)RenderLayer::MirrorStencil:
-				mCommandList->OMSetStencilRef(1);
-				mCommandList->SetPipelineState(mPSOs["mirrorStencil"].Get());
-				break;
-			case (int)RenderLayer::MirrorWall:
-				mCommandList->OMSetStencilRef(1);
-				mCommandList->SetPipelineState(mPSOs["mirrorWall"].Get());
-				break;
-			case (int)RenderLayer::Reflected:
-				//거울에 비친 반사 물체만 그림(스텐실 버퍼가 1인 픽셀에만 해당).
-				//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
-				mCommandList->OMSetStencilRef(1);
-				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
-				mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
-				break;
-			case (int)RenderLayer::Transparent:
-				mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
-				mCommandList->SetPipelineState(mPSOs["transparent"].Get());
-				break;
-			case (int)RenderLayer::AlphaTest:
-				mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
-				break;
-			case (int)RenderLayer::Shadow:
-				mCommandList->SetPipelineState(mPSOs["shadow"].Get());
-				break;
-			default:
-				mCommandList->SetPipelineState(mPSOs["opaque"].Get());
-				break;
-			}
-		}
+		else if (mIsDepthComplexityDebug)
+			mCommandList->SetPipelineState(mPSOs["depthCount"].Get());
+
 		DrawRenderItems(mCommandList.Get(), mRenderItemLayer[layer]);
+	}
+
+	if (mIsDepthComplexityDebug)
+	{
+		mCommandList->SetGraphicsRootSignature(mRootSignature_debug.Get());
+		mCommandList->SetPipelineState(mPSOs["debugComplexity"].Get());
+		DrawFullscreenTriangle(mCommandList.Get());
 	}
 
 	auto barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -550,6 +559,36 @@ void AppD3D::BuildRootsignature()
 		serializedRootsig->GetBufferPointer(),
 		serializedRootsig->GetBufferSize(),
 		IID_PPV_ARGS(mRootSignature.GetAddressOf())));
+
+	//DepthComplexity.hlsl 용
+	{
+		std::array<CD3DX12_ROOT_PARAMETER, 1> slotRootParameter;
+		slotRootParameter[0].InitAsConstantBufferView(0); //debugColor
+
+		CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
+			(UINT)slotRootParameter.size(),
+			slotRootParameter.data(),
+			0, nullptr,
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> serializedRootsig = nullptr;
+		ComPtr<ID3DBlob> errorBlob = nullptr;
+		HRESULT hr = D3D12SerializeRootSignature(
+			&rootSigDesc,
+			D3D_ROOT_SIGNATURE_VERSION_1,
+			serializedRootsig.GetAddressOf(),
+			errorBlob.GetAddressOf());
+
+		if (errorBlob != nullptr)
+			OutputDebugString((wchar_t*)errorBlob->GetBufferPointer());
+		ThrowIfFailed(hr);
+
+		ThrowIfFailed(md3dDevice->CreateRootSignature(
+			0,
+			serializedRootsig->GetBufferPointer(),
+			serializedRootsig->GetBufferSize(),
+			IID_PPV_ARGS(mRootSignature_debug.GetAddressOf())));
+	}
 }
 
 void AppD3D::BuildShadersAndInputLayout()
@@ -572,6 +611,9 @@ void AppD3D::BuildShadersAndInputLayout()
 	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_1");
 	mShaders["multiPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS_multiTexture", "ps_5_1");
 	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
+
+	mShaders["debugVS"] = d3dUtil::CompileShader(L"Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenVS", "vs_5_1");
+	mShaders["debugPS"] = d3dUtil::CompileShader(L"Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenPS", "ps_5_1");
 
 	mInputLayout =
 	{
@@ -1179,106 +1221,196 @@ void AppD3D::BuildPSO()
 	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 
-	CD3DX12_BLEND_DESC mirrorBlendState(D3D12_DEFAULT);
-	mirrorBlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+	//스텐실 거울 용
+	{
+		CD3DX12_BLEND_DESC mirrorBlendState(D3D12_DEFAULT);
+		mirrorBlendState.RenderTarget[0].RenderTargetWriteMask = 0;
 
-	D3D12_DEPTH_STENCIL_DESC mirrorDSS;
-	mirrorDSS.DepthEnable = true;
-	mirrorDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-	mirrorDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	mirrorDSS.StencilEnable = true;
-	mirrorDSS.StencilReadMask = 0xff;
-	mirrorDSS.StencilWriteMask = 0xff;
+		D3D12_DEPTH_STENCIL_DESC mirrorDSD;
+		mirrorDSD.DepthEnable = true;
+		mirrorDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		mirrorDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		mirrorDSD.StencilEnable = true;
+		mirrorDSD.StencilReadMask = 0xff;
+		mirrorDSD.StencilWriteMask = 0xff;
 
-	mirrorDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
-	mirrorDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		mirrorDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+		mirrorDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
-	mirrorDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
-	mirrorDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+		mirrorDSD.BackFace = mirrorDSD.FrontFace;
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorStencilPsoDesc = opaquePsoDesc;
-	mirrorStencilPsoDesc.BlendState = mirrorBlendState;
-	mirrorStencilPsoDesc.DepthStencilState = mirrorDSS;
-	mirrorStencilPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorStencilPsoDesc, IID_PPV_ARGS(mPSOs["mirrorStencil"].GetAddressOf())));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorStencilPsoDesc = opaquePsoDesc;
+		mirrorStencilPsoDesc.BlendState = mirrorBlendState;
+		mirrorStencilPsoDesc.DepthStencilState = mirrorDSD;
+		mirrorStencilPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorStencilPsoDesc, IID_PPV_ARGS(mPSOs["mirrorStencil"].GetAddressOf())));
 
-	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
-	reflectionsDSS.DepthEnable = true;
-	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	reflectionsDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	reflectionsDSS.StencilEnable = true;
-	reflectionsDSS.StencilReadMask = 0xff;
-	reflectionsDSS.StencilWriteMask = 0x00;
+		D3D12_DEPTH_STENCIL_DESC reflectionsDSD;
+		reflectionsDSD.DepthEnable = true;
+		reflectionsDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		reflectionsDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		reflectionsDSD.StencilEnable = true;
+		reflectionsDSD.StencilReadMask = 0xff;
+		reflectionsDSD.StencilWriteMask = 0x00;
 
-	reflectionsDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		reflectionsDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		reflectionsDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		reflectionsDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+		reflectionsDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
-	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
-	reflectionsDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+		reflectionsDSD.BackFace = reflectionsDSD.FrontFace;
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
-	drawReflectionsPsoDesc.DepthStencilState = reflectionsDSS;
-	drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
+		drawReflectionsPsoDesc.DepthStencilState = reflectionsDSD;
+		drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
 
-	//거울 벽용
-	D3D12_DEPTH_STENCIL_DESC mirrorWallDSS;
-	mirrorWallDSS.DepthEnable = true;
-	mirrorWallDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	mirrorWallDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	mirrorWallDSS.StencilEnable = true;
-	mirrorWallDSS.StencilReadMask = 0xff;
-	mirrorWallDSS.StencilWriteMask = 0xff;
+		//거울 벽용
+		D3D12_DEPTH_STENCIL_DESC mirrorWallDSD;
+		mirrorWallDSD.DepthEnable = true;
+		mirrorWallDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		mirrorWallDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		mirrorWallDSD.StencilEnable = true;
+		mirrorWallDSD.StencilReadMask = 0xff;
+		mirrorWallDSD.StencilWriteMask = 0xff;
 
-	mirrorWallDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorWallDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorWallDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
-	mirrorWallDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+		mirrorWallDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorWallDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorWallDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+		mirrorWallDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
 
-	mirrorWallDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorWallDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	mirrorWallDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_ZERO;
-	mirrorWallDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		mirrorWallDSD.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorWallDSD.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		mirrorWallDSD.BackFace.StencilPassOp = D3D12_STENCIL_OP_ZERO;
+		mirrorWallDSD.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorWallPsoDesc = opaquePsoDesc;
-	mirrorWallPsoDesc.DepthStencilState = mirrorWallDSS;
-	mirrorWallPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC mirrorWallPsoDesc = opaquePsoDesc;
+		mirrorWallPsoDesc.DepthStencilState = mirrorWallDSD;
+		mirrorWallPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())));
+	}
+	
 
 	//투명도를 가진 그림자를 그릴 것이므로 투명도 설명을 기반으로 함.
-	D3D12_DEPTH_STENCIL_DESC shadowDSS;
-	shadowDSS.DepthEnable = true;
-	shadowDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	shadowDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	shadowDSS.StencilEnable = true;
-	shadowDSS.StencilReadMask = 0xff;
-	shadowDSS.StencilWriteMask = 0xff;
+	D3D12_DEPTH_STENCIL_DESC shadowDSD;
+	shadowDSD.DepthEnable = true;
+	shadowDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	shadowDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	shadowDSD.StencilEnable = true;
+	shadowDSD.StencilReadMask = 0xff;
+	shadowDSD.StencilWriteMask = 0xff;
 
-	shadowDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;	//주의
-	shadowDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+	shadowDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	shadowDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;	//주의
+	shadowDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
 	//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
-	shadowDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
-	shadowDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+	shadowDSD.BackFace = shadowDSD.FrontFace;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = transparentPsoDesc;
-	shadowPsoDesc.DepthStencilState = shadowDSS;
+	shadowPsoDesc.DepthStencilState = shadowDSD;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
+
+	//깊이 복잡도 렌더링 용
+	{
+		D3D12_DEPTH_STENCIL_DESC depthCountDSD;
+		depthCountDSD.DepthEnable = false;
+		depthCountDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		depthCountDSD.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		depthCountDSD.StencilEnable = true;
+		depthCountDSD.StencilReadMask = 0xff;
+		depthCountDSD.StencilWriteMask = 0xff;
+
+		depthCountDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		depthCountDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_INCR_SAT;
+		depthCountDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR_SAT;
+		depthCountDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+		//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+		depthCountDSD.BackFace = depthCountDSD.FrontFace;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC depthCountPsoDesc = opaquePsoDesc;
+		depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+		depthCountPsoDesc.DepthStencilState = depthCountDSD;
+
+		D3D12_DEPTH_STENCIL_DESC depthComplexityDSD;
+		depthComplexityDSD.DepthEnable = false;
+		depthComplexityDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		depthComplexityDSD.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		depthComplexityDSD.StencilEnable = true;
+		depthComplexityDSD.StencilReadMask = 0xff;
+		depthComplexityDSD.StencilWriteMask = 0x00;
+
+		depthComplexityDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+		depthComplexityDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+		depthComplexityDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+		depthComplexityDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+		//뒷면을 향하는 폴리곤은 렌더링하지 않으므로 설정 중요도 없음.
+		depthComplexityDSD.BackFace = depthComplexityDSD.FrontFace;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC depthComplexityPsoDesc = depthCountPsoDesc;
+		depthComplexityPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		depthComplexityPsoDesc.DepthStencilState = depthComplexityDSD;
+		depthComplexityPsoDesc.InputLayout = { nullptr, 0 };
+		depthComplexityPsoDesc.pRootSignature = mRootSignature_debug.Get();
+		depthComplexityPsoDesc.VS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["debugVS"]->GetBufferPointer()),
+			mShaders["debugVS"]->GetBufferSize()
+		};
+		depthComplexityPsoDesc.PS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["debugPS"]->GetBufferPointer()),
+			mShaders["debugPS"]->GetBufferSize()
+		};
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthCountPsoDesc, IID_PPV_ARGS(mPSOs["depthCount"].GetAddressOf())));
+
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthComplexityPsoDesc, IID_PPV_ARGS(mPSOs["debugComplexity"].GetAddressOf())));
+	}
+}
+
+void AppD3D::SetDebugColorCB()
+{
+	std::vector<DebugColorConstants> colors =
+	{
+		{ XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f} },   // 빨강
+		{ XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f} },   // 주황
+		{ XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f} },   // 노랑
+		{ XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f} },   // 초록
+		{ XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f} }    // 파랑
+	};
+
+	for (auto& f : mFrameResources)
+	{
+		for (int i = 0; i < f->debugColorNum; i++)
+			f->debugColorCB->CopyData(i, colors[i]);
+	}
+}
+
+void AppD3D::DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList)
+{
+	int num = mCurrFrameResource->debugColorNum;
+	UINT debugColorCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(DebugColorConstants));
+
+	cmdList->IASetVertexBuffers(0, 0, nullptr);
+	cmdList->IASetIndexBuffer(nullptr);
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (int i = 0; i < num; i++)
+	{
+		cmdList->OMSetStencilRef(i + 1);
+		cmdList->SetGraphicsRootConstantBufferView(
+			0,
+			mCurrFrameResource->debugColorCB->Resource()->GetGPUVirtualAddress() + i * debugColorCBByteSize);
+		cmdList->DrawInstanced(3, 1, 0, 0);
+	}
 }
 
 XMVECTOR AppD3D::GetMirrorPlane()
@@ -1305,15 +1437,20 @@ XMVECTOR AppD3D::GetMirrorPlane()
 
 void AppD3D::OnKeyboardInput(const GameTimer& gt)
 {
-	static bool prevKeyDown = false;
+	static bool prevKeyDown1 = false;
+	static bool prevKeyDown2 = false;
 
-	bool currKeyDown = (GetAsyncKeyState('1') & 0x8000) != 0;
+	bool KeyDown1 = (GetAsyncKeyState('1') & 0x8000) != 0;
+	bool KeyDown2 = (GetAsyncKeyState('2') & 0x8000) != 0;
 
 	// 키가 "눌린 순간"만 감지
-	if (currKeyDown && !prevKeyDown)
+	if (KeyDown1 && !prevKeyDown1)
 		mIsWireframe = !mIsWireframe;
+	if (KeyDown2 && !prevKeyDown2)
+		mIsDepthComplexityDebug = !mIsDepthComplexityDebug;
 
-	prevKeyDown = currKeyDown;
+	prevKeyDown1 = KeyDown1;
+	prevKeyDown2 = KeyDown2;
 
 	const float dt = gt.DeltaTime();
 
