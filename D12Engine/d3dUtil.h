@@ -1,10 +1,8 @@
 #pragma once
 
 #include "../DirectX-Headers/d3dx12.h"	//windows.h보다 먼저 선언
-//#include <windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>	// For DXGI interfaces
-//#include <d3d12.h>		// For D3D12 interfaces
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
@@ -23,6 +21,10 @@
 
 #include "MathHelper.h"
 #include "../DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
+
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
 
 #define MAXLIGHTS 16
 

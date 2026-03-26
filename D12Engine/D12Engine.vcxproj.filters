@@ -24,6 +24,21 @@
     <Filter Include="DDSTextureLoader">
       <UniqueIdentifier>{8f2af240-7d2e-44a8-8386-d51f93e9ac2c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ImGui">
+      <UniqueIdentifier>{aca87100-d46f-4fe2-8dc2-98d998b0f6cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\Core">
+      <UniqueIdentifier>{e2fb1931-c0ed-4c53-928a-e3595dfde1d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui\Backends">
+      <UniqueIdentifier>{cd67290a-84b2-4c40-b821-a50120b995f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource\Fonts">
+      <UniqueIdentifier>{b2cc9311-418b-4fbe-85a1-4d21f80d6a33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource\Textures">
+      <UniqueIdentifier>{fa81fcc5-a0b5-4fda-9dfd-1794b95a55a1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dUtil.h">
@@ -62,6 +77,30 @@
     <ClInclude Include="TextureLoader_Blocking.h">
       <Filter>DDSTextureLoader</Filter>
     </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imgui.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imgui_internal.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imstb_rectpack.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imstb_textedit.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imstb_truetype.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\backends\imgui_impl_dx12.h">
+      <Filter>ImGui\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\backends\imgui_impl_win32.h">
+      <Filter>ImGui\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ImGui\Core\imconfig.h">
+      <Filter>ImGui\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -94,6 +133,27 @@
     <ClCompile Include="TextureLoader_Blocking.cpp">
       <Filter>DDSTextureLoader</Filter>
     </ClCompile>
+    <ClCompile Include="..\ImGui\Core\imgui.cpp">
+      <Filter>ImGui\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\Core\imgui_demo.cpp">
+      <Filter>ImGui\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\Core\imgui_draw.cpp">
+      <Filter>ImGui\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\Core\imgui_tables.cpp">
+      <Filter>ImGui\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\Core\imgui_widgets.cpp">
+      <Filter>ImGui\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\backends\imgui_impl_dx12.cpp">
+      <Filter>ImGui\Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGui\backends\imgui_impl_win32.cpp">
+      <Filter>ImGui\Backends</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Shaders\DepthComplexity.hlsl">
@@ -107,6 +167,132 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\Default.hlsl">
       <Filter>Shader</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Fonts\malgun.ttf">
+      <Filter>Resource\Fonts</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks_nmap.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks2.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks2_nmap.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks3.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\checkboard.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\default_nmap.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\desertcube1024.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\grass.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\grasscube1024.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\head_diff.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\head_norm.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\help.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\ice.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\jacket_diff.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\jacket_norm.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\MipmapTest.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\pants_diff.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\pants_norm.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\snowcube1024.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\stone.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\sunsetcube1024.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\swirling.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\swirling_mask.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tile.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tile_nmap.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree0.bmp">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree01S.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree1.bmp">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree02S.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree2.bmp">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree35S.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\treearray.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\treeArray2.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\upBody_diff.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\upbody_norm.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\water1.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\white1x1.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WireFence.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WoodCrate01.dds">
+      <Filter>Resource\Textures</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WoodCrate02.dds">
+      <Filter>Resource\Textures</Filter>
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>

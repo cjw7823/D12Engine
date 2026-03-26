@@ -3,9 +3,11 @@
 
 using namespace Microsoft::WRL;
 
-LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+LRESULT CALLBACK MainWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	return InitAppD3D::GetApp()->MsgProc(hWnd, msg, wParam, lparam);
+	return InitAppD3D::GetApp()->MsgProc(hWnd, msg, wParam, lParam);
 }
 
 InitAppD3D::InitAppD3D(HINSTANCE hInstance) : mhInstance(hInstance)
@@ -18,6 +20,10 @@ InitAppD3D::~InitAppD3D()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
+
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 int InitAppD3D::Run()
@@ -65,6 +71,9 @@ bool InitAppD3D::Initialize()
 
 LRESULT InitAppD3D::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+		return 0;
+
 	switch (msg)
 	{
 	case WM_ACTIVATE:

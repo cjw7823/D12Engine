@@ -30,6 +30,7 @@ bool AppD3D::Initialize()
 	BuildPSO();
 
 	SetDebugColorCB();
+	InitImGui();
 
 	ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdLists[] = { mCommandList.Get() };
@@ -187,6 +188,8 @@ void AppD3D::Draw(const GameTimer& gt)
 		DrawFullscreenTriangle(mCommandList.Get());
 	}
 
+	RenderImGui();
+
 	auto barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -220,6 +223,11 @@ void AppD3D::OnMouseUp(WPARAM btnState, int x, int y)
 
 void AppD3D::OnMouseMove(WPARAM btnState, int x, int y)
 {
+	ImGuiIO& io = ImGui::GetIO();
+	
+	if (io.WantCaptureMouse)
+		return;
+
 	if ((btnState & MK_LBUTTON) != 0)
 	{
 		float dx = DirectX::XMConvertToRadians(0.5f * static_cast<float>(x - mLastMousePos.x));
@@ -275,68 +283,73 @@ void AppD3D::LoadTextures()
 
 	auto defaultTex = std::make_unique<Texture>();
 	defaultTex->Name = "defaultTex";
-	defaultTex->Filename = L"../Textures/white1x1.dds";
+	defaultTex->Filename = L"Resource/Textures/white1x1.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*defaultTex, mCurrentFence));
 
 	auto woodCrateTex = std::make_unique<Texture>();
 	woodCrateTex->Name = "woodCrateTex";
-	woodCrateTex->Filename = L"../Textures/MipmapTest.dds";
+	woodCrateTex->Filename = L"Resource/Textures/MipmapTest.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*woodCrateTex, mCurrentFence));
 
 	auto bricksTex0 = std::make_unique<Texture>();
 	bricksTex0->Name = "bricksTex0";
-	bricksTex0->Filename = L"../Textures/bricks.dds";
+	bricksTex0->Filename = L"Resource/Textures/bricks.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*bricksTex0, mCurrentFence));
 
 	auto stoneTex = std::make_unique<Texture>();
 	stoneTex->Name = "stoneTex";
-	stoneTex->Filename = L"../Textures/stone.dds";
+	stoneTex->Filename = L"Resource/Textures/stone.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*stoneTex, mCurrentFence));
 
 	auto tileTex = std::make_unique<Texture>();
 	tileTex->Name = "tileTex";
-	tileTex->Filename = L"../Textures/tile.dds";
+	tileTex->Filename = L"Resource/Textures/tile.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*tileTex, mCurrentFence));
 
 	auto grassTex = std::make_unique<Texture>();
 	grassTex->Name = "grassTex";
-	grassTex->Filename = L"../Textures/grass.dds";
+	grassTex->Filename = L"Resource/Textures/grass.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*grassTex, mCurrentFence));
 
 	auto waterTex = std::make_unique<Texture>();
 	waterTex->Name = "waterTex";
-	waterTex->Filename = L"../Textures/water1.dds";
+	waterTex->Filename = L"Resource/Textures/water1.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*waterTex, mCurrentFence));
 
 	auto swirlingTex = std::make_unique<Texture>();
 	swirlingTex->Name = "swirlingTex";
-	swirlingTex->Filename = L"../Textures/swirling.dds";
+	swirlingTex->Filename = L"Resource/Textures/swirling.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*swirlingTex, mCurrentFence));
 
 	auto swirlingMaskTex = std::make_unique<Texture>();
 	swirlingMaskTex->Name = "swirlingMaskTex";
-	swirlingMaskTex->Filename = L"../Textures/swirling_Mask.dds";
+	swirlingMaskTex->Filename = L"Resource/Textures/swirling_Mask.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*swirlingMaskTex, mCurrentFence));
 
 	auto fenceTex = std::make_unique<Texture>();
 	fenceTex->Name = "fenceTex";
-	fenceTex->Filename = L"../Textures/WireFence.dds";
+	fenceTex->Filename = L"Resource/Textures/WireFence.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*fenceTex, mCurrentFence));
 
 	auto bricksTex1 = std::make_unique<Texture>();
 	bricksTex1->Name = "bricksTex1";
-	bricksTex1->Filename = L"../Textures/bricks3.dds";
+	bricksTex1->Filename = L"Resource/Textures/bricks3.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*bricksTex1, mCurrentFence));
 
 	auto checkboardTex = std::make_unique<Texture>();
 	checkboardTex->Name = "checkboardTex";
-	checkboardTex->Filename = L"../Textures/checkboard.dds";
+	checkboardTex->Filename = L"Resource/Textures/checkboard.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*checkboardTex, mCurrentFence));
 
 	auto iceTex = std::make_unique<Texture>();
 	iceTex->Name = "iceTex";
-	iceTex->Filename = L"../Textures/ice.dds";
+	iceTex->Filename = L"Resource/Textures/ice.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*iceTex, mCurrentFence));
+
+	auto helpTex = std::make_unique<Texture>();
+	helpTex->Name = "helpTex";
+	helpTex->Filename = L"Resource/Textures/help.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*helpTex, mCurrentFence));
 
 	mTextures[defaultTex->Name] = std::move(defaultTex);
 	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
@@ -351,13 +364,20 @@ void AppD3D::LoadTextures()
 	mTextures[bricksTex1->Name] = std::move(bricksTex1);
 	mTextures[checkboardTex->Name] = std::move(checkboardTex);
 	mTextures[iceTex->Name] = std::move(iceTex);
+	mTextures[helpTex->Name] = std::move(helpTex);
 }
 
 void AppD3D::BuildDescriptorHeaps()
 {
-	//추후 텍스처를 위한 srvHeap만 생성 예정.
+	/*
+		0 ~ N-1   : 기존 텍스처
+		N         : ImGui font
+		N+1 ~ Resource. : ImGui용 추가 슬롯 (optional)
+	*/
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = (UINT)mTextures.size();
+	const UINT textureCount = (UINT)mTextures.size();
+	const UINT imguiReservedCount = 1; // 폰트만
+	srvHeapDesc.NumDescriptors = textureCount + imguiReservedCount;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
@@ -1394,6 +1414,112 @@ void AppD3D::SetDebugColorCB()
 	}
 }
 
+bool AppD3D::InitImGui()
+{
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(mhMainWnd);
+
+	UINT textureCount = (UINT)mTextures.size();
+	UINT imguiFontIndex = textureCount;
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle(
+		mSrvHeap->GetCPUDescriptorHandleForHeapStart());
+	cpuHandle.Offset(imguiFontIndex, mCbvSrvUavDescriptorSize);
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle(
+		mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	gpuHandle.Offset(imguiFontIndex, mCbvSrvUavDescriptorSize);
+
+	ImGui_ImplDX12_InitInfo init_info = {};
+	init_info.Device = md3dDevice.Get();
+	init_info.CommandQueue = mCommandQueue.Get();
+	init_info.NumFramesInFlight = gNumFrameResources;
+	init_info.RTVFormat = mBackBufferFormat;
+	init_info.DSVFormat = mdepthStencilFormat;
+	init_info.SrvDescriptorHeap = mSrvHeap.Get();
+	init_info.LegacySingleSrvCpuDescriptor = cpuHandle;
+	init_info.LegacySingleSrvGpuDescriptor = gpuHandle;
+
+	ImGui_ImplDX12_Init(&init_info);
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.Fonts->AddFontFromFileTTF(
+		"C:\\Windows\\Fonts\\malgun.ttf",  // 맑은 고딕
+		18.0f,
+		nullptr,
+		io.Fonts->GetGlyphRangesKorean()
+	);
+	ImGui_ImplDX12_InvalidateDeviceObjects();
+	ImGui_ImplDX12_CreateDeviceObjects();
+
+	return true;
+}
+
+void AppD3D::RenderImGui()
+{
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	//ImGui::ShowDemoWindow(&mIsShowHelper);
+
+	if (mIsShowHelper)
+	{
+		ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(240, 210), ImGuiCond_Appearing);
+
+		ImGui::Begin(u8"조작 안내", &mIsShowHelper, ImGuiWindowFlags_NoResize);
+
+		ImGui::TextUnformatted(u8"화면 드래그 : 화면 회전");
+		ImGui::TextUnformatted(u8"마우스 휠   : 확대 / 축소");
+		ImGui::Separator();
+		ImGui::TextUnformatted(u8"W A S D     : 이동");
+		ImGui::TextUnformatted(u8"Q / E       : 위 / 아래 이동");
+		ImGui::Separator();
+		ImGui::TextUnformatted(u8"방향키      : 주광원 이동");
+		ImGui::Separator();
+		ImGui::TextUnformatted(u8"숫자 1		: 와이어 프레임 모드");
+		ImGui::TextUnformatted(u8"숫자 2		: 깊이 복잡도 렌더 모드");
+
+		ImGui::End();
+	}
+	else
+	{
+		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
+		ImGui::SetNextWindowBgAlpha(0.0f);
+
+		UINT index = mTextures["helpTex"]->DiffuseSrvHeapIndex;
+
+		CD3DX12_GPU_DESCRIPTOR_HANDLE handle(
+			mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+		handle.Offset(index, mCbvSrvUavDescriptorSize);
+
+		ImGui::Begin("overlay",
+			nullptr,
+			ImGuiWindowFlags_NoDecoration	|
+			ImGuiWindowFlags_NoBackground	|
+			ImGuiWindowFlags_NoMove);
+
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7, 0.7, 0.7, 0.5));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7, 0.7, 0.7, 0.7));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8, 0.8, 0.8, 0.7));
+
+		if (ImGui::ImageButton("btn", (ImTextureID)handle.ptr, ImVec2(40, 40)))
+		{
+			mIsShowHelper = true;
+		}
+		ImGui::PopStyleColor(3);
+		ImGui::End();
+	}
+
+	ImGui::Render();
+
+	ImGui_ImplDX12_RenderDrawData(
+		ImGui::GetDrawData(),
+		mCommandList.Get());
+}
+
 void AppD3D::DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList)
 {
 	int num = mCurrFrameResource->debugColorNum;
@@ -1445,9 +1571,15 @@ void AppD3D::OnKeyboardInput(const GameTimer& gt)
 
 	// 키가 "눌린 순간"만 감지
 	if (KeyDown1 && !prevKeyDown1)
+	{
 		mIsWireframe = !mIsWireframe;
+		mIsDepthComplexityDebug = false;
+	}
 	if (KeyDown2 && !prevKeyDown2)
+	{
 		mIsDepthComplexityDebug = !mIsDepthComplexityDebug;
+		mIsWireframe = false;
+	}
 
 	prevKeyDown1 = KeyDown1;
 	prevKeyDown2 = KeyDown2;

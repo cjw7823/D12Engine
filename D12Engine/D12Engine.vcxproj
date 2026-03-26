@@ -103,6 +103,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Users\cjw78\Desktop\D12Engine\ImGui\backends;C:\Users\cjw78\Desktop\D12Engine\ImGui\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -118,6 +119,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Users\cjw78\Desktop\D12Engine\ImGui\backends;C:\Users\cjw78\Desktop\D12Engine\ImGui\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -127,6 +129,14 @@
   <ItemGroup>
     <ClInclude Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h" />
     <None Include="..\SampleSrc\DDSTextureLoader.h" />
+    <ClInclude Include="..\ImGui\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="..\ImGui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="..\ImGui\Core\imconfig.h" />
+    <ClInclude Include="..\ImGui\Core\imgui.h" />
+    <ClInclude Include="..\ImGui\Core\imgui_internal.h" />
+    <ClInclude Include="..\ImGui\Core\imstb_rectpack.h" />
+    <ClInclude Include="..\ImGui\Core\imstb_textedit.h" />
+    <ClInclude Include="..\ImGui\Core\imstb_truetype.h" />
     <ClInclude Include="TextureLoader_Blocking.h" />
     <ClInclude Include="Waves.h" />
     <None Include="..\SampleSrc\Camera.h" />
@@ -158,6 +168,13 @@
   <ItemGroup>
     <ClCompile Include="..\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp" />
     <None Include="..\SampleSrc\DDSTextureLoader.cpp" />
+    <ClCompile Include="..\ImGui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="..\ImGui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\ImGui\Core\imgui.cpp" />
+    <ClCompile Include="..\ImGui\Core\imgui_demo.cpp" />
+    <ClCompile Include="..\ImGui\Core\imgui_draw.cpp" />
+    <ClCompile Include="..\ImGui\Core\imgui_tables.cpp" />
+    <ClCompile Include="..\ImGui\Core\imgui_widgets.cpp" />
     <ClCompile Include="TextureLoader_Blocking.cpp" />
     <ClCompile Include="Waves.cpp" />
     <None Include="..\SampleSrc\Camera.cpp" />
@@ -197,6 +214,179 @@
       <FileType>Document</FileType>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Shaders</DestinationFolders>
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)\Shaders</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Resource\Fonts\malgun.ttf">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Fonts</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="Resource\Textures\bricks.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks2.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks2_nmap.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks3.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\bricks_nmap.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\checkboard.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\default_nmap.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\desertcube1024.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\grass.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\grasscube1024.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\head_diff.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\head_norm.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\help.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\ice.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\jacket_diff.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\jacket_norm.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\MipmapTest.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\pants_diff.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\pants_norm.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\snowcube1024.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\stone.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\sunsetcube1024.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\swirling.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\swirling_mask.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tile.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tile_nmap.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree0.bmp">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree01S.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree02S.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree1.bmp">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree2.bmp">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\tree35S.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\treearray.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\treeArray2.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\upBody_diff.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\upbody_norm.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\water1.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\white1x1.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WireFence.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WoodCrate01.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Resource\Textures\WoodCrate02.dds">
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Resource\Textures</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Resource\Textures</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

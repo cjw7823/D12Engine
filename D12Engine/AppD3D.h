@@ -73,6 +73,9 @@ private:
 	void BuildPSO();
 	void SetDebugColorCB();
 
+	bool InitImGui();
+	void RenderImGui();
+
 	void DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList);
 
 	DirectX::XMVECTOR GetMirrorPlane();
@@ -165,4 +168,6 @@ private:
 	int md = 0;
 
 	POINT mLastMousePos = {};
+
+	bool mIsShowHelper = false;
 };
