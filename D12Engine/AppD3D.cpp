@@ -1546,6 +1546,7 @@ void AppD3D::BuildPSO()
 		treeBillboardPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 		treeBillboardPsoDesc.InputLayout = { mTreeBillboardInputLayout.data(), (UINT)mTreeBillboardInputLayout.size() };
 		treeBillboardPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		treeBillboardPsoDesc.BlendState.AlphaToCoverageEnable = true;	//멀티샘플링이 활성화된 경우, 픽셀의 coverage에 따라 알파 블렌딩이 자동으로 적용됨.
 
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboardPsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard"])));
 	}
