@@ -7,6 +7,15 @@ AppD3D::~AppD3D()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
+
+	if (mImGuiInitialized)
+	{
+		ImGui_ImplDX12_Shutdown();
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+
+		mImGuiInitialized = false;
+	}
 }
 
 bool AppD3D::Initialize()
@@ -24,6 +33,7 @@ bool AppD3D::Initialize()
 	BuildShapeGeometry();
 	BuildLandGeometry();
 	BuildWavesGeometryBuffers();
+	BuildTreeBillboardGeometry();
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
@@ -39,6 +49,12 @@ bool AppD3D::Initialize()
 	FlushCommandQueue();
 
 	return true;
+}
+
+void AppD3D::Set4xMsaaState(bool value)
+{
+	__super::Set4xMsaaState(value);
+	BuildPSO();
 }
 
 void AppD3D::OnResize()
@@ -106,15 +122,17 @@ void AppD3D::Draw(const GameTimer& gt)
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
+
 	auto barrier1 = CD3DX12_RESOURCE_BARRIER::Transition(
 		CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_PRESENT,
-		D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m4xMsaaState? D3D12_RESOURCE_STATE_RESOLVE_DEST : D3D12_RESOURCE_STATE_RENDER_TARGET);
 	mCommandList->ResourceBarrier(1, &barrier1);
-	auto rtvHandle = CurrentBackBufferView();
+	
+	auto sceneRtv = m4xMsaaState ? MsaaRenderTargetView() : CurrentBackBufferView();
 	auto dsvHandle = DepthStencilView();
 	mCommandList->ClearRenderTargetView(
-		rtvHandle,
+		sceneRtv,
 		(float*)&mMainPassCB.gFogColor,
 		0, nullptr);
 	mCommandList->ClearDepthStencilView(
@@ -124,7 +142,7 @@ void AppD3D::Draw(const GameTimer& gt)
 		0,
 		0,
 		nullptr);
-	mCommandList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
+	mCommandList->OMSetRenderTargets(1, &sceneRtv, true, &dsvHandle);
 
 	ID3D12DescriptorHeap* descriptorHeap[] = { mSrvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeap), descriptorHeap);
@@ -165,6 +183,9 @@ void AppD3D::Draw(const GameTimer& gt)
 		case (int)RenderLayer::AlphaTest:
 			mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 			break;
+		case (int)RenderLayer::AlphaTestedTreeSprites:
+			mCommandList->SetPipelineState(mPSOs["treeBillboard"].Get());
+			break;
 		case (int)RenderLayer::Shadow:
 			mCommandList->SetPipelineState(mPSOs["shadow"].Get());
 			break;
@@ -187,6 +208,9 @@ void AppD3D::Draw(const GameTimer& gt)
 		mCommandList->SetPipelineState(mPSOs["debugComplexity"].Get());
 		DrawFullscreenTriangle(mCommandList.Get());
 	}
+
+	if (m4xMsaaState)
+		ResolveMsaaToBackBuffer();
 
 	RenderImGui();
 
@@ -351,6 +375,11 @@ void AppD3D::LoadTextures()
 	helpTex->Filename = L"Resource/Textures/help.dds";
 	ThrowIfFailed(mTexLoader->LoadDDS(*helpTex, mCurrentFence));
 
+	auto treeArrayTex = std::make_unique<Texture>();
+	treeArrayTex->Name = "treeArrayTex";
+	treeArrayTex->Filename = L"Resource/Textures/treearray2.dds";
+	ThrowIfFailed(mTexLoader->LoadDDS(*treeArrayTex, mCurrentFence));
+
 	mTextures[defaultTex->Name] = std::move(defaultTex);
 	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
 	mTextures[bricksTex0->Name] = std::move(bricksTex0);
@@ -365,6 +394,7 @@ void AppD3D::LoadTextures()
 	mTextures[checkboardTex->Name] = std::move(checkboardTex);
 	mTextures[iceTex->Name] = std::move(iceTex);
 	mTextures[helpTex->Name] = std::move(helpTex);
+	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
 }
 
 void AppD3D::BuildDescriptorHeaps()
@@ -520,6 +550,14 @@ void AppD3D::BuildMaterials()
 	shadowMat_skull->FresnelR0 = XMFLOAT3(0.001f, 0.001f, 0.001f);
 	shadowMat_skull->Roughness = 0.0f;
 
+	auto treeBillboardMat = std::make_unique<Material>();
+	treeBillboardMat->Name = "treeBillboardMat";
+	treeBillboardMat->MatCBIndex = index++;
+	treeBillboardMat->DiffuseSrvHeapIndex = mTextures["treeArrayTex"]->DiffuseSrvHeapIndex;
+	treeBillboardMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	treeBillboardMat->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	treeBillboardMat->Roughness = 0.125f;
+
 	mMaterials[skullMat->Name] = std::move(skullMat);
 	mMaterials[tileMat->Name] = std::move(tileMat);
 	mMaterials[bricksMat0->Name] = std::move(bricksMat0);
@@ -534,6 +572,7 @@ void AppD3D::BuildMaterials()
 	mMaterials[checkerTileMat->Name] = std::move(checkerTileMat);
 	mMaterials[iceMirrorMat->Name] = std::move(iceMirrorMat);
 	mMaterials[shadowMat_skull->Name] = std::move(shadowMat_skull);
+	mMaterials[treeBillboardMat->Name] = std::move(treeBillboardMat);
 }
 
 void AppD3D::BuildRootsignature()
@@ -635,11 +674,21 @@ void AppD3D::BuildShadersAndInputLayout()
 	mShaders["debugVS"] = d3dUtil::CompileShader(L"Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenVS", "vs_5_1");
 	mShaders["debugPS"] = d3dUtil::CompileShader(L"Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenPS", "ps_5_1");
 
+	mShaders["treeBillboardVS"] = d3dUtil::CompileShader(L"Shaders\\TreeBillboard.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["treeBillboardGS"] = d3dUtil::CompileShader(L"Shaders\\TreeBillboard.hlsl", nullptr, "GS", "gs_5_1");
+	mShaders["treeBillboardPS"] = d3dUtil::CompileShader(L"Shaders\\TreeBillboard.hlsl", alphaTestDefines, "PS", "ps_5_1");
+
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
+
+	mTreeBillboardInputLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{ "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
 }
 
@@ -886,6 +935,72 @@ void AppD3D::BuildWavesGeometryBuffers()
 	geo->DrawArgs["grid"] = sm;
 
 	mGeometries["waterGeo"] = std::move(geo);
+}
+
+void AppD3D::BuildTreeBillboardGeometry()
+{
+	struct TreeVertex
+	{
+		XMFLOAT3 Pos;
+		XMFLOAT2 Size;
+	};
+
+	static const int treeCount = 16;
+	std::array<TreeVertex, treeCount> vertices;
+	for (UINT i = 0; i < treeCount; i++)
+	{
+		float x = 0, z = 0;
+		while (true)
+		{
+			if(x > -15.0f && x < 15.0f)
+				x = MathHelper::RandF(-45.0f, 45.0f);
+			else if(z > -15.0f && z < 15.0f)
+				z = MathHelper::RandF(-45.0f, 45.0f);
+			else
+				break;
+		}
+		float y = GetHillsHeight(x, z); // 땅 위에 나무가 있도록.
+
+		y += 8.0f;
+
+		vertices[i].Pos = XMFLOAT3(x, y, z);
+		vertices[i].Size = XMFLOAT2(11.0f, 15.0f);
+	}
+
+	std::array<std::uint16_t, 16> indices =
+	{
+		0, 1,2, 3, 4, 5, 6, 7,
+		8, 9,10, 11, 12, 13, 14, 15
+	};
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeVertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "treeBillboard";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->IndexBufferCPU));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+	geo->VertexByteStride = sizeof(TreeVertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize = ibByteSize;
+
+	SubmeshGeometry sm;
+	sm.IndexCount = (UINT)indices.size();
+	sm.StartIndexLocation = 0;
+	sm.BaseVertexLocation = 0;
+
+	geo->DrawArgs["tree"] = sm;
+	mGeometries[geo->Name] = std::move(geo);
 }
 
 void AppD3D::BuildRenderItems()
@@ -1158,6 +1273,21 @@ void AppD3D::BuildRenderItems()
 	mSkullShadow = skullShadowRI.get();
 	mRenderItemLayer[(int)RenderLayer::Shadow].push_back(skullShadowRI.get());
 	mAllRenderItems.push_back(std::move(skullShadowRI));
+
+	//트리 빌보드
+	auto treeBillboardRI = std::make_unique<RenderItem>();
+	treeBillboardRI->World = MathHelper::Identity4x4();
+	treeBillboardRI->ObjCBIndex = objCBIndex++;
+	treeBillboardRI->Mat = mMaterials["treeBillboardMat"].get();
+	treeBillboardRI->Geo = mGeometries["treeBillboard"].get();
+	treeBillboardRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+	treeBillboardRI->IndexCount = treeBillboardRI->Geo->DrawArgs["tree"].IndexCount;
+	treeBillboardRI->StartIndexLocation = treeBillboardRI->Geo->DrawArgs["tree"].StartIndexLocation;
+	treeBillboardRI->BaseVertexLocation = treeBillboardRI->Geo->DrawArgs["tree"].BaseVertexLocation;
+
+	mRenderItemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeBillboardRI.get());
+	mAllRenderItems.push_back(std::move(treeBillboardRI));
+
 }
 
 void AppD3D::BuildFrameResources()
@@ -1198,7 +1328,7 @@ void AppD3D::BuildPSO()
 	opaquePsoDesc.NumRenderTargets = 1;
 	opaquePsoDesc.RTVFormats[0] = mBackBufferFormat;
 	opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality) : 0;
+	opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 	opaquePsoDesc.DSVFormat = mdepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(mPSOs["opaque"].GetAddressOf())));
 
@@ -1394,6 +1524,31 @@ void AppD3D::BuildPSO()
 
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthComplexityPsoDesc, IID_PPV_ARGS(mPSOs["debugComplexity"].GetAddressOf())));
 	}
+
+	//트리 빌보드 용
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC treeBillboardPsoDesc = opaquePsoDesc;
+		treeBillboardPsoDesc.VS = 
+		{
+			reinterpret_cast<BYTE*>(mShaders["treeBillboardVS"]->GetBufferPointer()),
+			mShaders["treeBillboardVS"]->GetBufferSize()
+		};
+		treeBillboardPsoDesc.GS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["treeBillboardGS"]->GetBufferPointer()),
+			mShaders["treeBillboardGS"]->GetBufferSize()
+		};
+		treeBillboardPsoDesc.PS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["treeBillboardPS"]->GetBufferPointer()),
+			mShaders["treeBillboardPS"]->GetBufferSize()
+		};
+		treeBillboardPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		treeBillboardPsoDesc.InputLayout = { mTreeBillboardInputLayout.data(), (UINT)mTreeBillboardInputLayout.size() };
+		treeBillboardPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboardPsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard"])));
+	}
 }
 
 void AppD3D::SetDebugColorCB()
@@ -1453,7 +1608,7 @@ bool AppD3D::InitImGui()
 	ImGui_ImplDX12_InvalidateDeviceObjects();
 	ImGui_ImplDX12_CreateDeviceObjects();
 
-	return true;
+	return mImGuiInitialized = true;
 }
 
 void AppD3D::RenderImGui()
@@ -1467,7 +1622,7 @@ void AppD3D::RenderImGui()
 	if (mIsShowHelper)
 	{
 		ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiCond_Appearing);
-		ImGui::SetNextWindowSize(ImVec2(240, 210), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(240, 230), ImGuiCond_Appearing);
 
 		ImGui::Begin(u8"조작 안내", &mIsShowHelper, ImGuiWindowFlags_NoResize);
 
@@ -1481,6 +1636,8 @@ void AppD3D::RenderImGui()
 		ImGui::Separator();
 		ImGui::TextUnformatted(u8"숫자 1		: 와이어 프레임 모드");
 		ImGui::TextUnformatted(u8"숫자 2		: 깊이 복잡도 렌더 모드");
+
+		ImGui::TextUnformatted(u8"F2		: MSAA 4x 모드 토글");
 
 		ImGui::End();
 	}
@@ -1518,6 +1675,37 @@ void AppD3D::RenderImGui()
 	ImGui_ImplDX12_RenderDrawData(
 		ImGui::GetDrawData(),
 		mCommandList.Get());
+}
+
+void AppD3D::ResolveMsaaToBackBuffer()
+{
+	auto msaaBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		mMsaaRenderTarget.Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+	mCommandList->ResourceBarrier(1, &msaaBarrier);
+
+	mCommandList->ResolveSubresource(
+		CurrentBackBuffer(),
+		0,
+		mMsaaRenderTarget.Get(),
+		0,
+		mBackBufferFormat);
+
+	msaaBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		mMsaaRenderTarget.Get(),
+		D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+	mCommandList->ResourceBarrier(1, &msaaBarrier);
+
+	msaaBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		CurrentBackBuffer(),
+		D3D12_RESOURCE_STATE_RESOLVE_DEST,
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+	mCommandList->ResourceBarrier(1, &msaaBarrier);
+
+	auto uiRtv = CurrentBackBufferView();
+	mCommandList->OMSetRenderTargets(1, &uiRtv, true, nullptr);
 }
 
 void AppD3D::DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList)

@@ -28,7 +28,7 @@ public:
 	virtual bool Initialize();
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-	void Set4xMsaaState(bool value);
+	virtual void Set4xMsaaState(bool value);
 	float AspectRatio() const;
 
 protected:
@@ -59,6 +59,7 @@ protected:
 	ID3D12Resource* CurrentBackBuffer() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE MsaaRenderTargetView() const;
 
 protected:
 	inline static InitAppD3D* mApp = nullptr;
@@ -88,6 +89,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
 
 	D3D12_VIEWPORT mScreenViewport = {};
 	D3D12_RECT mScissorRect = {};

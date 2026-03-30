@@ -294,6 +294,9 @@
     <CopyFileToFolders Include="Resource\Textures\WoodCrate02.dds">
       <Filter>Resource\Textures</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\TreeBillboard.hlsl">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\SampleSrc\Camera.cpp">

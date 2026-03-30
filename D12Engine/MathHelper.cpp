@@ -1,6 +1,22 @@
 #include "MathHelper.h"
+#include <cstdlib>
+#include <ctime>
 
 using namespace DirectX;
+
+namespace
+{
+    struct RandSeeder
+    {
+        RandSeeder()
+        {
+            std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        }
+    };
+
+    //프로그램 시작(모듈 초기화) 시 생성되어 시드를 설정.
+    static RandSeeder g_RandSeeder;
+}
 
 float MathHelper::RandF()
 {

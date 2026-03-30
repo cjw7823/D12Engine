@@ -15,6 +15,7 @@ enum class RenderLayer : int
 	Reflected,
 	Transparent,
 	AlphaTest,
+	AlphaTestedTreeSprites,
 	Shadow,
 	Count
 };

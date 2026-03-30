@@ -20,10 +20,6 @@ InitAppD3D::~InitAppD3D()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
-
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
 }
 
 int InitAppD3D::Run()
@@ -205,7 +201,6 @@ void InitAppD3D::Set4xMsaaState(bool value)
 		OutputDebugString(debug.c_str());
 
 		FlushCommandQueue();
-		CreateSwapChain(); //테스트 필요.
 		OnResize();
 	}
 }
@@ -237,6 +232,7 @@ void InitAppD3D::OnResize()
 	for (auto& buffer : mSwapChainBuffer)
 		buffer.Reset();
 	mDepthStencilBuffer.Reset();
+	mMsaaRenderTarget.Reset();
 
 	ThrowIfFailed(mSwapChain->ResizeBuffers(
 		SwapChainBufferCount,
@@ -258,7 +254,7 @@ void InitAppD3D::OnResize()
 	/*
 	* ID3D12Resource (Depth Texture) (DXGI_FORMAT_R24G8_TYPELESS)
 		├─ DSV(DXGI_FORMAT_D24_UNORM_S8_UINT)		→ OM 단계에서 깊이 테스트
-		└─ SRV(DXGI_FORMAT_R24_UNORM_X8_TYPELESS)	→ Pixel / Compute Shader에서 depth 읽기
+		└─ SRV(DXGI_FORMAT_R24_UNORM_X8_TYPELESS)	→ Pixel / Compute Shader에서 depth 읽기 
 
 	  CreateCommittedResource에서의 Format은
 	  "이 텍스처 메모리가 어떤 규칙으로 저장된다"를 결정한다.
@@ -271,7 +267,7 @@ void InitAppD3D::OnResize()
 	*/
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	depthStencilDesc.Alignment = 0;
+ 	depthStencilDesc.Alignment = 0;
 	depthStencilDesc.Width = mClientWidth;
 	depthStencilDesc.Height = mClientHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
@@ -298,11 +294,19 @@ void InitAppD3D::OnResize()
 		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
 	 
 	//추후 해당 리소스를 DSV로써 사용할 때 사용.(SRV로써 사용할 수도 있음)
-	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	dsvDesc.Format = mdepthStencilFormat;
-	dsvDesc.Texture2D.MipSlice = 0;
+
+	if (m4xMsaaState)
+	{
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+	}
+	else
+	{
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = 0;
+	}
 
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), &dsvDesc, mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -311,6 +315,44 @@ void InitAppD3D::OnResize()
 		D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	mCommandList->ResourceBarrier(1, &depthBarrier);
+
+	if (m4xMsaaState)
+	{
+		D3D12_RESOURCE_DESC texDesc = {};
+		texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		texDesc.Width = mClientWidth;
+		texDesc.Height = mClientHeight;
+		texDesc.DepthOrArraySize = 1;
+		texDesc.MipLevels = 1;
+		texDesc.Format = mBackBufferFormat;
+		texDesc.SampleDesc.Count = 4;
+		texDesc.SampleDesc.Quality = m4xMsaaQuality - 1;
+		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = mBackBufferFormat;
+		clearValue.Color[0] = 0.7f;
+		clearValue.Color[1] = 0.7f;
+		clearValue.Color[2] = 0.7f;
+		clearValue.Color[3] = 1.0f;
+
+		CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+
+		ThrowIfFailed(md3dDevice->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&texDesc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			&clearValue,
+			IID_PPV_ARGS(mMsaaRenderTarget.GetAddressOf())));
+
+		md3dDevice->CreateRenderTargetView(
+			mMsaaRenderTarget.Get(),
+			nullptr,
+			MsaaRenderTargetView());
+	}
+
 	ThrowIfFailed(mCommandList->Close());
 
 	ID3D12CommandList* cmdLists[] = { mCommandList.Get() };
@@ -331,7 +373,7 @@ void InitAppD3D::OnResize()
 void InitAppD3D::CreateRtvDsvDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 1; //mMsaaRenderTarget용도 포함.
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
@@ -499,6 +541,15 @@ void InitAppD3D::CreateSwapChain()
 		스왑체인은 GPU 리소스를 포함하지만,
 		윈도우·모니터·VSync 등 OS 그래픽 시스템과 직접 결합된 객체이기 때문에
 		API 공통 계층인 DXGI Factory에서 생성
+
+		[중요 - MSAA 관련]
+		D3D12에서는 flip model (FLIP_DISCARD / FLIP_SEQUENTIAL)만 지원된다.
+		이 flip model 스왑체인은 multisampling(MSAA)을 지원하지 않는다.
+
+		따라서
+		- swap chain back buffer는 항상 SampleDesc.Count = 1 이어야 한다.
+		- MSAA를 사용하려면 별도의 multisampled render target을 만들어
+		  렌더링한 뒤 ResolveSubresource로 back buffer에 복사해야 한다.
 	*/
 	mSwapChain.Reset();
 
@@ -510,16 +561,24 @@ void InitAppD3D::CreateSwapChain()
 	sd.BufferDesc.Format = mBackBufferFormat;
 	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED; //DXGI에 맞김. 해당 값 고정.
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	//이슈. 스왑체인의 샘플링 변경안에 대해서.
-	sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
-	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+
+	// flip model에서는 MSAA 불가능 → 반드시 1로 고정
+	sd.SampleDesc.Count = 1;
+	sd.SampleDesc.Quality = 0;
+
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
 	sd.OutputWindow = mhMainWnd;
 	sd.Windowed = true;
-	//DISCARD 는 Present 후 버퍼 내용이 보존되지 않아도 된다는 의미.
-	//어짜피 매 프레인 전체를 다시 그리므로 상관없음.
+	
+	/*
+		FLIP_DISCARD:
+		- 최신 flip model 방식 (D3D12 권장)
+		- Present 이후 백버퍼 내용 보존 안함
+		- 성능상 가장 유리
+	*/
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
 	//전체 화면 전환 시 디스플레이 모드 스위치 허용 여부.
 	//DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH -> Exclusive fullscreen
 	sd.Flags = 0;
@@ -644,4 +703,9 @@ D3D12_CPU_DESCRIPTOR_HANDLE InitAppD3D::CurrentBackBufferView() const
 D3D12_CPU_DESCRIPTOR_HANDLE InitAppD3D::DepthStencilView() const
 {
 	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE InitAppD3D::MsaaRenderTargetView() const
+{
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), SwapChainBufferCount, mRtvDescriptorSize);
 }

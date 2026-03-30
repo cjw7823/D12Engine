@@ -47,6 +47,7 @@ public:
 	~AppD3D() override;
 
 	virtual bool Initialize() override;
+	virtual void Set4xMsaaState(bool value) override;
 
 private:
 	virtual void OnResize() override;
@@ -68,6 +69,7 @@ private:
 	void BuildShapeGeometry();
 	void BuildLandGeometry();
 	void BuildWavesGeometryBuffers();
+	void BuildTreeBillboardGeometry();
 	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildPSO();
@@ -75,6 +77,7 @@ private:
 
 	bool InitImGui();
 	void RenderImGui();
+	void ResolveMsaaToBackBuffer();
 
 	void DrawFullscreenTriangle(ID3D12GraphicsCommandList* cmdList);
 
@@ -127,6 +130,7 @@ private:
 	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
 	std::vector<RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeBillboardInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.
 	std::unique_ptr<Waves> mWaves;
@@ -170,4 +174,5 @@ private:
 	POINT mLastMousePos = {};
 
 	bool mIsShowHelper = false;
+	bool mImGuiInitialized = false;
 };
