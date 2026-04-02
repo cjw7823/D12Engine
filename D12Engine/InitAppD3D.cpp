@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "InitAppD3D.h"
 #include <windowsX.h>
 

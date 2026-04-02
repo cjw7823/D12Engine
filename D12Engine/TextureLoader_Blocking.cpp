@@ -1,4 +1,4 @@
-
+#include "pch.h"
 #include "TextureLoader_Blocking.h"
 
 using Microsoft::WRL::ComPtr;

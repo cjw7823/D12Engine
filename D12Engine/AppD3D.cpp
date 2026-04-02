@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "AppD3D.h"
 
 using namespace DirectX;
@@ -34,6 +35,7 @@ bool AppD3D::Initialize()
 	BuildLandGeometry();
 	BuildWavesGeometryBuffers();
 	BuildTreeBillboardGeometry();
+	BuildCylinderWithoutTop();
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
@@ -177,14 +179,20 @@ void AppD3D::Draw(const GameTimer& gt)
 			mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
 			mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
 			break;
+		case (int)RenderLayer::AlphaTestedTreeSprites:
+			mCommandList->SetPipelineState(mPSOs["treeBillboard"].Get());
+			break;
+		case (int)RenderLayer::LineStrip:
+			mCommandList->SetPipelineState(mPSOs["circleEx"].Get());
+			break;
+		case (int)RenderLayer::TriangleList:
+			mCommandList->SetPipelineState(mPSOs["geoSphereLOD"].Get());
+			break;
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 			break;
 		case (int)RenderLayer::AlphaTest:
 			mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
-			break;
-		case (int)RenderLayer::AlphaTestedTreeSprites:
-			mCommandList->SetPipelineState(mPSOs["treeBillboard"].Get());
 			break;
 		case (int)RenderLayer::Shadow:
 			mCommandList->SetPipelineState(mPSOs["shadow"].Get());
@@ -678,6 +686,12 @@ void AppD3D::BuildShadersAndInputLayout()
 	mShaders["treeBillboardGS"] = d3dUtil::CompileShader(L"Shaders\\TreeBillboard.hlsl", nullptr, "GS", "gs_5_1");
 	mShaders["treeBillboardPS"] = d3dUtil::CompileShader(L"Shaders\\TreeBillboard.hlsl", alphaTestDefines, "PS", "ps_5_1");
 
+	mShaders["circleExVS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["circleExGS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS", "gs_5_1");
+	mShaders["circleExPS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", defines, "PS", "ps_5_1");
+
+	mShaders["LOD_GS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS_LOD", "gs_5_1");
+
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -700,7 +714,7 @@ void AppD3D::BuildShapeGeometry()
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5, 1.5, 1.5, 3);
 	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20, 30, 60, 40);
 	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5, 20, 20);
-	GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5, 2);
+	GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5, 1);
 	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.f, 20, 20);
 
 	UINT boxVertexOffset = 0;
@@ -969,8 +983,8 @@ void AppD3D::BuildTreeBillboardGeometry()
 
 	std::array<std::uint16_t, 16> indices =
 	{
-		0, 1,2, 3, 4, 5, 6, 7,
-		8, 9,10, 11, 12, 13, 14, 15
+		0, 1, 2, 3, 4, 5, 6, 7,
+		8, 9, 10, 11, 12, 13, 14, 15
 	};
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeVertex);
@@ -1000,6 +1014,48 @@ void AppD3D::BuildTreeBillboardGeometry()
 	sm.BaseVertexLocation = 0;
 
 	geo->DrawArgs["tree"] = sm;
+	mGeometries[geo->Name] = std::move(geo);
+}
+
+void AppD3D::BuildCylinderWithoutTop()
+{
+	GeometryGenerator geoGen;
+	GeometryGenerator::MeshData cylinder = geoGen.CreateCircleLine(2, 10);
+
+	SubmeshGeometry cylinderSubmesh;
+	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
+	cylinderSubmesh.StartIndexLocation = 0;
+	cylinderSubmesh.BaseVertexLocation = 0;
+
+	std::vector<Vertex> vertices(cylinder.Vertices.size());
+
+	for (size_t i = 0; i < cylinder.Vertices.size(); i++)
+	{
+		vertices[i].Pos = cylinder.Vertices[i].Position;
+		vertices[i].Normal = cylinder.Vertices[i].Normal;
+		vertices[i].TexC = cylinder.Vertices[i].TexC;
+	}
+
+	const UINT vbByteSize = (UINT)cylinder.Vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)cylinder.Indices32.size() * sizeof(std::uint32_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "cylinderWithoutTop";
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, geo->VertexBufferCPU.GetAddressOf()));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, geo->IndexBufferCPU.GetAddressOf()));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), cylinder.Indices32.data(), ibByteSize);
+
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), cylinder.Indices32.data(), ibByteSize, geo->IndexBufferUploader);
+
+	geo->VertexByteStride = sizeof(Vertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat = DXGI_FORMAT_R32_UINT;
+	geo->IndexBufferByteSize = ibByteSize;
+
+	geo->DrawArgs["cylinderWithoutTop"] = cylinderSubmesh;
 	mGeometries[geo->Name] = std::move(geo);
 }
 
@@ -1043,7 +1099,7 @@ void AppD3D::BuildRenderItems()
 			XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
 
 			XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
-			XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
+			XMMATRIX rightSphereWorld = XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
 
 			XMStoreFloat4x4(&leftCylRitem->World, leftCylWorld);
 			leftCylRitem->ObjCBIndex = objCBIndex++;
@@ -1288,6 +1344,18 @@ void AppD3D::BuildRenderItems()
 	mRenderItemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeBillboardRI.get());
 	mAllRenderItems.push_back(std::move(treeBillboardRI));
 
+	//마개 없는 원통
+	auto cylRI = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&cylRI->World, XMMatrixScaling(1.f, 1.f, 1.f)* XMMatrixTranslation(0.f, 0.f, 13.f));
+	cylRI->ObjCBIndex = objCBIndex++;
+	cylRI->Mat = mMaterials["bricks0"].get();
+	cylRI->Geo = mGeometries["cylinderWithoutTop"].get();
+	cylRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+	cylRI->IndexCount = cylRI->Geo->DrawArgs["cylinderWithoutTop"].IndexCount;
+	cylRI->StartIndexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].StartIndexLocation;
+	cylRI->BaseVertexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].BaseVertexLocation;
+	mRenderItemLayer[(int)RenderLayer::LineStrip].push_back(cylRI.get());
+	mAllRenderItems.push_back(std::move(cylRI));
 }
 
 void AppD3D::BuildFrameResources()
@@ -1550,6 +1618,38 @@ void AppD3D::BuildPSO()
 
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboardPsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard"])));
 	}
+
+	//circle extent shader용
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC circleExPsoDesc = opaquePsoDesc;
+	circleExPsoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["circleExVS"]->GetBufferPointer()),
+		mShaders["circleExVS"]->GetBufferSize()
+	};
+	circleExPsoDesc.GS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["circleExGS"]->GetBufferPointer()),
+		mShaders["circleExGS"]->GetBufferSize()
+	};
+	circleExPsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["circleExPS"]->GetBufferPointer()),
+		mShaders["circleExPS"]->GetBufferSize()
+	};
+	circleExPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+	circleExPsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
+	circleExPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&circleExPsoDesc, IID_PPV_ARGS(&mPSOs["circleEx"])));
+
+	//LOD GeoSphere 용
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC geoSpherePsoDesc = circleExPsoDesc;
+	geoSpherePsoDesc.GS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["LOD_GS"]->GetBufferPointer()),
+		mShaders["LOD_GS"]->GetBufferSize()
+	};
+	geoSpherePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSpherePsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD"])));
 }
 
 void AppD3D::SetDebugColorCB()

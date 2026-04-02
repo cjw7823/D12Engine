@@ -72,6 +72,8 @@ public:
 	//화면에 맞춰 정렬된 사각형 영역을 생성합니다. 이는 후처리 및 화면 효과에 유용
 	MeshData CreateQuad(float x, float y, float w, float h, float depth);
 
+	MeshData CreateCircleLine(float radius, uint32 sliceCount);
+
 private:
 	void Subdivide(MeshData& meshData);
 	Vertex MidPoint(const Vertex& v0, const Vertex& v1);

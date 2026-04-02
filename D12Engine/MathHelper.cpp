@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "MathHelper.h"
 #include <cstdlib>
 #include <ctime>

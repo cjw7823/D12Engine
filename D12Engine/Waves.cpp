@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Waves.h"
 #include <ppl.h> //Parallel Patterns Library
 

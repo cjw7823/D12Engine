@@ -39,6 +39,9 @@
     <Filter Include="Resource\Textures">
       <UniqueIdentifier>{fa81fcc5-a0b5-4fda-9dfd-1794b95a55a1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="PCH">
+      <UniqueIdentifier>{a372ed5c-9370-49d5-90cf-2e1d72faf789}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dUtil.h">
@@ -101,6 +104,9 @@
     <ClInclude Include="..\ImGui\Core\imconfig.h">
       <Filter>ImGui\Core</Filter>
     </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>PCH</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -153,6 +159,9 @@
     </ClCompile>
     <ClCompile Include="..\ImGui\backends\imgui_impl_win32.cpp">
       <Filter>ImGui\Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>PCH</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -295,6 +304,9 @@
       <Filter>Resource\Textures</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\TreeBillboard.hlsl">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\Task_GS.hlsl">
       <Filter>Shader</Filter>
     </CopyFileToFolders>
   </ItemGroup>

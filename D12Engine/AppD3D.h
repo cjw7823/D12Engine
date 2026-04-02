@@ -70,6 +70,7 @@ private:
 	void BuildLandGeometry();
 	void BuildWavesGeometryBuffers();
 	void BuildTreeBillboardGeometry();
+	void BuildCylinderWithoutTop();
 	void BuildRenderItems();
 	void BuildFrameResources();
 	void BuildPSO();

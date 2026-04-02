@@ -95,7 +95,7 @@ VertexOut VS(VertexIn vin)
     
     return vout;
 }
-
+ 
 float4 PS(VertexOut pin) : SV_Target
 {
     float4 diffuseAlbedo = gDiffuseMap.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo;

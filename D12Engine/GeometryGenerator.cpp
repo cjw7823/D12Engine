@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "GeometryGenerator.h"
 
 using namespace DirectX;
@@ -166,6 +167,7 @@ MeshData GeometryGenerator::CreateGeosphere(float radius, uint32 numSubdivisions
 	const float X = 0.525731f;
 	const float Z = 0.850651f;
 
+	//D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
 	XMFLOAT3 pos[12] =
 	{
 	XMFLOAT3(-X, 0.0f, Z),  XMFLOAT3(X, 0.0f, Z),
@@ -398,6 +400,42 @@ MeshData GeometryGenerator::CreateQuad(float x, float y, float w, float h, float
 	meshData.Indices32[3] = 0;
 	meshData.Indices32[4] = 2;
 	meshData.Indices32[5] = 3;
+
+	return meshData;
+}
+
+MeshData GeometryGenerator::CreateCircleLine(float radius, uint32 sliceCount)
+{
+	MeshData meshData;
+
+	//sliceCount가 너무 작으면 원이 아니라 선/삼각형처럼 보이므로 최소값 보정
+	sliceCount = std::max<uint32>(3u, sliceCount);
+
+	float dTheta = 2.0f * XM_PI / sliceCount;
+
+	//line strip으로 닫힌 원을 만들기 위해 시작점과 끝점을 같은 위치로 하나 더 넣는다.
+	meshData.Vertices.reserve(sliceCount + 1);
+	meshData.Indices32.reserve(sliceCount + 1);
+
+	for (uint32 i = 0; i <= sliceCount; ++i)
+	{
+		float theta = i * dTheta;
+		float c = cosf(theta);
+		float s = sinf(theta);
+
+		Vertex v;
+
+		v.Position = XMFLOAT3(radius * c, 0.0f, radius * s);
+		v.Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
+		v.TangentU = XMFLOAT3(-s, 0.0f, c);
+
+		//원 중심 기준으로 간단한 0~1 매핑
+		v.TexC.x = 0.5f + 0.5f * c;
+		v.TexC.y = 0.5f - 0.5f * s;
+
+		meshData.Vertices.push_back(v);
+		meshData.Indices32.push_back(i);
+	}
 
 	return meshData;
 }

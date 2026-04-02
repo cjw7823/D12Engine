@@ -1,6 +1,6 @@
 #pragma once
 
-#include "d3dUtil.h"
+#include "pch.h"
 #include "MathHelper.h"
 
 extern const int gNumFrameResources;
@@ -13,9 +13,11 @@ enum class RenderLayer : int
 	MirrorStencil,
 	MirrorWall,
 	Reflected,
+	AlphaTestedTreeSprites,	//트리 빌보드
+	LineStrip,				//선분으로 그리는 원통
+	TriangleList,			//삼각형 리스트로 LOD 구현한 GeoSpheres
 	Transparent,
-	AlphaTest,
-	AlphaTestedTreeSprites,
+	AlphaTest,				//철망 박스
 	Shadow,
 	Count
 };

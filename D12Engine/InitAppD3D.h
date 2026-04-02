@@ -1,6 +1,6 @@
 #pragma once
 
-#include "d3dUtil.h"
+#include "pch.h"
 #include "GameTimer.h"
 
 struct WinHandle
@@ -73,7 +73,7 @@ protected:
 	bool mResizing = false;
 	GameTimer mTimer;
 
-	bool m4xMsaaState = false;
+	bool m4xMsaaState = true;
 	UINT m4xMsaaQuality = 0;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
