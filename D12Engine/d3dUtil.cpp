@@ -49,7 +49,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(const std::wstring& file
 		&errors);
 
 	if (errors != nullptr)
-		OutputDebugString((wchar_t*)errors->GetBufferPointer());
+		OutputDebugStringA((char*)errors->GetBufferPointer());
 	ThrowIfFailed(hr);
 
 	return byteCode;

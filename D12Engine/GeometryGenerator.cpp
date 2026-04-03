@@ -205,11 +205,12 @@ MeshData GeometryGenerator::CreateGeosphere(float radius, uint32 numSubdivisions
 
 		float theta = atan2f(meshData.Vertices[i].Position.z, meshData.Vertices[i].Position.x);
 
+		//[0, 2pi]
 		if (theta < 0.0f) theta += XM_2PI;
 
 		float phi = acosf(meshData.Vertices[i].Position.y / radius);
 
-		meshData.Vertices[i].TexC.x = theta / XM_PI;
+		meshData.Vertices[i].TexC.x = theta / XM_2PI;
 		meshData.Vertices[i].TexC.y = phi / XM_PI;
 
 		meshData.Vertices[i].TangentU.x = -radius * sinf(phi) * sinf(theta);

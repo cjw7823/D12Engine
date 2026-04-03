@@ -203,9 +203,41 @@ void AppD3D::Draw(const GameTimer& gt)
 		}
 
 		if (mIsWireframe)
-			mCommandList->SetPipelineState(mPSOs["opaque_wireframe"].Get());
+		{
+			switch (layer)
+			{
+			case (int)RenderLayer::AlphaTestedTreeSprites:
+				mCommandList->SetPipelineState(mPSOs["treeBillboard_wireframe"].Get());
+				break;
+			case (int)RenderLayer::LineStrip:
+				mCommandList->SetPipelineState(mPSOs["circleEx_wireframe"].Get());
+				break;
+			case (int)RenderLayer::TriangleList:
+				mCommandList->SetPipelineState(mPSOs["geoSphereLOD_wireframe"].Get());
+				break;
+			default:
+				mCommandList->SetPipelineState(mPSOs["opaque_wireframe"].Get());
+				break;
+			}
+		}
 		else if (mIsDepthComplexityDebug)
-			mCommandList->SetPipelineState(mPSOs["depthCount"].Get());
+		{
+			switch (layer)
+			{
+			case (int)RenderLayer::AlphaTestedTreeSprites:
+				mCommandList->SetPipelineState(mPSOs["treeBillboard_depthCount"].Get());
+				break;
+			case (int)RenderLayer::LineStrip:
+				mCommandList->SetPipelineState(mPSOs["circleEx_depthCount"].Get());
+				break;
+			case (int)RenderLayer::TriangleList:
+				mCommandList->SetPipelineState(mPSOs["geoSphereLOD_depthCount"].Get());
+				break;
+			default:
+				mCommandList->SetPipelineState(mPSOs["depthCount"].Get());
+				break;
+			}
+		}
 
 		DrawRenderItems(mCommandList.Get(), mRenderItemLayer[layer]);
 	}
@@ -278,8 +310,10 @@ void AppD3D::OnMouseMove(WPARAM btnState, int x, int y)
 
 void AppD3D::OnMouseWheel(short zDelta, int x, int y)
 {
-	mRadius -= static_cast<long long>(zDelta) * 0.05f;
+	mRadius -= static_cast<long long>(zDelta) * 0.005f;
 	mRadius = MathHelper::Clamp(mRadius, 0.1f, 150.0f);
+
+	OutputDebugStringA(("Mouse wheel: " + std::to_string(mRadius) + "\n").c_str());
 }
 
 void AppD3D::OnKeyUp(WPARAM key)
@@ -1139,7 +1173,7 @@ void AppD3D::BuildRenderItems()
 			rightGeoSphereRitem->IndexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
 			rightGeoSphereRitem->StartIndexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
 			rightGeoSphereRitem->BaseVertexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
-			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightGeoSphereRitem.get());
+			mRenderItemLayer[(int)RenderLayer::TriangleList].push_back(rightGeoSphereRitem.get());
 
 			mAllRenderItems.push_back(std::move(leftCylRitem));
 			mAllRenderItems.push_back(std::move(rightCylRitem));
@@ -1340,7 +1374,6 @@ void AppD3D::BuildRenderItems()
 	treeBillboardRI->IndexCount = treeBillboardRI->Geo->DrawArgs["tree"].IndexCount;
 	treeBillboardRI->StartIndexLocation = treeBillboardRI->Geo->DrawArgs["tree"].StartIndexLocation;
 	treeBillboardRI->BaseVertexLocation = treeBillboardRI->Geo->DrawArgs["tree"].BaseVertexLocation;
-
 	mRenderItemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeBillboardRI.get());
 	mAllRenderItems.push_back(std::move(treeBillboardRI));
 
@@ -1511,8 +1544,7 @@ void AppD3D::BuildPSO()
 		mirrorWallPsoDesc.DepthStencilState = mirrorWallDSD;
 		mirrorWallPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&mirrorWallPsoDesc, IID_PPV_ARGS(mPSOs["mirrorWall"].GetAddressOf())));
-	}
-	
+	}	
 
 	//투명도를 가진 그림자를 그릴 것이므로 투명도 설명을 기반으로 함.
 	D3D12_DEPTH_STENCIL_DESC shadowDSD;
@@ -1536,8 +1568,8 @@ void AppD3D::BuildPSO()
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
 
 	//깊이 복잡도 렌더링 용
+	D3D12_DEPTH_STENCIL_DESC depthCountDSD;
 	{
-		D3D12_DEPTH_STENCIL_DESC depthCountDSD;
 		depthCountDSD.DepthEnable = false;
 		depthCountDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		depthCountDSD.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
@@ -1556,6 +1588,8 @@ void AppD3D::BuildPSO()
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC depthCountPsoDesc = opaquePsoDesc;
 		depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
 		depthCountPsoDesc.DepthStencilState = depthCountDSD;
+
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthCountPsoDesc, IID_PPV_ARGS(mPSOs["depthCount"].GetAddressOf())));
 
 		D3D12_DEPTH_STENCIL_DESC depthComplexityDSD;
 		depthComplexityDSD.DepthEnable = false;
@@ -1588,7 +1622,6 @@ void AppD3D::BuildPSO()
 			reinterpret_cast<BYTE*>(mShaders["debugPS"]->GetBufferPointer()),
 			mShaders["debugPS"]->GetBufferSize()
 		};
-		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthCountPsoDesc, IID_PPV_ARGS(mPSOs["depthCount"].GetAddressOf())));
 
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&depthComplexityPsoDesc, IID_PPV_ARGS(mPSOs["debugComplexity"].GetAddressOf())));
 	}
@@ -1617,39 +1650,68 @@ void AppD3D::BuildPSO()
 		treeBillboardPsoDesc.BlendState.AlphaToCoverageEnable = true;	//멀티샘플링이 활성화된 경우, 픽셀의 coverage에 따라 알파 블렌딩이 자동으로 적용됨.
 
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboardPsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard"])));
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC treeBillboard_wireframePsoDesc = treeBillboardPsoDesc;
+		treeBillboard_wireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboard_wireframePsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard_wireframe"])));
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC treeBillboard_depthCountPsoDesc = treeBillboardPsoDesc;
+		treeBillboard_depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+		treeBillboard_depthCountPsoDesc.DepthStencilState = depthCountDSD;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeBillboard_depthCountPsoDesc, IID_PPV_ARGS(&mPSOs["treeBillboard_depthCount"])));
 	}
 
-	//circle extent shader용
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC circleExPsoDesc = opaquePsoDesc;
-	circleExPsoDesc.VS =
 	{
-		reinterpret_cast<BYTE*>(mShaders["circleExVS"]->GetBufferPointer()),
-		mShaders["circleExVS"]->GetBufferSize()
-	};
-	circleExPsoDesc.GS =
-	{
-		reinterpret_cast<BYTE*>(mShaders["circleExGS"]->GetBufferPointer()),
-		mShaders["circleExGS"]->GetBufferSize()
-	};
-	circleExPsoDesc.PS =
-	{
-		reinterpret_cast<BYTE*>(mShaders["circleExPS"]->GetBufferPointer()),
-		mShaders["circleExPS"]->GetBufferSize()
-	};
-	circleExPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-	circleExPsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
-	circleExPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&circleExPsoDesc, IID_PPV_ARGS(&mPSOs["circleEx"])));
+		//circle extent shader용
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC circleExPsoDesc = opaquePsoDesc;
+		circleExPsoDesc.VS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["circleExVS"]->GetBufferPointer()),
+			mShaders["circleExVS"]->GetBufferSize()
+		};
+		circleExPsoDesc.GS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["circleExGS"]->GetBufferPointer()),
+			mShaders["circleExGS"]->GetBufferSize()
+		};
+		circleExPsoDesc.PS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["circleExPS"]->GetBufferPointer()),
+			mShaders["circleExPS"]->GetBufferSize()
+		};
+		circleExPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		circleExPsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
+		circleExPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&circleExPsoDesc, IID_PPV_ARGS(&mPSOs["circleEx"])));
 
-	//LOD GeoSphere 용
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC geoSpherePsoDesc = circleExPsoDesc;
-	geoSpherePsoDesc.GS =
-	{
-		reinterpret_cast<BYTE*>(mShaders["LOD_GS"]->GetBufferPointer()),
-		mShaders["LOD_GS"]->GetBufferSize()
-	};
-	geoSpherePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSpherePsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD"])));
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC circleEx_wireframePsoDesc = circleExPsoDesc;
+		circleEx_wireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&circleEx_wireframePsoDesc, IID_PPV_ARGS(&mPSOs["circleEx_wireframe"])));
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC circleEx_depthCountPsoDesc = circleExPsoDesc;
+		circleEx_depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+		circleEx_depthCountPsoDesc.DepthStencilState = depthCountDSD;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&circleEx_depthCountPsoDesc, IID_PPV_ARGS(&mPSOs["circleEx_depthCount"])));
+
+		//LOD GeoSphere 용
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC geoSpherePsoDesc = circleExPsoDesc;
+		geoSpherePsoDesc.GS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["LOD_GS"]->GetBufferPointer()),
+			mShaders["LOD_GS"]->GetBufferSize()
+		};
+		geoSpherePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSpherePsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD"])));
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC geoSphere_wireframePsoDesc = geoSpherePsoDesc;
+		geoSphere_wireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSphere_wireframePsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD_wireframe"])));
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC geoSphere_depthCountPsoDesc = geoSpherePsoDesc;
+		geoSphere_depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+		geoSphere_depthCountPsoDesc.DepthStencilState = depthCountDSD;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSphere_depthCountPsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD_depthCount"])));
+	}
 }
 
 void AppD3D::SetDebugColorCB()
