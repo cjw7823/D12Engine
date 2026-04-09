@@ -188,6 +188,9 @@ void AppD3D::Draw(const GameTimer& gt)
 		case (int)RenderLayer::TriangleList:
 			mCommandList->SetPipelineState(mPSOs["geoSphereLOD"].Get());
 			break;
+		case (int)RenderLayer::Explode:
+			mCommandList->SetPipelineState(mPSOs["explode"].Get());
+			break;
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 			break;
@@ -248,6 +251,9 @@ void AppD3D::Draw(const GameTimer& gt)
 		mCommandList->SetPipelineState(mPSOs["debugComplexity"].Get());
 		DrawFullscreenTriangle(mCommandList.Get());
 	}
+
+	if (mIsVertexNormalDebug)
+		DrawAllVertexNormals(mCommandList.Get());
 
 	if (m4xMsaaState)
 		ResolveMsaaToBackBuffer();
@@ -310,7 +316,7 @@ void AppD3D::OnMouseMove(WPARAM btnState, int x, int y)
 
 void AppD3D::OnMouseWheel(short zDelta, int x, int y)
 {
-	mRadius -= static_cast<long long>(zDelta) * 0.005f;
+	mRadius -= static_cast<long long>(zDelta) * 0.01f;
 	mRadius = MathHelper::Clamp(mRadius, 0.1f, 150.0f);
 
 	OutputDebugStringA(("Mouse wheel: " + std::to_string(mRadius) + "\n").c_str());
@@ -725,6 +731,10 @@ void AppD3D::BuildShadersAndInputLayout()
 	mShaders["circleExPS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", defines, "PS", "ps_5_1");
 
 	mShaders["LOD_GS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS_LOD", "gs_5_1");
+	mShaders["explodeGS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS_Explode", "gs_5_1");
+
+	mShaders["vertexDebugGS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS_Debugging", "gs_5_1");
+	mShaders["vertexDebugPS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "PS_VertexNormal", "ps_5_1");
 
 	mInputLayout =
 	{
@@ -748,8 +758,15 @@ void AppD3D::BuildShapeGeometry()
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5, 1.5, 1.5, 3);
 	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20, 30, 60, 40);
 	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5, 20, 20);
-	GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5, 1);
+	GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5, 2);
 	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.f, 20, 20);
+
+	UINT boxVertexCount = (UINT)box.Vertices.size();
+	UINT gridVertexCount = (UINT)grid.Vertices.size();
+	UINT sphereVertexCount = (UINT)sphere.Vertices.size();
+	UINT geoSphereVertexCount = (UINT)geoSphere.Vertices.size();
+	UINT cylinderVertexCount = (UINT)cylinder.Vertices.size();
+	UINT skullVertexCount = (UINT)skull.Vertices.size();
 
 	UINT boxVertexOffset = 0;
 	UINT gridVertexOffset = (UINT)box.Vertices.size();
@@ -769,31 +786,37 @@ void AppD3D::BuildShapeGeometry()
 	boxSubmesh.IndexCount = (UINT)box.Indices32.size();
 	boxSubmesh.StartIndexLocation = boxIndexOffset;
 	boxSubmesh.BaseVertexLocation = boxVertexOffset;
+	boxSubmesh.VertexCount = boxVertexCount;
 
 	SubmeshGeometry gridSubmesh;
 	gridSubmesh.IndexCount = (UINT)grid.Indices32.size();
 	gridSubmesh.StartIndexLocation = gridIndexOffset;
 	gridSubmesh.BaseVertexLocation = gridVertexOffset;
+	gridSubmesh.VertexCount = gridVertexCount;
 
 	SubmeshGeometry sphereSubmesh;
 	sphereSubmesh.IndexCount = (UINT)sphere.Indices32.size();
 	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
 	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
+	sphereSubmesh.VertexCount = sphereVertexCount;
 
 	SubmeshGeometry geoSphereSubmesh;
 	geoSphereSubmesh.IndexCount = (UINT)geoSphere.Indices32.size();
 	geoSphereSubmesh.StartIndexLocation = geoSphereIndexOffset;
 	geoSphereSubmesh.BaseVertexLocation = geoSphereVertexOffset;
+	geoSphereSubmesh.VertexCount = geoSphereVertexCount;
 
 	SubmeshGeometry cylinderSubmesh;
 	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
 	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
 	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
+	cylinderSubmesh.VertexCount = cylinderVertexCount;
 
 	SubmeshGeometry skullSubmesh;
 	skullSubmesh.IndexCount = (UINT)skull.Indices32.size();
 	skullSubmesh.StartIndexLocation = skullIndexOffset;
 	skullSubmesh.BaseVertexLocation = skullVertexOffset;
+	skullSubmesh.VertexCount = skullVertexCount;
 
 	//여러 메시들을 한 버퍼에 관리.
 	auto totalVertexCount =
@@ -926,6 +949,7 @@ void AppD3D::BuildLandGeometry()
 	sm.IndexCount = (UINT)indices.size();
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
+	sm.VertexCount = (UINT)vertices.size();
 
 	geo->DrawArgs["grid"] = sm;
 	mGeometries["landGeo"] = std::move(geo);
@@ -979,6 +1003,7 @@ void AppD3D::BuildWavesGeometryBuffers()
 	sm.IndexCount = (UINT)indices.size();
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
+	sm.VertexCount = mWaves->VertexCount();
 
 	geo->DrawArgs["grid"] = sm;
 
@@ -1046,6 +1071,7 @@ void AppD3D::BuildTreeBillboardGeometry()
 	sm.IndexCount = (UINT)indices.size();
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
+	sm.VertexCount = (UINT)vertices.size();
 
 	geo->DrawArgs["tree"] = sm;
 	mGeometries[geo->Name] = std::move(geo);
@@ -1060,6 +1086,7 @@ void AppD3D::BuildCylinderWithoutTop()
 	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
 	cylinderSubmesh.StartIndexLocation = 0;
 	cylinderSubmesh.BaseVertexLocation = 0;
+	cylinderSubmesh.VertexCount = (UINT)cylinder.Vertices.size();
 
 	std::vector<Vertex> vertices(cylinder.Vertices.size());
 
@@ -1106,6 +1133,7 @@ void AppD3D::BuildRenderItems()
 		boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
 		boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
 		boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
+		boxRI->VertexCount = boxRI->Geo->DrawArgs["box"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(boxRI.get());
 		mAllRenderItems.push_back(std::move(boxRI));
 
@@ -1119,6 +1147,7 @@ void AppD3D::BuildRenderItems()
 		gridRI->IndexCount = gridRI->Geo->DrawArgs["grid"].IndexCount;
 		gridRI->StartIndexLocation = gridRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		gridRI->BaseVertexLocation = gridRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		gridRI->VertexCount = gridRI->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(gridRI.get());
 		mAllRenderItems.push_back(std::move(gridRI));
 
@@ -1143,6 +1172,7 @@ void AppD3D::BuildRenderItems()
 			leftCylRitem->IndexCount = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
 			leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
 			leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+			leftCylRitem->VertexCount = leftCylRitem->Geo->DrawArgs["cylinder"].VertexCount;
 			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftCylRitem.get());
 
 			XMStoreFloat4x4(&rightCylRitem->World, rightCylWorld);
@@ -1153,6 +1183,7 @@ void AppD3D::BuildRenderItems()
 			rightCylRitem->IndexCount = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
 			rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
 			rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+			rightCylRitem->VertexCount = rightCylRitem->Geo->DrawArgs["cylinder"].VertexCount;
 			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(rightCylRitem.get());
 
 			XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
@@ -1163,6 +1194,7 @@ void AppD3D::BuildRenderItems()
 			leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
 			leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
 			leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+			leftSphereRitem->VertexCount = leftSphereRitem->Geo->DrawArgs["sphere"].VertexCount;
 			mRenderItemLayer[(int)RenderLayer::Opaque].push_back(leftSphereRitem.get());
 
 			XMStoreFloat4x4(&rightGeoSphereRitem->World, rightSphereWorld);
@@ -1173,6 +1205,7 @@ void AppD3D::BuildRenderItems()
 			rightGeoSphereRitem->IndexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
 			rightGeoSphereRitem->StartIndexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
 			rightGeoSphereRitem->BaseVertexLocation = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
+			rightGeoSphereRitem->VertexCount = rightGeoSphereRitem->Geo->DrawArgs["geoSphere"].VertexCount;
 			mRenderItemLayer[(int)RenderLayer::TriangleList].push_back(rightGeoSphereRitem.get());
 
 			mAllRenderItems.push_back(std::move(leftCylRitem));
@@ -1192,6 +1225,7 @@ void AppD3D::BuildRenderItems()
 		landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
 		landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		landRI->BaseVertexLocation = landRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		landRI->VertexCount = landRI->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(landRI.get());
 		mAllRenderItems.push_back(std::move(landRI));
 
@@ -1206,6 +1240,7 @@ void AppD3D::BuildRenderItems()
 		waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
 		waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		waveRI->VertexCount = waveRI->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Transparent].push_back(waveRI.get());
 		mWavesRenderItem = waveRI.get();
 		mAllRenderItems.push_back(std::move(waveRI));
@@ -1220,6 +1255,7 @@ void AppD3D::BuildRenderItems()
 		boxRI2->IndexCount = boxRI2->Geo->DrawArgs["box"].IndexCount;
 		boxRI2->StartIndexLocation = boxRI2->Geo->DrawArgs["box"].StartIndexLocation;
 		boxRI2->BaseVertexLocation = boxRI2->Geo->DrawArgs["box"].BaseVertexLocation;
+		boxRI2->VertexCount = boxRI2->Geo->DrawArgs["box"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Multi].push_back(boxRI2.get());
 		mAllRenderItems.push_back(std::move(boxRI2));
 
@@ -1233,6 +1269,7 @@ void AppD3D::BuildRenderItems()
 		boxRI3->IndexCount = boxRI3->Geo->DrawArgs["box"].IndexCount;
 		boxRI3->StartIndexLocation = boxRI3->Geo->DrawArgs["box"].StartIndexLocation;
 		boxRI3->BaseVertexLocation = boxRI3->Geo->DrawArgs["box"].BaseVertexLocation;
+		boxRI3->VertexCount = boxRI3->Geo->DrawArgs["box"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::AlphaTest].push_back(boxRI3.get());
 		mAllRenderItems.push_back(std::move(boxRI3));
 	}
@@ -1250,6 +1287,7 @@ void AppD3D::BuildRenderItems()
 	mirrorWallRI->IndexCount = mirrorWallRI->Geo->DrawArgs["grid"].IndexCount;
 	mirrorWallRI->StartIndexLocation = mirrorWallRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	mirrorWallRI->BaseVertexLocation = mirrorWallRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+	mirrorWallRI->VertexCount = mirrorWallRI->Geo->DrawArgs["grid"].VertexCount;
 	mRenderItemLayer[(int)RenderLayer::MirrorWall].push_back(mirrorWallRI.get());
 	mAllRenderItems.push_back(std::move(mirrorWallRI));
 
@@ -1266,6 +1304,7 @@ void AppD3D::BuildRenderItems()
 	mirrorRI->IndexCount = mirrorRI->Geo->DrawArgs["grid"].IndexCount;
 	mirrorRI->StartIndexLocation = mirrorRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	mirrorRI->BaseVertexLocation = mirrorRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+	mirrorRI->VertexCount = mirrorRI->Geo->DrawArgs["grid"].VertexCount;
 	mMirror = mirrorRI.get();
 	mRenderItemLayer[(int)RenderLayer::MirrorStencil].push_back(mirrorRI.get());
 	mRenderItemLayer[(int)RenderLayer::Transparent].push_back(mirrorRI.get());
@@ -1282,6 +1321,7 @@ void AppD3D::BuildRenderItems()
 	skullRI->IndexCount = skullRI->Geo->DrawArgs["skull"].IndexCount;
 	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
 	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
+	skullRI->VertexCount = skullRI->Geo->DrawArgs["skull"].VertexCount;
 	mSkull = skullRI.get();
 	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(skullRI.get());
 	mAllRenderItems.push_back(std::move(skullRI));
@@ -1309,6 +1349,7 @@ void AppD3D::BuildRenderItems()
 		mirrorBackRI1->IndexCount = mirrorBackRI1->Geo->DrawArgs["grid"].IndexCount;
 		mirrorBackRI1->StartIndexLocation = mirrorBackRI1->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorBackRI1->BaseVertexLocation = mirrorBackRI1->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mirrorBackRI1->VertexCount = mirrorBackRI1->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI1.get());
 		mAllRenderItems.push_back(std::move(mirrorBackRI1));
 
@@ -1323,6 +1364,7 @@ void AppD3D::BuildRenderItems()
 		mirrorBackRI2->IndexCount = mirrorBackRI2->Geo->DrawArgs["grid"].IndexCount;
 		mirrorBackRI2->StartIndexLocation = mirrorBackRI2->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorBackRI2->BaseVertexLocation = mirrorBackRI2->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mirrorBackRI2->VertexCount = mirrorBackRI2->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI2.get());
 		mAllRenderItems.push_back(std::move(mirrorBackRI2));
 
@@ -1337,6 +1379,7 @@ void AppD3D::BuildRenderItems()
 		mirrorBackRI3->IndexCount = mirrorBackRI3->Geo->DrawArgs["grid"].IndexCount;
 		mirrorBackRI3->StartIndexLocation = mirrorBackRI3->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorBackRI3->BaseVertexLocation = mirrorBackRI3->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mirrorBackRI3->VertexCount = mirrorBackRI3->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI3.get());
 		mAllRenderItems.push_back(std::move(mirrorBackRI3));
 
@@ -1351,6 +1394,7 @@ void AppD3D::BuildRenderItems()
 		mirrorBackRI4->IndexCount = mirrorBackRI4->Geo->DrawArgs["grid"].IndexCount;
 		mirrorBackRI4->StartIndexLocation = mirrorBackRI4->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorBackRI4->BaseVertexLocation = mirrorBackRI4->Geo->DrawArgs["grid"].BaseVertexLocation;
+		mirrorBackRI4->VertexCount = mirrorBackRI4->Geo->DrawArgs["grid"].VertexCount;
 		mRenderItemLayer[(int)RenderLayer::Reflected].push_back(mirrorBackRI4.get());
 		mAllRenderItems.push_back(std::move(mirrorBackRI4));
 	}
@@ -1374,6 +1418,7 @@ void AppD3D::BuildRenderItems()
 	treeBillboardRI->IndexCount = treeBillboardRI->Geo->DrawArgs["tree"].IndexCount;
 	treeBillboardRI->StartIndexLocation = treeBillboardRI->Geo->DrawArgs["tree"].StartIndexLocation;
 	treeBillboardRI->BaseVertexLocation = treeBillboardRI->Geo->DrawArgs["tree"].BaseVertexLocation;
+	treeBillboardRI->VertexCount = treeBillboardRI->Geo->DrawArgs["tree"].VertexCount;
 	mRenderItemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeBillboardRI.get());
 	mAllRenderItems.push_back(std::move(treeBillboardRI));
 
@@ -1387,8 +1432,23 @@ void AppD3D::BuildRenderItems()
 	cylRI->IndexCount = cylRI->Geo->DrawArgs["cylinderWithoutTop"].IndexCount;
 	cylRI->StartIndexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].StartIndexLocation;
 	cylRI->BaseVertexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].BaseVertexLocation;
+	cylRI->VertexCount = cylRI->Geo->DrawArgs["cylinderWithoutTop"].VertexCount;
 	mRenderItemLayer[(int)RenderLayer::LineStrip].push_back(cylRI.get());
 	mAllRenderItems.push_back(std::move(cylRI));
+
+	//폭탄
+	auto bombRI = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&bombRI->World, XMMatrixScaling(1.f, 1.f, 1.f)* XMMatrixTranslation(0.f, 6.0f, 0.0f));
+	bombRI->ObjCBIndex = objCBIndex++;
+	bombRI->Mat = mMaterials["bricks0"].get();
+	bombRI->Geo = mGeometries["shapeGeo"].get();
+	bombRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	bombRI->IndexCount = bombRI->Geo->DrawArgs["geoSphere"].IndexCount;
+	bombRI->StartIndexLocation = bombRI->Geo->DrawArgs["geoSphere"].StartIndexLocation;
+	bombRI->BaseVertexLocation = bombRI->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
+	bombRI->VertexCount = bombRI->Geo->DrawArgs["geoSphere"].VertexCount;
+	mRenderItemLayer[(int)RenderLayer::Explode].push_back(bombRI.get());
+	mAllRenderItems.push_back(std::move(bombRI));
 }
 
 void AppD3D::BuildFrameResources()
@@ -1711,6 +1771,42 @@ void AppD3D::BuildPSO()
 		geoSphere_depthCountPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
 		geoSphere_depthCountPsoDesc.DepthStencilState = depthCountDSD;
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&geoSphere_depthCountPsoDesc, IID_PPV_ARGS(&mPSOs["geoSphereLOD_depthCount"])));
+
+
+		//Explode shader 용
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC explodePsoDesc = circleExPsoDesc;
+		explodePsoDesc.GS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["explodeGS"]->GetBufferPointer()),
+			mShaders["explodeGS"]->GetBufferSize()
+		};
+		explodePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		explodePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&explodePsoDesc, IID_PPV_ARGS(&mPSOs["explode"])));
+	}
+
+	//정점 법선 디버깅 용
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC vertexNormalDebugPsoDesc = opaquePsoDesc;
+		vertexNormalDebugPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		vertexNormalDebugPsoDesc.VS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["circleExVS"]->GetBufferPointer()),
+			mShaders["circleExVS"]->GetBufferSize()
+		};
+		vertexNormalDebugPsoDesc.GS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["vertexDebugGS"]->GetBufferPointer()),
+			mShaders["vertexDebugGS"]->GetBufferSize()
+		};
+		vertexNormalDebugPsoDesc.PS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["vertexDebugPS"]->GetBufferPointer()),
+			mShaders["vertexDebugPS"]->GetBufferSize()
+		};
+		vertexNormalDebugPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		vertexNormalDebugPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&vertexNormalDebugPsoDesc, IID_PPV_ARGS(&mPSOs["vertexNormalDebug"])));
 	}
 }
 
@@ -1916,24 +2012,35 @@ void AppD3D::OnKeyboardInput(const GameTimer& gt)
 {
 	static bool prevKeyDown1 = false;
 	static bool prevKeyDown2 = false;
+	static bool prevKeyDown3 = false;
 
 	bool KeyDown1 = (GetAsyncKeyState('1') & 0x8000) != 0;
 	bool KeyDown2 = (GetAsyncKeyState('2') & 0x8000) != 0;
+	bool KeyDown3 = (GetAsyncKeyState('3') & 0x8000) != 0;
 
 	// 키가 "눌린 순간"만 감지
 	if (KeyDown1 && !prevKeyDown1)
 	{
 		mIsWireframe = !mIsWireframe;
 		mIsDepthComplexityDebug = false;
+		mIsVertexNormalDebug = false;
 	}
 	if (KeyDown2 && !prevKeyDown2)
 	{
 		mIsDepthComplexityDebug = !mIsDepthComplexityDebug;
 		mIsWireframe = false;
+		mIsVertexNormalDebug = false;
+	}
+	if (KeyDown3 && !prevKeyDown3)
+	{
+		mIsVertexNormalDebug = !mIsVertexNormalDebug;
+		mIsWireframe = false;
+		mIsDepthComplexityDebug = false;
 	}
 
 	prevKeyDown1 = KeyDown1;
 	prevKeyDown2 = KeyDown2;
+	prevKeyDown3 = KeyDown3;
 
 	const float dt = gt.DeltaTime();
 
@@ -2185,6 +2292,55 @@ void AppD3D::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vect
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
+}
+
+void AppD3D::DrawRenderItems_VertexNormal(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer)
+{
+	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
+
+	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto matCB = mCurrFrameResource->MaterialCB->Resource();
+
+	for (auto& ri : renderLayer)
+	{
+		auto vbv = ri->Geo->VertexBufferView();
+		auto ibv = ri->Geo->IndexBufferView();
+
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
+		cmdList->IASetIndexBuffer(&ibv);
+		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
+		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
+		objCBAddress += ri->ObjCBIndex * objCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
+		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
+
+		cmdList->SetGraphicsRootDescriptorTable(0, tex);
+		cmdList->SetGraphicsRootConstantBufferView(2, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
+
+		cmdList->DrawInstanced(ri->VertexCount, 1, ri->BaseVertexLocation, 0);
+	}
+}
+
+void AppD3D::DrawAllVertexNormals(ID3D12GraphicsCommandList* cmdList)
+{
+	cmdList->SetPipelineState(mPSOs["vertexNormalDebug"].Get());
+
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Opaque]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Multi]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Transparent]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::AlphaTest]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::MirrorWall]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::MirrorStencil]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Reflected]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::LineStrip]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Shadow]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::TriangleList]);
+	DrawRenderItems_VertexNormal(mCommandList.Get(), mRenderItemLayer[(int)RenderLayer::Explode]);
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> AppD3D::GetStaticSamplers()

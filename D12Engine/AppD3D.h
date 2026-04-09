@@ -94,6 +94,8 @@ private:
 	void UpdateShadowTransform();
 	void AnimateMaterials(const GameTimer& gt);
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer);
+	void DrawRenderItems_VertexNormal(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer);
+	void DrawAllVertexNormals(ID3D12GraphicsCommandList* cmdList);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	GeometryGenerator::MeshData LoadModelFile(const std::wstring& path);
@@ -162,6 +164,7 @@ private:
 
 	bool mIsWireframe = false;
 	bool mIsDepthComplexityDebug = false;
+	bool mIsVertexNormalDebug = false;
 	bool isMoving = false;
 
 	/*

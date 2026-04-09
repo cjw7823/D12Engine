@@ -16,6 +16,7 @@ enum class RenderLayer : int
 	AlphaTestedTreeSprites,	//트리 빌보드
 	LineStrip,				//선분으로 그리는 원통
 	TriangleList,			//삼각형 리스트로 LOD 구현한 GeoSpheres
+	Explode,				//GeometryShader로 삼각형을 폭발시키는 효과.
 	Transparent,
 	AlphaTest,				//철망 박스
 	Shadow,
@@ -44,5 +45,5 @@ struct RenderItem
 	UINT StartIndexLocation = 0;
 	int BaseVertexLocation = 0;
 
-	//RenderLayer layer = RenderLayer::Opaque;
+	UINT VertexCount = 0;
 };

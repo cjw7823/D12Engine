@@ -90,6 +90,7 @@ struct SubmeshGeometry
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	INT BaseVertexLocation = 0;
+	UINT VertexCount = 0;
 
 	// 이 서브메시로 정의된 기하 도형의 경계 상자.
 	// 나중에 공부예정...

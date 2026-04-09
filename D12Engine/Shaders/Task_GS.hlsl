@@ -70,8 +70,8 @@ struct VertexIn
 
 struct VertexOut
 {
-    float3 CenterW : POSITION;
-    float3 NormalL : NORMAL;
+    float3 PosW : POSITION;
+    float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
 };
 
@@ -155,8 +155,8 @@ VertexOut VS(VertexIn vin)
     VertexOut vout;
     
     float4 posW = mul(float4(vin.PosW, 1.0f), gWorld);
-    vout.CenterW = posW.xyz;
-    vout.NormalL = vin.NormalL;
+    vout.PosW = posW.xyz;
+    vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
     vout.TexC = vin.TexC;
 
     return vout;
@@ -168,7 +168,7 @@ void GS(line VertexOut gin[2],
         inout TriangleStream<GeoOut> triStream)
 {
     float3 up = float3(0.0f, 1.0f, 0.0f);
-    float3 look = gEyePosW - gin[0].CenterW;
+    float3 look = gEyePosW - gin[0].PosW;
     look.y = 0.0f; //project to xz-plane
     look = normalize(look);
     float3 right = cross(up, look);
@@ -177,10 +177,10 @@ void GS(line VertexOut gin[2],
     //float halfHeight = 0.5f * gin[0].SizeW.y;
 	
     float4 v[4];
-    v[0] = float4(gin[0].CenterW, 1.0f);
-    v[1] = float4(gin[1].CenterW, 1.0f);
-    v[2] = float4(gin[0].CenterW + up * 3.0f, 1.0f);
-    v[3] = float4(gin[1].CenterW + up * 3.0f, 1.0f);
+    v[0] = float4(gin[0].PosW, 1.0f);
+    v[1] = float4(gin[1].PosW, 1.0f);
+    v[2] = float4(gin[0].PosW + up * 3.0f, 1.0f);
+    v[3] = float4(gin[1].PosW + up * 3.0f, 1.0f);
     
     float2 texC[4] =
     {
@@ -211,21 +211,21 @@ void GS_LOD(triangle VertexOut gin[3],
         uint primID : SV_PrimitiveID,
         inout TriangleStream<GeoOut> triStream)
 {
-    float3 center = (gin[0].CenterW + gin[1].CenterW + gin[2].CenterW) / 3.0f;
+    float3 center = (gin[0].PosW + gin[1].PosW + gin[2].PosW) / 3.0f;
     float distToEye = distance(gEyePosW, center);
     
     float3 centerW = mul(float4(0, 0, 0, 1), gWorld).xyz; // 구 중심의 월드좌표
-    float radius = length(gin[0].CenterW - centerW);
+    float radius = length(gin[0].PosW - centerW);
     
     SubVertex v0, v1, v2;
-    v0.PosW = gin[0].CenterW;
-    v0.NormalW = gin[0].NormalL;
+    v0.PosW = gin[0].PosW;
+    v0.NormalW = gin[0].NormalW;
     v0.TexC = gin[0].TexC;
-    v1.PosW = gin[1].CenterW;
-    v1.NormalW = gin[1].NormalL;
+    v1.PosW = gin[1].PosW;
+    v1.NormalW = gin[1].NormalW;
     v1.TexC = gin[1].TexC;
-    v2.PosW = gin[2].CenterW;
-    v2.NormalW = gin[2].NormalL;
+    v2.PosW = gin[2].PosW;
+    v2.NormalW = gin[2].NormalW;
     v2.TexC = gin[2].TexC;
     
     if(distToEye < 15)
@@ -252,9 +252,9 @@ void GS_LOD(triangle VertexOut gin[3],
 	    [unroll]
         for (int i = 0; i < vertexNum; ++i)
         {
-            gout.PosH = mul(float4(gin[i].CenterW, 1.0f), gViewProj);
-            gout.PosW = gin[i].CenterW;
-            gout.NormalW = gin[i].NormalL;
+            gout.PosH = mul(float4(gin[i].PosW, 1.0f), gViewProj);
+            gout.PosW = gin[i].PosW;
+            gout.NormalW = gin[i].NormalW;
             gout.TexC = gin[i].TexC;
             gout.PrimID = primID;
             gout.LODLevel = 0;
@@ -262,6 +262,82 @@ void GS_LOD(triangle VertexOut gin[3],
             triStream.Append(gout);
         }
     }
+}
+
+[maxvertexcount(4)]
+void GS_Explode(triangle VertexOut gin[3],
+        uint primID : SV_PrimitiveID,
+        inout TriangleStream<GeoOut> triStream)
+{    
+    float rand = frac(sin(primID * 12.9898f) * 758.5453f);
+    float t = frac(gTotalTime + rand * 0.13f);
+    
+    float explodeAmount;
+    float explodeDuration = 0.95f; // 폭발이 완전히 진행되는 시간
+    if (t < explodeDuration)
+    {
+        float localT = t / explodeDuration; // 0~1로 재정규화
+        explodeAmount = pow(localT, 18.0f);
+    }
+    else
+        explodeAmount = 1.0f;
+    
+    float3 e0 = gin[1].PosW - gin[0].PosW;
+    float3 e1 = gin[2].PosW - gin[0].PosW;
+    float3 faceNormal = normalize(cross(e0, e1)) * 2.0f;
+    
+    float3 explodeVector = explodeAmount * faceNormal;
+    
+    [unroll]
+    for (int i = 0; i < 3; ++i)
+    {
+        GeoOut gout;
+
+        float3 newPosW = gin[i].PosW + explodeVector;
+
+        gout.PosW = newPosW;
+        gout.NormalW = faceNormal;
+        gout.TexC = gin[i].TexC;
+        gout.PosH = mul(float4(newPosW, 1.0f), gViewProj);
+        gout.PrimID = primID;
+        gout.LODLevel = 0;
+
+        triStream.Append(gout);
+    }
+
+    triStream.RestartStrip();
+}
+
+[maxvertexcount(2)]
+void GS_Debugging(point VertexOut gin[1],
+                  uint primID : SV_PrimitiveID,
+                  inout LineStream<GeoOut> lineStream)
+{
+    GeoOut gout;
+
+    float NormalLength = 0.2f;
+    float3 p0 = gin[0].PosW;
+    float3 p1 = gin[0].PosW + gin[0].NormalW * NormalLength;
+
+    // 시작점
+    gout.PosW = p0;
+    gout.NormalW = gin[0].NormalW;
+    gout.TexC = gin[0].TexC;
+    gout.PosH = mul(float4(p0, 1.0f), gViewProj);
+    gout.PrimID = primID;
+    gout.LODLevel = 0;
+    lineStream.Append(gout);
+
+    // 끝점
+    gout.PosW = p1;
+    gout.NormalW = gin[0].NormalW;
+    gout.TexC = gin[0].TexC;
+    gout.PosH = mul(float4(p1, 1.0f), gViewProj);
+    gout.PrimID = primID;
+    gout.LODLevel = 0;
+    lineStream.Append(gout);
+
+    lineStream.RestartStrip();
 }
 
 float4 PS(GeoOut pin) : SV_Target
@@ -306,4 +382,10 @@ float4 PS(GeoOut pin) : SV_Target
     litColor.a = diffuseAlbedo.a;
 
     return litColor;
+}
+
+float4 PS_VertexNormal(GeoOut pin) : SV_Target
+{
+    float3 normalColor = pin.NormalW * 0.5f + 0.5f;
+    return float4(normalColor, 1.0f);
 }
