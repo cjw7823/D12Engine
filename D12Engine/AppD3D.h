@@ -4,7 +4,7 @@
 #include "FrameResource.h"
 #include "RenderItem.h"
 #include "GeometryGenerator.h"
-#include "Waves.h"
+#include "GpuWaves.h"
 #include "TextureLoader_Blocking.h"
 
 /*
@@ -65,10 +65,11 @@ private:
 	void BuildDescriptorHeaps();
 	void BuildMaterials();
 	void BuildRootsignature();
+	void BuildWavesRootSignature();
 	void BuildShadersAndInputLayout();
 	void BuildShapeGeometry();
 	void BuildLandGeometry();
-	void BuildWavesGeometryBuffers();
+	void BuildWavesGeometry();
 	void BuildTreeBillboardGeometry();
 	void BuildCylinderWithoutTop();
 	void BuildRenderItems();
@@ -89,8 +90,8 @@ private:
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateReflectedPassCB(const GameTimer& gt);
-	void UpdateWaves(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateWavesGPU(const GameTimer& gt);
 	void UpdateShadowTransform();
 	void AnimateMaterials(const GameTimer& gt);
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayer);
@@ -136,7 +137,7 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeBillboardInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.
-	std::unique_ptr<Waves> mWaves;
+	std::unique_ptr<GpuWaves> mWaves;
 	RenderItem* mWavesRenderItem = nullptr;
 	PassConstants mMainPassCB;
 	PassConstants mReflectedPassCB;
@@ -148,6 +149,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_debug = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> mWavesRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();

@@ -27,13 +27,19 @@ bool AppD3D::Initialize()
 	ThrowIfFailed(mCommandAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(mCommandAlloc.Get(), nullptr));
 
+	mWaves = std::make_unique<GpuWaves>(
+		md3dDevice.Get(),
+		mCommandList.Get(),
+		256, 256, 0.25f, 0.03f, 2.0f, 0.2f);
+
 	LoadTextures();
 	BuildDescriptorHeaps();
 	BuildRootsignature();
+	BuildWavesRootSignature();
 	BuildShadersAndInputLayout();
 	BuildShapeGeometry();
 	BuildLandGeometry();
-	BuildWavesGeometryBuffers();
+	BuildWavesGeometry();
 	BuildTreeBillboardGeometry();
 	BuildCylinderWithoutTop();
 	BuildMaterials();
@@ -86,7 +92,6 @@ void AppD3D::Update(const GameTimer& gt)
 	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateReflectedPassCB(gt);
-	UpdateWaves(gt);
 	UpdateMaterialCBs(gt);
 	UpdateShadowTransform();
 
@@ -148,10 +153,12 @@ void AppD3D::Draw(const GameTimer& gt)
 
 	ID3D12DescriptorHeap* descriptorHeap[] = { mSrvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeap), descriptorHeap);
+	UpdateWavesGPU(gt);
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());	
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+	mCommandList->SetGraphicsRootDescriptorTable(5, mWaves->DisplacementMap());
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
 		mCommandList->OMSetStencilRef(0);
@@ -193,6 +200,9 @@ void AppD3D::Draw(const GameTimer& gt)
 			break;
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mPSOs["transparent"].Get());
+			break;
+		case (int)RenderLayer::Waves:
+			mCommandList->SetPipelineState(mPSOs["wavesRender"].Get());
 			break;
 		case (int)RenderLayer::AlphaTest:
 			mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
@@ -455,7 +465,7 @@ void AppD3D::BuildDescriptorHeaps()
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	const UINT textureCount = (UINT)mTextures.size();
 	const UINT imguiReservedCount = 1; // 폰트만
-	srvHeapDesc.NumDescriptors = textureCount + imguiReservedCount;
+	srvHeapDesc.NumDescriptors = textureCount + imguiReservedCount + mWaves->DescriptorCount();
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
@@ -480,6 +490,19 @@ void AppD3D::BuildDescriptorHeaps()
 		tex.second->DiffuseSrvHeapIndex = i;
 		i++;
 	}
+
+	const UINT wavesBaseIndex = textureCount + imguiReservedCount;
+
+	mWaves->BuildDescriptors(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			mSrvHeap->GetCPUDescriptorHandleForHeapStart(),
+			wavesBaseIndex,
+			mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(
+			mSrvHeap->GetGPUDescriptorHandleForHeapStart(),
+			wavesBaseIndex,
+			mCbvSrvUavDescriptorSize),
+		mCbvSrvUavDescriptorSize);
 }
 
 void AppD3D::BuildMaterials()
@@ -630,12 +653,16 @@ void AppD3D::BuildRootsignature()
 	CD3DX12_DESCRIPTOR_RANGE texTable2;
 	texTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1); //t1
 
-	std::array<CD3DX12_ROOT_PARAMETER, 5> slotRootParameter;
+	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
+	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+
+	std::array<CD3DX12_ROOT_PARAMETER, 6> slotRootParameter;
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable1, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[1].InitAsDescriptorTable(1, &texTable2, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[2].InitAsConstantBufferView(0); //obj CB
 	slotRootParameter[3].InitAsConstantBufferView(1); //material CB
 	slotRootParameter[4].InitAsConstantBufferView(2); //pass CB
+	slotRootParameter[5].InitAsDescriptorTable(1, &displacementMapTable, D3D12_SHADER_VISIBILITY_ALL);
 
 	auto staticSamplers = GetStaticSamplers();
 
@@ -658,7 +685,7 @@ void AppD3D::BuildRootsignature()
 		errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
-		OutputDebugString((wchar_t*)errorBlob->GetBufferPointer());
+		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	ThrowIfFailed(hr);
 
 	ThrowIfFailed(md3dDevice->CreateRootSignature(
@@ -698,6 +725,49 @@ void AppD3D::BuildRootsignature()
 	}
 }
 
+void AppD3D::BuildWavesRootSignature()
+{
+	CD3DX12_DESCRIPTOR_RANGE uavTable0;
+	uavTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+	CD3DX12_DESCRIPTOR_RANGE uavTable1;
+	uavTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+
+	CD3DX12_DESCRIPTOR_RANGE uavTable2;
+	uavTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 2);
+
+	std::array<CD3DX12_ROOT_PARAMETER, 4> slotRootParameter;
+
+	// Perfomance TIP:
+	// 루트 파라미터를 갱신 빈도(커맨드 리스트에서 Set되는 빈도) 순으로 배치 (자주 바뀌는 것 → 덜 바뀌는 것)
+	// 드라이버 구현에 따라 효과는 다르지만 일반적으로 권장되는 패턴
+	slotRootParameter[0].InitAsConstants(6, 0);
+	slotRootParameter[1].InitAsDescriptorTable(1, &uavTable0);
+	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable1);
+	slotRootParameter[3].InitAsDescriptorTable(1, &uavTable2);
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)slotRootParameter.size(), slotRootParameter.data(),
+		0, nullptr,
+		D3D12_ROOT_SIGNATURE_FLAG_NONE);
+
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+	if (errorBlob != nullptr)
+	{
+		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+	}
+	ThrowIfFailed(hr);
+
+	ThrowIfFailed(md3dDevice->CreateRootSignature(
+		0,
+		serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(),
+		IID_PPV_ARGS(mWavesRootSignature.GetAddressOf())));
+}
+
 void AppD3D::BuildShadersAndInputLayout()
 {
 	//매크로 테스트. HLSL에서 #ifdef ALPHA_TEST으로 분기 가능.
@@ -714,7 +784,14 @@ void AppD3D::BuildShadersAndInputLayout()
 		NULL, NULL
 	};
 
+	const D3D_SHADER_MACRO waveDefines[] =
+	{
+		"DISPLACEMENT_MAP", "1",
+		NULL, NULL
+	};
+
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["wavesVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", waveDefines, "VS", "vs_5_1");
 	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_1");
 	mShaders["multiPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS_multiTexture", "ps_5_1");
 	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
@@ -735,6 +812,9 @@ void AppD3D::BuildShadersAndInputLayout()
 
 	mShaders["vertexDebugGS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "GS_Debugging", "gs_5_1");
 	mShaders["vertexDebugPS"] = d3dUtil::CompileShader(L"Shaders\\Task_GS.hlsl", nullptr, "PS_VertexNormal", "ps_5_1");
+
+	mShaders["wavesUpdateCS"] = d3dUtil::CompileShader(L"Shaders\\WaveSim.hlsl", nullptr, "UpdateWavesCS", "cs_5_1");
+	mShaders["wavesDisturbCS"] = d3dUtil::CompileShader(L"Shaders\\WaveSim.hlsl", nullptr, "DisturbWavesCS", "cs_5_1");
 
 	mInputLayout =
 	{
@@ -955,57 +1035,50 @@ void AppD3D::BuildLandGeometry()
 	mGeometries["landGeo"] = std::move(geo);
 }
 
-void AppD3D::BuildWavesGeometryBuffers()
+void AppD3D::BuildWavesGeometry()
 {
-	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
+	GeometryGenerator geoGen;
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, mWaves->RowCount(), mWaves->ColumnCount());
 
-	std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount());
-	assert(mWaves->VertexCount() < 0x0000ffff);
-
-	int m = mWaves->RowCount();
-	int n = mWaves->ColumnCount();
-	int k = 0;
-	for (int i = 0; i < m - 1; i++)
+	std::vector<Vertex> vertices(grid.Vertices.size());
+	for (size_t i = 0; i < grid.Vertices.size(); ++i)
 	{
-		for (int j = 0; j < n - 1; j++)
-		{
-			indices[k] = i * n + j;
-			indices[k + 1] = i * n + j + 1;
-			indices[k + 2] = (i + 1) * n + j;
-
-			indices[k + 3] = (i + 1) * n + j;
-			indices[k + 4] = i * n + j + 1;
-			indices[k + 5] = (i + 1) * n + j + 1;
-
-			k += 6;
-		}
+		vertices[i].Pos = grid.Vertices[i].Position;
+		vertices[i].Normal = grid.Vertices[i].Normal;
+		vertices[i].TexC = grid.Vertices[i].TexC;
 	}
 
+	std::vector<std::uint32_t> indices = grid.Indices32;
+
 	UINT vbByteSize = mWaves->VertexCount() * sizeof(Vertex);
-	UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint32_t);
 
 	auto geo = std::make_unique<MeshGeometry>();
 	geo->Name = "waterGeo";
-	//다이나믹 버퍼이므로 동적으로 설정.
-	geo->VertexBufferCPU = nullptr;	//따로 설정x. Waves안에 이미 존재.
-	geo->VertexBufferGPU = nullptr; //UpdateWaves()에서 설정.
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
 	geo->VertexByteStride = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
-	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexFormat = DXGI_FORMAT_R32_UINT;
 	geo->IndexBufferByteSize = ibByteSize;
 
-	SubmeshGeometry sm;
-	sm.IndexCount = (UINT)indices.size();
-	sm.StartIndexLocation = 0;
-	sm.BaseVertexLocation = 0;
-	sm.VertexCount = mWaves->VertexCount();
+	SubmeshGeometry submesh;
+	submesh.IndexCount = (UINT)indices.size();
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
 
-	geo->DrawArgs["grid"] = sm;
+	geo->DrawArgs["grid"] = submesh;
 
 	mGeometries["waterGeo"] = std::move(geo);
 }
@@ -1233,6 +1306,8 @@ void AppD3D::BuildRenderItems()
 		auto waveRI = std::make_unique<RenderItem>();
 		XMStoreFloat4x4(&waveRI->World, XMMatrixScaling(1, 1, 1) * XMMatrixTranslation(0, -1, 0));
 		XMStoreFloat4x4(&waveRI->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+		waveRI->DisplacementMapTexelSize.x = 1.0f / mWaves->ColumnCount();
+		waveRI->DisplacementMapTexelSize.y = 1.0f / mWaves->RowCount();
 		waveRI->ObjCBIndex = objCBIndex++;
 		waveRI->Geo = mGeometries["waterGeo"].get();
 		waveRI->Mat = mMaterials["water0"].get();
@@ -1241,7 +1316,7 @@ void AppD3D::BuildRenderItems()
 		waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
 		waveRI->VertexCount = waveRI->Geo->DrawArgs["grid"].VertexCount;
-		mRenderItemLayer[(int)RenderLayer::Transparent].push_back(waveRI.get());
+		mRenderItemLayer[(int)RenderLayer::Waves].push_back(waveRI.get());
 		mWavesRenderItem = waveRI.get();
 		mAllRenderItems.push_back(std::move(waveRI));
 
@@ -1808,6 +1883,37 @@ void AppD3D::BuildPSO()
 		vertexNormalDebugPsoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&vertexNormalDebugPsoDesc, IID_PPV_ARGS(&mPSOs["vertexNormalDebug"])));
 	}
+
+	//GPU Wave용
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC wavesRenderPSO = transparentPsoDesc;
+		wavesRenderPSO.VS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["wavesVS"]->GetBufferPointer()),
+			mShaders["wavesVS"]->GetBufferSize()
+		};
+		ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&wavesRenderPSO, IID_PPV_ARGS(&mPSOs["wavesRender"])));
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC wavesDisturbPSO = {};
+		wavesDisturbPSO.pRootSignature = mWavesRootSignature.Get();
+		wavesDisturbPSO.CS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["wavesDisturbCS"]->GetBufferPointer()),
+			mShaders["wavesDisturbCS"]->GetBufferSize()
+		};
+		wavesDisturbPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		ThrowIfFailed(md3dDevice->CreateComputePipelineState(&wavesDisturbPSO, IID_PPV_ARGS(&mPSOs["wavesDisturb"])));
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC wavesUpdatePSO = {};
+		wavesUpdatePSO.pRootSignature = mWavesRootSignature.Get();
+		wavesUpdatePSO.CS =
+		{
+			reinterpret_cast<BYTE*>(mShaders["wavesUpdateCS"]->GetBufferPointer()),
+			mShaders["wavesUpdateCS"]->GetBufferSize()
+		};
+		wavesUpdatePSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		ThrowIfFailed(md3dDevice->CreateComputePipelineState(&wavesUpdatePSO, IID_PPV_ARGS(&mPSOs["wavesUpdate"])));
+	}
 }
 
 void AppD3D::SetDebugColorCB()
@@ -1895,6 +2001,7 @@ void AppD3D::RenderImGui()
 		ImGui::Separator();
 		ImGui::TextUnformatted(u8"숫자 1		: 와이어 프레임 모드");
 		ImGui::TextUnformatted(u8"숫자 2		: 깊이 복잡도 렌더 모드");
+		ImGui::TextUnformatted(u8"숫자 3		: 정점 법선 렌더 모드");
 
 		ImGui::TextUnformatted(u8"F2		: MSAA 4x 모드 토글");
 
@@ -2088,6 +2195,8 @@ void AppD3D::UpdateObjectCBs(const GameTimer& gt)
 			ObjectConstants objConstants;
 			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
 			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+			objConstants.DisplacementMapTexelSize = e->DisplacementMapTexelSize;
+			objConstants.GridSpatialStep = e->GridSpatialStep;
 
 			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 			e->NumFramesDirty--;
@@ -2162,40 +2271,6 @@ void AppD3D::UpdateReflectedPassCB(const GameTimer& gt)
 	currPassCB->CopyData(1, mReflectedPassCB);
 }
 
-void AppD3D::UpdateWaves(const GameTimer& gt)
-{
-	//정점 버퍼 설정.
-	static float t_base = 0.0f;
-	if ((mTimer.TotalTime() - t_base) >= 0.25f)
-	{
-		t_base += 0.25f;
-
-		int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
-		int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
-
-		float r = MathHelper::RandF(0.2f, 0.5f);
-
-		mWaves->Disturb(i, j, r);
-	}
-
-	mWaves->Update(gt.DeltaTime());
-
-	auto currWavesVB = mCurrFrameResource->WavesVB.get();
-	for (int i = 0; i < mWaves->VertexCount(); i++)
-	{
-		Vertex v;
-		v.Pos = mWaves->Position(i);
-		v.Normal = mWaves->Normal(i);
-
-		v.TexC.x = 0.5f + v.Pos.x / mWaves->Width();
-		v.TexC.y = 0.5f - v.Pos.z / mWaves->Depth();
-
-		currWavesVB->CopyData(i, v);
-	}
-
-	mWavesRenderItem->Geo->VertexBufferGPU = currWavesVB->Resource();
-}
-
 void AppD3D::UpdateMaterialCBs(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
@@ -2216,6 +2291,25 @@ void AppD3D::UpdateMaterialCBs(const GameTimer& gt)
 			mat->NumFramesDirty--;
 		}
 	}
+}
+
+void AppD3D::UpdateWavesGPU(const GameTimer& gt)
+{
+	static float t_base = 0.0f;
+	if ((mTimer.TotalTime() - t_base) >= 0.25f)
+	{
+		t_base += 0.25f;
+
+		int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
+		int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
+
+		float r = MathHelper::RandF(0.5f, 1.0f);
+
+		mWaves->Disturb(mCommandList.Get(), mWavesRootSignature.Get(), mPSOs["wavesDisturb"].Get(), i, j, r);
+	}
+
+	// Update the wave simulation.
+	mWaves->Update(gt, mCommandList.Get(), mWavesRootSignature.Get(), mPSOs["wavesUpdate"].Get());
 }
 
 void AppD3D::UpdateShadowTransform()

@@ -107,6 +107,9 @@
     <ClInclude Include="pch.h">
       <Filter>PCH</Filter>
     </ClInclude>
+    <ClInclude Include="GpuWaves.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -162,6 +165,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>PCH</Filter>
+    </ClCompile>
+    <ClCompile Include="GpuWaves.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -307,6 +313,9 @@
       <Filter>Shader</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\Task_GS.hlsl">
+      <Filter>Shader</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\WaveSim.hlsl">
       <Filter>Shader</Filter>
     </CopyFileToFolders>
   </ItemGroup>

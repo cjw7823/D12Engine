@@ -18,6 +18,7 @@ enum class RenderLayer : int
 	TriangleList,			//삼각형 리스트로 LOD 구현한 GeoSpheres
 	Explode,				//GeometryShader로 삼각형을 폭발시키는 효과.
 	Transparent,
+	Waves,
 	AlphaTest,				//철망 박스
 	Shadow,
 	Count
@@ -46,4 +47,8 @@ struct RenderItem
 	int BaseVertexLocation = 0;
 
 	UINT VertexCount = 0;
+
+	//For GPU waves render items.
+	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
+	float GridSpatialStep = 1.0f;
 };
