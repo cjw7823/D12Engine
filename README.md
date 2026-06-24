@@ -1,4 +1,4 @@
-# DirectX 12 Practice – Chapter 14
+# DirectX 12 Practice – Chapter 13 ~
 
 프로젝트 진행중...
 
@@ -6,7 +6,9 @@
 
 ## 📌 학습 범위
 
-작성 예정
+### ▢ Compute Shader
+- Blur 적용. Blur Count 2, 4, 8
+- Sobel Filter 적용
 
 ---
 

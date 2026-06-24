@@ -103,15 +103,16 @@ void RenderApp::LoadTextures()
 void RenderApp::BuildDescriptorHeaps()
 {
 	/*
-		0 ~ N-1		: 기존 텍스처
-		N			: ImGui Font
-		N+1 ~	M	: ImGui용 추가 슬롯(optional)
-		M ~		M+6	: mWaves의 DiscriptorCount개수 6개.
+		0 ~ N-1			: 기존 텍스처
+		N				: ImGui Font
+		N+1 ~	M		: ImGui용 추가 슬롯(optional)
+		M ~		M+6		: mWaves의 DiscriptorCount개수 6개.
+		M+6 ~	M+10	: mBlurFilter의 DescriptorCount 개수 4개.
 	*/
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	const UINT textureCount = (UINT)mTextures.size();
 	const UINT imguiReservedCount = 1; //폰트만
-	srvHeapDesc.NumDescriptors = textureCount + imguiReservedCount + mWaves->DescriptorCount();
+	srvHeapDesc.NumDescriptors = textureCount + imguiReservedCount + mWaves->DescriptorCount() + mBlurFilter->DescriptorCount();
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
@@ -148,6 +149,19 @@ void RenderApp::BuildDescriptorHeaps()
 		CD3DX12_GPU_DESCRIPTOR_HANDLE(
 			mSrvHeap->GetGPUDescriptorHandleForHeapStart(),
 			wavesBaseIndex,
+			mCbvSrvUavDescriptorSize),
+		mCbvSrvUavDescriptorSize);
+	
+	const UINT blurBaseIndex = wavesBaseIndex + mWaves->DescriptorCount();
+
+	mBlurFilter->BuildDescriptors(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			mSrvHeap->GetCPUDescriptorHandleForHeapStart(),
+			blurBaseIndex,
+			mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(
+			mSrvHeap->GetGPUDescriptorHandleForHeapStart(),
+			blurBaseIndex,
 			mCbvSrvUavDescriptorSize),
 		mCbvSrvUavDescriptorSize);
 }

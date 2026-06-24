@@ -33,6 +33,11 @@ bool RenderApp::Initialize()
 		mCommandList.Get(),
 		256, 256, 0.25f, 0.03f, 2.0f, 0.2f);
 
+	mBlurFilter = std::make_unique<BlurFilter>(
+		md3dDevice.Get(),
+		mClientWidth, mClientHeight,
+		DXGI_FORMAT_R8G8B8A8_UNORM);
+
     LoadTextures();
     BuildDescriptorHeaps();
     BuildRootSignature();
@@ -75,12 +80,26 @@ void RenderApp::SetMsaaOption(UINT value)
 	BuildPSOs();
 }
 
+void RenderApp::NextBlurCount()
+{
+	static const std::array<UINT, 4> counts = { 1, 2, 4, 8 };
+	static UINT index = 0;
+
+	index = (index + 1) % counts.size();
+	mBlurCount = counts[index];
+
+	if (mBlurCount == 1) is_Blur = false;
+	else is_Blur = true;
+}
+
 void RenderApp::OnResize()
 {
 	Dx12App::OnResize();
 
 	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, AspectRatio(), 1.0f, 200.0f);
 	XMStoreFloat4x4(&mProj, P);
+
+	if (mBlurFilter != nullptr) mBlurFilter->OnResize(mClientWidth, mClientHeight);
 }
 
 void RenderApp::Update(const GameTimer& gt)
@@ -268,6 +287,23 @@ void RenderApp::Draw(const GameTimer& gt)
 
 	if (mMsaaOption.IsEnable())
 		ResolveMsaaToBackBuffer();
+
+	if (is_Blur)
+	{
+		mBlurFilter->Excute(mCommandList.Get(), mPostProcessRootSignature.Get(),
+			mPSOs["blurH"].Get(), mPSOs["blurV"].Get(),
+			CurrentBackBuffer(), mBlurCount);
+
+		CD3DX12_RESOURCE_BARRIER backbufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		mCommandList->ResourceBarrier(1, &backbufferBarrier);
+
+		mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->Output());
+
+		backbufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		mCommandList->ResourceBarrier(1, &backbufferBarrier);
+	}
 
 	RenderImGui();
 

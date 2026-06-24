@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RenderApp.h"
 #include "GeometryGenerator.h"
+#include "RenderData.h"
 
 using namespace DirectX;
 
@@ -257,9 +258,15 @@ void RenderApp::BuildTreeBillboardGeometry()
 		float x = 0, y = 0, z = 0;
 		while (true)
 		{
-			x = MathHelper::RandF(-50.0f, 50.0f);
-			z = MathHelper::RandF(-50.0f, 50.0f);
-			if ((x > -15.f && x < 15.f) || (z > -15.f && z < 15.f)) continue;
+			float range = 70.0f;
+			x = MathHelper::RandF(-range, range);
+			z = MathHelper::RandF(-range, range);
+			if ((x > -15.f && x < 15.f) || (z > -15.f && z < 15.f))
+			{
+				std::string s = std::to_string(i) + "\n";
+				OutputDebugStringA(s.c_str());
+				continue;
+			}
 
 			y = GetHillsHeight(x, z);
 			if (y > 2) break;
@@ -269,11 +276,8 @@ void RenderApp::BuildTreeBillboardGeometry()
 		vertices[i].size = XMFLOAT2(11.0f, 15.0f);
 	}
 
-	std::array<std::uint16_t, 16> indices =
-	{
-		0, 1, 2, 3, 4, 5, 6, 7,
-		8, 9, 10, 11, 12, 13, 14, 15
-	};
+	std::array<std::uint16_t, treeCount> indices;
+	for (int i = 0; i < treeCount; i++) indices[i] = i;
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeVertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);

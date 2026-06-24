@@ -78,6 +78,41 @@ void RenderApp::BuildRootSignature()
 			serializedRootsig->GetBufferSize(),
 			IID_PPV_ARGS(mRootSignature_debug.GetAddressOf())));
 	}
+
+	//Post Process
+	{
+		CD3DX12_DESCRIPTOR_RANGE srvTable;
+		srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+		CD3DX12_DESCRIPTOR_RANGE uavTable;
+		uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+		std::array<CD3DX12_ROOT_PARAMETER, 3> slotRootParameter;
+		slotRootParameter[0].InitAsConstants(12, 0);
+		slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
+		slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+
+		CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
+			slotRootParameter.size(),
+			slotRootParameter.data(),
+			0,
+			nullptr,
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+		ComPtr<ID3DBlob> serializedRootSig = nullptr;
+		ComPtr<ID3DBlob> errorBlob = nullptr;
+
+		ThrowIfFailed(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf()));
+
+		if (errorBlob != nullptr)
+			::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+
+		ThrowIfFailed(md3dDevice->CreateRootSignature(
+			0,
+			serializedRootSig->GetBufferPointer(),
+			serializedRootSig->GetBufferSize(),
+			IID_PPV_ARGS(mPostProcessRootSignature.GetAddressOf())));
+	}
 }
 
 void RenderApp::BuildWavesRootSignature()
@@ -174,6 +209,9 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["vertexDebugGS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS_Debugging", "gs_5_1");
 	mShaders["vertexDebugPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "PS_VertexNormal", "ps_5_1");
 
+	mShaders["blurH"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_1");
+	mShaders["blurV"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_1");
+
 #else
 	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
 	mShaders["opaquePS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps.cso");
@@ -202,6 +240,9 @@ void RenderApp::BuildShadersAndInputLayout()
 
 	mShaders["vertexDebugGS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugGS.cso");
 	mShaders["vertexDebugPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugPS.cso");
+
+	mShaders["blurH"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\HorzBlurCS.cso");
+	mShaders["blurV"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertBlurCS.cso");
 
 #endif
 
@@ -355,6 +396,13 @@ void RenderApp::BuildPSOs()
 	normalDebugCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	PipelineStateFactory normalDebugFactory(normalDebugCtx);
 	mPSOs["vertexNormalDebug"] = normalDebugFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["vertexDebugGS"].Get(), mShaders["vertexDebugPS"].Get());
+
+	//blur
+	PsoBuildContext blurCtx = ctx;
+	blurCtx.RootSignature = mPostProcessRootSignature.Get();
+	PipelineStateFactory blurFactory(blurCtx);
+	mPSOs["blurH"] = blurFactory.CreateComputePSO(mShaders["blurH"].Get());
+	mPSOs["blurV"] = blurFactory.CreateComputePSO(mShaders["blurV"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

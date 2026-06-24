@@ -7,6 +7,7 @@
 #include "GpuWaves.h"
 #include "RenderData.h"
 #include <unordered_map>
+#include "BlurFilter.h"
 
 /*
 	1. Resource Heap / Resource Memory
@@ -71,6 +72,8 @@ public:
 	virtual bool Initialize() override;
 	virtual void NextMsaaOoption() override;
 	virtual void SetMsaaOption(UINT value) override;
+
+	void NextBlurCount();
 
 private:
 	virtual void OnResize() override;
@@ -151,6 +154,7 @@ private:
 	PassConstants mMainPassCB;
 	PassConstants mReflectedPassCB;
 	std::unique_ptr<TextureLoader_Blocking> mTexLoader;
+	std::unique_ptr<BlurFilter> mBlurFilter;
 
 	RenderItem* mMirror = nullptr;
 	std::vector<RenderItem*> excludeRI_InMirror;
@@ -162,6 +166,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_debug = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mWavesRootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
@@ -193,4 +198,7 @@ private:
 
 	bool mIsShowHelper = false;
 	bool mImGuiInitialized = false;
+
+	bool is_Blur = false;
+	UINT mBlurCount = 1;
 };

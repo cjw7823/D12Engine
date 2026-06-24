@@ -52,9 +52,10 @@ void RenderApp::RenderImGui()
 	if (mIsShowHelper)
 	{
 		ImGui::SetNextWindowPos(ImVec2(5, 5), ImGuiCond_Appearing);
-		ImGui::SetNextWindowSize(ImVec2(240, 230), ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2(250, 270), ImGuiCond_Appearing);
 
-		ImGui::Begin(u8"조작 안내", &mIsShowHelper, ImGuiWindowFlags_NoResize);
+		ImGuiWindowFlags flag = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
+		ImGui::Begin(u8"조작 안내", &mIsShowHelper, flag);
 
 		ImGui::TextUnformatted(u8"화면 드래그 : 화면 회전");
 		ImGui::TextUnformatted(u8"마우스 휠   : 확대 / 축소");
@@ -68,7 +69,8 @@ void RenderApp::RenderImGui()
 		ImGui::TextUnformatted(u8"숫자 2		: 깊이 복잡도 렌더 모드");
 		ImGui::TextUnformatted(u8"숫자 3		: 정점 법선 렌더 모드");
 
-		ImGui::TextUnformatted(u8"F2		: MSAA 4x 모드 토글");
+		ImGui::TextUnformatted(u8"F1		:	MSAA Level 전환");
+		ImGui::TextUnformatted(u8"F2		:	Blur Count 전환");
 
 		ImGui::End();
 	}
@@ -100,7 +102,7 @@ void RenderApp::RenderImGui()
 		ImGui::End();
 	}
 
-	//MSAA 텍스트
+	//텍스트
 	{
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 
@@ -124,6 +126,9 @@ void RenderApp::RenderImGui()
 
 		std::string s = "MSAA Level : " + std::to_string(mMsaaOption.SampleCount());
 		ImGui::TextUnformatted(s.c_str());
+		
+		std::string s2 = "Blur Count : " + std::to_string(mBlurCount);
+		ImGui::TextUnformatted(s2.c_str());
 
 		ImGui::End();
 	}

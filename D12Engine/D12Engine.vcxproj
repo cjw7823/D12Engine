@@ -173,6 +173,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="BlurFilter.cpp" />
     <ClCompile Include="D12Engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -210,6 +211,7 @@
     <ClInclude Include="..\IMGUI\core\imstb_rectpack.h" />
     <ClInclude Include="..\IMGUI\core\imstb_textedit.h" />
     <ClInclude Include="..\IMGUI\core\imstb_truetype.h" />
+    <ClInclude Include="BlurFilter.h" />
     <ClInclude Include="d3dUtil.h" />
     <ClInclude Include="Dx12App.h" />
     <ClInclude Include="FrameResource.h" />
@@ -257,24 +259,21 @@
   <PropertyGroup>
     <ShaderDir>$(ProjectDir)Resource\Shaders\Compiled\</ShaderDir>
     <DXCPath>dxc.exe</DXCPath>
-
-	<NullDefines></NullDefines>
-	<FogDefines>-D FOG=1</FogDefines>
-	<TextureBlendDefines>$(FogDefines) -D TEXTURE_BLEND=1</TextureBlendDefines>
-	<AlphaTestDefines>$(FogDefines) -D ALPHA_TEST=1</AlphaTestDefines>
-	<WavesDefines>-D DISPLACEMENT_MAP=1</WavesDefines>
+    <NullDefines>
+    </NullDefines>
+    <FogDefines>-D FOG=1</FogDefines>
+    <TextureBlendDefines>$(FogDefines) -D TEXTURE_BLEND=1</TextureBlendDefines>
+    <AlphaTestDefines>$(FogDefines) -D ALPHA_TEST=1</AlphaTestDefines>
+    <WavesDefines>-D DISPLACEMENT_MAP=1</WavesDefines>
   </PropertyGroup>
-	
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <ShaderCompileOptions>-Zi -Qembed_debug -Od</ShaderCompileOptions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <ShaderCompileOptions>-O3</ShaderCompileOptions>
   </PropertyGroup>
-	
   <ItemGroup>
     <ShaderInclude Include="$(ProjectDir)Resource\Shaders\LightingUtil.hlsli" />
-	  
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
       <Entry>VS</Entry>
       <Profile>vs_6_0</Profile>
@@ -320,7 +319,7 @@
       <Profile>cs_6_0</Profile>
       <OutputName>WaveSim_cs_Update.cso</OutputName>
       <AsmName>WaveSim_cs_Update.asm</AsmName>
-	  <Defines>$(NullDefines)</Defines>
+      <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\WaveSim.hlsl">
       <Entry>DisturbWavesCS</Entry>
@@ -334,7 +333,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>DepthComplexity_vs.cso</OutputName>
       <AsmName>DepthComplexity_vs.asm</AsmName>
-	  <Defines>$(NullDefines)</Defines>
+      <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\DepthComplexity.hlsl">
       <Entry>FullscreenPS</Entry>
@@ -351,105 +350,119 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
-	  
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
-		<Entry>VS</Entry>
-		<Profile>vs_6_0</Profile>
-		<OutputName>TreeBillboardVS.cso</OutputName>
-		<AsmName>TreeBillboardVS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
-		<Entry>GS</Entry>
-		<Profile>gs_6_0</Profile>
-		<OutputName>TreeBillboardGS.cso</OutputName>
-		<AsmName>TreeBillboardGS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
-		<Entry>PS</Entry>
-		<Profile>ps_6_0</Profile>
-		<OutputName>TreeBillboardPS.cso</OutputName>
-		<AsmName>TreeBillboardPS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(AlphaTestDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
-		<Entry>PS_Wireframe</Entry>
-		<Profile>ps_6_0</Profile>
-		<OutputName>TreeBillboardPS_Wireframe.cso</OutputName>
-		<AsmName>TreeBillboardPS_Wireframe.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>VS</Entry>
-		<Profile>vs_6_0</Profile>
-		<OutputName>LineToCylinderVS.cso</OutputName>
-		<AsmName>LineToCylinderVS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>GS</Entry>
-		<Profile>gs_6_0</Profile>
-		<OutputName>LineToCylinderGS.cso</OutputName>
-		<AsmName>LineToCylinderGS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>PS</Entry>
-		<Profile>ps_6_0</Profile>
-		<OutputName>LineToCylinderPS.cso</OutputName>
-		<AsmName>LineToCylinderPS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(AlphaTestDefines)</Defines>
-	</ShaderCompile>
-	  
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>GS_Explode</Entry>
-		<Profile>gs_6_0</Profile>
-		<OutputName>ExplodeGS.cso</OutputName>
-		<AsmName>ExplodeGS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(AlphaTestDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>GS_LOD</Entry>
-		<Profile>gs_6_0</Profile>
-		<OutputName>LOD_GS.cso</OutputName>
-		<AsmName>LOD_GS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	  
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>GS_Debugging</Entry>
-		<Profile>gs_6_0</Profile>
-		<OutputName>VertexDebugGS.cso</OutputName>
-		<AsmName>VertexDebugGS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
-		<Entry>PS_VertexNormal</Entry>
-		<Profile>ps_6_0</Profile>
-		<OutputName>VertexDebugPS.cso</OutputName>
-		<AsmName>VertexDebugPS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(NullDefines)</Defines>
-	</ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>TreeBillboardVS.cso</OutputName>
+      <AsmName>TreeBillboardVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>GS</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>TreeBillboardGS.cso</OutputName>
+      <AsmName>TreeBillboardGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>TreeBillboardPS.cso</OutputName>
+      <AsmName>TreeBillboardPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>PS_Wireframe</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>TreeBillboardPS_Wireframe.cso</OutputName>
+      <AsmName>TreeBillboardPS_Wireframe.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>LineToCylinderVS.cso</OutputName>
+      <AsmName>LineToCylinderVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>LineToCylinderGS.cso</OutputName>
+      <AsmName>LineToCylinderGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>LineToCylinderPS.cso</OutputName>
+      <AsmName>LineToCylinderPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_Explode</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>ExplodeGS.cso</OutputName>
+      <AsmName>ExplodeGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_LOD</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>LOD_GS.cso</OutputName>
+      <AsmName>LOD_GS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_Debugging</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>VertexDebugGS.cso</OutputName>
+      <AsmName>VertexDebugGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>PS_VertexNormal</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>VertexDebugPS.cso</OutputName>
+      <AsmName>VertexDebugPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Blur.hlsl">
+      <Entry>HorzBlurCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>HorzBlurCS.cso</OutputName>
+      <AsmName>HorzBlurCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Blur.hlsl">
+      <Entry>VertBlurCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>VertBlurCS.cso</OutputName>
+      <AsmName>VertBlurCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resource\Shaders\TreeBillboard.hlsl">
+    <None Include="Resource\Shaders\Blur.hlsl">
       <FileType>Document</FileType>
     </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resource\Shaders\Task_GS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resource\Shaders\TreeBillboard.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

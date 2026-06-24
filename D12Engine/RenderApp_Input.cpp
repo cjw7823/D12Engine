@@ -62,6 +62,9 @@ void RenderApp::OnKeyDown(WPARAM key)
 	else if (key == 'Q') md = 5;
 	else if (key == 'E') md = 6;
 	else isMoving = false;
+
+	if (key == VK_F1) NextMsaaOoption();
+	else if (key == VK_F2) NextBlurCount();
 }
 
 void RenderApp::OnKeyboardInput(const GameTimer& gt)
