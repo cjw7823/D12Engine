@@ -58,5 +58,5 @@ Scene → MSAA Render Target → Resolve → BackBuffer → ImGui → Present
 * DX12에서는 swapchain back buffer에 multisampling을 직접 적용할 수 없음  
   -> https://learn.microsoft.com/en-us/windows/win32/api/dxgi/ne-dxgi-dxgi_swap_effect
 
-* ImGUI 링크
+* ImGUI 링크  
   -> https://github.com/ocornut/imgui
