@@ -41,6 +41,7 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateDepthComplexityDebugPSO(ID3DBlob* vs, ID3DBlob* ps);
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateMirrorStencilPSO(ID3DBlob* vs, ID3DBlob* ps);
+	[[deprecated("Use CreateTessellateMirrorWallPSO instead.")]]
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateMirrorWallPSO(ID3DBlob* vs, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateMirrorReflectedPSO(ID3DBlob* vs, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateMirrorBaseFillPSO(ID3DBlob* vs, ID3DBlob* ps);
@@ -49,6 +50,9 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateTreeBillboardPSO(ID3DBlob* vs, ID3DBlob* gs, ID3DBlob* ps, bool a2c);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateLineToCylinderPSO(ID3DBlob* vs, ID3DBlob* gs, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateExplodePSO(ID3DBlob* vs, ID3DBlob* gs, ID3DBlob* ps);
+
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateTessellationPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps);
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateTessellateMirrorWallPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps);
 
 private:
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildBaseGraphicsPsoDesc() const;

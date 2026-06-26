@@ -82,16 +82,51 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
     return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
+float3 BlinnPhongToon(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)
+{
+    // 1) kd
+    float kd = saturate(dot(lightVec, normal));
+    float kd_q = QuantizeKd(kd);
+
+    // 2) ks (Blinn-Phong)
+    const float m = mat.Shininess * 256.0f;
+    float3 halfVec = normalize(toEye + lightVec);
+    float ndoth = saturate(dot(halfVec, normal));
+
+    float ks = pow(max(ndoth, 0), m); // 스펙큘러 강도의 핵심
+    float ks_q = QuantizeKs(ks); // 이산화
+
+    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;
+    // fresnel(색) + (필요하면) 정규화 계수는 취향
+    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
+
+    // ks_q를 spec에 반영
+    float3 specAlbedo = roughnessFactor * fresnelFactor * ks_q;
+
+    // LDR clamp는 유지 가능
+    specAlbedo = specAlbedo / (specAlbedo + 1.0f);
+
+    // diffuse는 kd_q를 반영
+    float3 diffuse = mat.DiffuseAlbedo.rgb * kd_q;
+    
+    return (diffuse + specAlbedo) * lightStrength;
+}
+
 float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)
 {
     //광 벡터는 빛이 진행한는 방향과 반대 방향.
     float3 lightVec = -L.Direction;
     
-    //람베르트 코사인 법칙에 따라 빛 강도 계산ㄴ.
+    //람베르트 코사인 법칙에 따라 빛 강도 계산.
     float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrenght = L.Strength * ndotl;
     
-    return BlinnPhong(lightStrenght, lightVec, normal, toEye, mat);
+#ifdef CARTOON
+    float3 lightStrength = L.Strength;
+    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);
+#else
+    float3 lightStrength = L.Strength * ndotl;
+    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+#endif
 }
 
 float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
@@ -106,13 +141,21 @@ float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float
     
     //람베르트 코사인 법칙에 따라 빛 강도 계산.
     float ndotl = max(dot(lightVec, normal), 0.0f);
+#ifdef CARTOON
+    float3 lightStrength = L.Strength;
+#else
     float3 lightStrength = L.Strength * ndotl;
+#endif
     
     //거리에 따른 빛 감쇠 계산.
     float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
     lightStrength *= att;
     
+#ifdef CARTOON
+    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);
+#else
     return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+#endif
 }
 
 float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
@@ -127,7 +170,11 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
     
     //람베르트 코사인 법칙에 따라 빛 강도 계산.
     float ndotl = max(dot(lightVec, normal), 0.0f);
+#ifdef CARTOON
+    float3 lightStrength = L.Strength;
+#else
     float3 lightStrength = L.Strength * ndotl;
+#endif
     
     //거리에 따른 빛 감쇠 계산.
     float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
@@ -137,7 +184,11 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
     float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);
     lightStrength *= spotFactor;
     
+#ifdef CARTOON
+    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);
+#else
     return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+#endif
 }
 
 float4 ComputeLighting(Light gLights[MaxLights], Material mat, float3 pos, float3 normal, float3 toEye, float3 shadowFactor)

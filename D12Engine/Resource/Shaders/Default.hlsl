@@ -10,6 +10,8 @@
     #define NUM_SPOT_LIGHTS 0
 #endif
 
+//#define CARTOON
+
 #include "LightingUtil.hlsli"
 
 Texture2D gDiffuseMap : register(t0);
@@ -70,7 +72,7 @@ struct VertexIn
 {
     float3 PosL : POSITION;
     float3 NormalL : NORMAL;
-    float3 TangentL : TANGENT;
+    float3 Tangent : TANGENT;
     float2 TexC : TEXCOORD;
 };
 

@@ -160,6 +160,7 @@ struct Texture
 enum class RenderLayer : int
 {
 	Opaque = 0,
+	TessLand,
 	MultiTextureBlend,
 	AlphaTestOpaque,
 	A2C_TreeBillboard,			//Æ®¸® ºôº¸µå
@@ -169,6 +170,7 @@ enum class RenderLayer : int
 	Waves,
 	MirrorStencil,
 	MirrorWall,
+	TessWall,
 	MirrorBaseFill,
 	Reflected,
 	Shadow,

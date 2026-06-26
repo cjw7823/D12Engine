@@ -97,7 +97,7 @@ void RenderApp::BuildRootSignature()
 		slotRootParameter[3].InitAsDescriptorTable(1, &uavTable);
 
 		CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-			slotRootParameter.size(),
+			(UINT)slotRootParameter.size(),
 			slotRootParameter.data(),
 			(UINT)staticSamplers.size(),
 			staticSamplers.data(),
@@ -182,13 +182,19 @@ void RenderApp::BuildShadersAndInputLayout()
 		NULL, NULL
 	};
 
+	const D3D_SHADER_MACRO tessWallDefines[] =
+	{
+		"WALL", "1",
+		NULL, NULL
+	};
+
 	double start = mTimer.TotalTime();
 
 #define USE_COMPILED_SHADER
 #ifndef USE_COMPILED_SHADER
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", defines, "PS", "ps_5_1");
-	mShaders["mirrorBaseFillPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "PS_MirrorBaseFill",	"ps_5_1");
+	mShaders["mirrorBaseFillPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "PS_MirrorBaseFill", "ps_5_1");
 	mShaders["multiTextureBlendPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", textureBlendDefines, "PS", "ps_5_1");
 	mShaders["alphaTestPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
 	mShaders["wavesVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", wavesDefines, "VS", "vs_5_1");
@@ -219,6 +225,12 @@ void RenderApp::BuildShadersAndInputLayout()
 
 	mShaders["sobelCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_1");
 	mShaders["CompositeCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
+
+	mShaders["tessVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["tessHS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "HS", "hs_5_1");
+	mShaders["tessDS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "DS", "ds_5_1");
+	mShaders["tessDS_Wall"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", tessWallDefines, "DS", "ds_5_1");
+	mShaders["tessPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "PS", "ps_5_1");
 
 #else
 	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
@@ -254,6 +266,12 @@ void RenderApp::BuildShadersAndInputLayout()
 
 	mShaders["sobelCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\SobelCS.cso");
 	mShaders["CompositeCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
+
+	mShaders["tessVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessVS.cso");
+	mShaders["tessHS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessHS.cso");
+	mShaders["tessDS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS.cso");
+	mShaders["tessDS_Wall"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS_Wall.cso");
+	mShaders["tessPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessPS.cso");
 
 #endif
 
@@ -328,8 +346,8 @@ void RenderApp::BuildPSOs()
 	//alpha test
 	PsoBuildContext alphaTestCtx = ctx;
 	alphaTestCtx.CullMode = D3D12_CULL_MODE_NONE;
-	PipelineStateFactory cullModeFactory(alphaTestCtx);
-	mPSOs["alphaTest"] = factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
+	PipelineStateFactory alphaTestFactory(alphaTestCtx);
+	mPSOs["alphaTest"] = alphaTestFactory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
 
 	//waves
 	PsoBuildContext waveCtx = ctx;
@@ -355,7 +373,7 @@ void RenderApp::BuildPSOs()
 	PipelineStateFactory mirrorFactory2(mirrorCtx2);
 
 	mPSOs["mirrorStencil"] = mirrorFactory.CreateMirrorStencilPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-	mPSOs["mirrorWall"] = mirrorFactory2.CreateMirrorWallPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+	//mPSOs["mirrorWall"] = mirrorFactory2.CreateMirrorWallPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
 	PsoBuildContext mirrorCtx3 = ctx;
 	mirrorCtx3.Clockwise = true;
@@ -439,6 +457,18 @@ void RenderApp::BuildPSOs()
 	PipelineStateFactory sobelFactory(sobelCtx);
 	mPSOs["sobel"] = sobelFactory.CreateComputePSO(mShaders["sobelCS"].Get());
 	mPSOs["composite"] = sobelFactory.CreateComputePSO(mShaders["CompositeCS"].Get());
+
+	//tessellation
+	PsoBuildContext tessCtx = ctx;
+	tessCtx.CullMode = D3D12_CULL_MODE_NONE;
+	tessCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+	PipelineStateFactory tessFactory(tessCtx);
+	mPSOs["tessLand"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+	mPSOs["tessWall"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+	tessCtx.IsWireframe = true;
+	tessFactory(tessCtx);
+	mPSOs["tessLand_wireframe"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+	mPSOs["tessWall_wireframe"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

@@ -55,6 +55,7 @@ bool RenderApp::Initialize()
 	BuildLandGeometry();
 	BuildTreeBillboardGeometry();
 	BuildCylinderWithoutTopGeometry();
+	BuildBrickWallGeometry();
 
 	BuildMaterials();
 	BuildRenderItems();
@@ -205,6 +206,9 @@ void RenderApp::Draw(const GameTimer& gt)
 		case (int)RenderLayer::Opaque:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
 			break;
+		case (int)RenderLayer::TessLand:
+			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["tessLand_wireframe"].Get() : mPSOs["tessLand"].Get());
+			break;
 		case (int)RenderLayer::MultiTextureBlend:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["multiTextureBlend"].Get());
 			CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
@@ -233,9 +237,13 @@ void RenderApp::Draw(const GameTimer& gt)
 			mCommandList->OMSetStencilRef(1);
 			mCommandList->SetPipelineState(mPSOs["mirrorStencil"].Get());
 			break;
-		case (int)RenderLayer::MirrorWall:
+		//case (int)RenderLayer::MirrorWall:
+		//	mCommandList->OMSetStencilRef(1);
+		//	mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["mirrorWall"].Get());
+		//	break;
+		case (int)RenderLayer::TessWall:
 			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["mirrorWall"].Get());
+			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["tessWall_wireframe"].Get() : mPSOs["tessWall"].Get());
 			break;
 		case (int)RenderLayer::MirrorBaseFill:
 			mCommandList->OMSetStencilRef(1);
@@ -726,9 +734,11 @@ MeshData RenderApp::LoadModelFromFile(const std::wstring& path)
 		float v1, v2, v3, n1, n2, n3;
 		iss >> v1 >> v2 >> v3 >> n1 >> n2 >> n3;
 		
-		Vertex v;
-		v.Position = { v1,v2,v3 };
-		v.Normal = {n1,n2,n3};
+		Vertex v{};
+		v.Position = { v1, v2, v3 };
+		v.Normal = { n1, n2, n3 };
+		v.TangentU = { 1.0f, 0.0f, 0.0f };
+		v.TexC = { 0.0f, 0.0f };
 		md.Vertices.push_back(v);
 	}
 	for (int i = 31083; i < 31083 + indexCount; i++)

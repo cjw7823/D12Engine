@@ -322,16 +322,16 @@ define void @PS() {
   call void @llvm.dbg.value(metadata float %.i06, i64 0, metadata !284, metadata !231), !dbg !285 ; var:"normal" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i17, i64 0, metadata !284, metadata !232), !dbg !285 ; var:"normal" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i28, i64 0, metadata !284, metadata !233), !dbg !285 ; var:"normal" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeLighting"
-  %63 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !286 ; line:145 col:12
+  %63 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !286 ; line:196 col:12
   call void @llvm.dbg.value(metadata <3 x float> zeroinitializer, i64 0, metadata !287, metadata !250), !dbg !286 ; var:"result" !DIExpression() func:"ComputeLighting"
-  %64 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !288 ; line:146 col:9
+  %64 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !288 ; line:197 col:9
   call void @llvm.dbg.value(metadata i32 0, i64 0, metadata !289, metadata !250), !dbg !288 ; var:"i" !DIExpression() func:"ComputeLighting"
-  %65 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !290 ; line:149 col:11
+  %65 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !290 ; line:200 col:11
   call void @llvm.dbg.value(metadata i32 0, i64 0, metadata !289, metadata !250), !dbg !288 ; var:"i" !DIExpression() func:"ComputeLighting"
-  br label %.lr.ph, !dbg !291 ; line:149 col:5
+  br label %.lr.ph, !dbg !291 ; line:200 col:5
 
 .lr.ph:                                           ; preds = %0
-  br label %66, !dbg !291 ; line:149 col:5
+  br label %66, !dbg !291 ; line:200 col:5
 
 ; <label>:66                                      ; preds = %66, %.lr.ph
   %result.i.0.i0 = phi float [ 0.000000e+00, %.lr.ph ], [ %.i019, %66 ]
@@ -342,50 +342,50 @@ define void @PS() {
   call void @llvm.dbg.value(metadata float %result.i.0.i0, i64 0, metadata !287, metadata !231), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %result.i.0.i1, i64 0, metadata !287, metadata !232), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %result.i.0.i2, i64 0, metadata !287, metadata !233), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeLighting"
-  %67 = getelementptr [3 x float], [3 x float]* %10, i32 0, i32 %i.i.0, !dbg !292 ; line:151 col:19
-  %68 = load float, float* %67, !dbg !292 ; line:151 col:19
-  %69 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:151 col:37
-  %70 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:151 col:37
-  %71 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:151 col:37
+  %67 = getelementptr [3 x float], [3 x float]* %10, i32 0, i32 %i.i.0, !dbg !292 ; line:202 col:19
+  %68 = load float, float* %67, !dbg !292 ; line:202 col:19
+  %69 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:202 col:37
+  %70 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:202 col:37
+  %71 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !293 ; line:202 col:37
   call void @llvm.dbg.value(metadata float %.i012, i64 0, metadata !294, metadata !231), !dbg !295 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i113, i64 0, metadata !294, metadata !232), !dbg !295 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i214, i64 0, metadata !294, metadata !233), !dbg !295 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i06, i64 0, metadata !296, metadata !231), !dbg !297 ; var:"normal" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i17, i64 0, metadata !296, metadata !232), !dbg !297 ; var:"normal" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i28, i64 0, metadata !296, metadata !233), !dbg !297 ; var:"normal" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeDirectionalLight"
-  %72 = mul i32 %i.i.0, 3, !dbg !298 ; line:88 col:26
-  %73 = add i32 28, %72, !dbg !298 ; line:88 col:26
-  %74 = add i32 %73, 1, !dbg !298 ; line:88 col:26
-  %75 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %cbPass_cbuffer, i32 %74), !dbg !298 ; line:88 col:26  ; CBufferLoadLegacy(handle,regIndex)
-  %76 = extractvalue %dx.types.CBufRet.f32 %75, 0, !dbg !298 ; line:88 col:26
-  %77 = extractvalue %dx.types.CBufRet.f32 %75, 1, !dbg !298 ; line:88 col:26
-  %78 = extractvalue %dx.types.CBufRet.f32 %75, 2, !dbg !298 ; line:88 col:26
-  %.i023 = fsub fast float -0.000000e+00, %76, !dbg !299 ; line:88 col:23
-  %.i125 = fsub fast float -0.000000e+00, %77, !dbg !299 ; line:88 col:23
-  %.i227 = fsub fast float -0.000000e+00, %78, !dbg !299 ; line:88 col:23
-  %79 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !300 ; line:88 col:12
+  %72 = mul i32 %i.i.0, 3, !dbg !298 ; line:118 col:26
+  %73 = add i32 28, %72, !dbg !298 ; line:118 col:26
+  %74 = add i32 %73, 1, !dbg !298 ; line:118 col:26
+  %75 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %cbPass_cbuffer, i32 %74), !dbg !298 ; line:118 col:26  ; CBufferLoadLegacy(handle,regIndex)
+  %76 = extractvalue %dx.types.CBufRet.f32 %75, 0, !dbg !298 ; line:118 col:26
+  %77 = extractvalue %dx.types.CBufRet.f32 %75, 1, !dbg !298 ; line:118 col:26
+  %78 = extractvalue %dx.types.CBufRet.f32 %75, 2, !dbg !298 ; line:118 col:26
+  %.i023 = fsub fast float -0.000000e+00, %76, !dbg !299 ; line:118 col:23
+  %.i125 = fsub fast float -0.000000e+00, %77, !dbg !299 ; line:118 col:23
+  %.i227 = fsub fast float -0.000000e+00, %78, !dbg !299 ; line:118 col:23
+  %79 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !300 ; line:118 col:12
   call void @llvm.dbg.value(metadata float %.i023, i64 0, metadata !301, metadata !231), !dbg !300 ; var:"lightVec" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i125, i64 0, metadata !301, metadata !232), !dbg !300 ; var:"lightVec" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeDirectionalLight"
   call void @llvm.dbg.value(metadata float %.i227, i64 0, metadata !301, metadata !233), !dbg !300 ; var:"lightVec" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeDirectionalLight"
-  %80 = call float @dx.op.dot3.f32(i32 55, float %.i023, float %.i125, float %.i227, float %.i06, float %.i17, float %.i28), !dbg !302 ; line:91 col:23  ; Dot3(ax,ay,az,bx,by,bz)
-  %FMax5 = call float @dx.op.binary.f32(i32 35, float %80, float 0.000000e+00), !dbg !303 ; line:91 col:19  ; FMax(a,b)
-  %81 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !304 ; line:91 col:11
+  %80 = call float @dx.op.dot3.f32(i32 55, float %.i023, float %.i125, float %.i227, float %.i06, float %.i17, float %.i28), !dbg !302 ; line:121 col:23  ; Dot3(ax,ay,az,bx,by,bz)
+  %FMax5 = call float @dx.op.binary.f32(i32 35, float %80, float 0.000000e+00), !dbg !303 ; line:121 col:19  ; FMax(a,b)
+  %81 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !304 ; line:121 col:11
   call void @llvm.dbg.value(metadata float %FMax5, i64 0, metadata !305, metadata !250), !dbg !304 ; var:"ndotl" !DIExpression() func:"ComputeDirectionalLight"
-  %82 = mul i32 %i.i.0, 3, !dbg !306 ; line:92 col:30
-  %83 = add i32 28, %82, !dbg !306 ; line:92 col:30
-  %84 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %cbPass_cbuffer, i32 %83), !dbg !306 ; line:92 col:30  ; CBufferLoadLegacy(handle,regIndex)
-  %85 = extractvalue %dx.types.CBufRet.f32 %84, 0, !dbg !306 ; line:92 col:30
-  %86 = extractvalue %dx.types.CBufRet.f32 %84, 1, !dbg !306 ; line:92 col:30
-  %87 = extractvalue %dx.types.CBufRet.f32 %84, 2, !dbg !306 ; line:92 col:30
-  %.i028 = fmul fast float %85, %FMax5, !dbg !307 ; line:92 col:39
-  %.i129 = fmul fast float %86, %FMax5, !dbg !307 ; line:92 col:39
-  %.i230 = fmul fast float %87, %FMax5, !dbg !307 ; line:92 col:39
-  %88 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !308 ; line:92 col:12
-  call void @llvm.dbg.value(metadata float %.i028, i64 0, metadata !309, metadata !231), !dbg !308 ; var:"lightStrenght" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeDirectionalLight"
-  call void @llvm.dbg.value(metadata float %.i129, i64 0, metadata !309, metadata !232), !dbg !308 ; var:"lightStrenght" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeDirectionalLight"
-  call void @llvm.dbg.value(metadata float %.i230, i64 0, metadata !309, metadata !233), !dbg !308 ; var:"lightStrenght" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeDirectionalLight"
-  %89 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !310 ; line:94 col:12
-  %90 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !310 ; line:94 col:12
+  %82 = mul i32 %i.i.0, 3, !dbg !306 ; line:127 col:30
+  %83 = add i32 28, %82, !dbg !306 ; line:127 col:30
+  %84 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %cbPass_cbuffer, i32 %83), !dbg !306 ; line:127 col:30  ; CBufferLoadLegacy(handle,regIndex)
+  %85 = extractvalue %dx.types.CBufRet.f32 %84, 0, !dbg !306 ; line:127 col:30
+  %86 = extractvalue %dx.types.CBufRet.f32 %84, 1, !dbg !306 ; line:127 col:30
+  %87 = extractvalue %dx.types.CBufRet.f32 %84, 2, !dbg !306 ; line:127 col:30
+  %.i028 = fmul fast float %85, %FMax5, !dbg !307 ; line:127 col:39
+  %.i129 = fmul fast float %86, %FMax5, !dbg !307 ; line:127 col:39
+  %.i230 = fmul fast float %87, %FMax5, !dbg !307 ; line:127 col:39
+  %88 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !308 ; line:127 col:12
+  call void @llvm.dbg.value(metadata float %.i028, i64 0, metadata !309, metadata !231), !dbg !308 ; var:"lightStrength" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeDirectionalLight"
+  call void @llvm.dbg.value(metadata float %.i129, i64 0, metadata !309, metadata !232), !dbg !308 ; var:"lightStrength" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeDirectionalLight"
+  call void @llvm.dbg.value(metadata float %.i230, i64 0, metadata !309, metadata !233), !dbg !308 ; var:"lightStrength" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeDirectionalLight"
+  %89 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !310 ; line:128 col:12
+  %90 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !310 ; line:128 col:12
   call void @llvm.dbg.value(metadata float %.i012, i64 0, metadata !311, metadata !231), !dbg !312 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 0, 32) func:"BlinnPhong"
   call void @llvm.dbg.value(metadata float %.i113, i64 0, metadata !311, metadata !232), !dbg !312 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 32, 32) func:"BlinnPhong"
   call void @llvm.dbg.value(metadata float %.i214, i64 0, metadata !311, metadata !233), !dbg !312 ; var:"toEye" !DIExpression(DW_OP_bit_piece, 64, 32) func:"BlinnPhong"
@@ -485,31 +485,31 @@ define void @PS() {
   %.i165 = fmul fast float %.i162, %.i129, !dbg !362 ; line:82 col:49
   %.i266 = fmul fast float %.i263, %.i230, !dbg !362 ; line:82 col:49
   %112 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !363 ; line:82 col:5
-  %113 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !364 ; line:94 col:5
-  %.i067 = fmul fast float %68, %.i064, !dbg !365 ; line:151 col:35
-  %.i168 = fmul fast float %68, %.i165, !dbg !365 ; line:151 col:35
-  %.i269 = fmul fast float %68, %.i266, !dbg !365 ; line:151 col:35
-  %.i019 = fadd fast float %result.i.0.i0, %.i067, !dbg !366 ; line:151 col:16
-  %.i120 = fadd fast float %result.i.0.i1, %.i168, !dbg !366 ; line:151 col:16
-  %.i221 = fadd fast float %result.i.0.i2, %.i269, !dbg !366 ; line:151 col:16
-  %114 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !366 ; line:151 col:16
+  %113 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !364 ; line:128 col:5
+  %.i067 = fmul fast float %68, %.i064, !dbg !365 ; line:202 col:35
+  %.i168 = fmul fast float %68, %.i165, !dbg !365 ; line:202 col:35
+  %.i269 = fmul fast float %68, %.i266, !dbg !365 ; line:202 col:35
+  %.i019 = fadd fast float %result.i.0.i0, %.i067, !dbg !366 ; line:202 col:16
+  %.i120 = fadd fast float %result.i.0.i1, %.i168, !dbg !366 ; line:202 col:16
+  %.i221 = fadd fast float %result.i.0.i2, %.i269, !dbg !366 ; line:202 col:16
+  %114 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !366 ; line:202 col:16
   call void @llvm.dbg.value(metadata float %.i019, i64 0, metadata !287, metadata !231), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i120, i64 0, metadata !287, metadata !232), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i221, i64 0, metadata !287, metadata !233), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeLighting"
-  %115 = add nsw i32 %i.i.0, 1, !dbg !367 ; line:149 col:36
-  %116 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !367 ; line:149 col:36
+  %115 = add nsw i32 %i.i.0, 1, !dbg !367 ; line:200 col:36
+  %116 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !367 ; line:200 col:36
   call void @llvm.dbg.value(metadata i32 %115, i64 0, metadata !289, metadata !250), !dbg !288 ; var:"i" !DIExpression() func:"ComputeLighting"
-  %117 = icmp slt i32 %115, 3, !dbg !368 ; line:149 col:18
-  br i1 %117, label %66, label %".\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit_crit_edge", !dbg !291 ; line:149 col:5
+  %117 = icmp slt i32 %115, 3, !dbg !368 ; line:200 col:18
+  br i1 %117, label %66, label %".\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit_crit_edge", !dbg !291 ; line:200 col:5
 
 ".\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit_crit_edge": ; preds = %66
-  br label %"\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit", !dbg !291 ; line:149 col:5
+  br label %"\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit", !dbg !291 ; line:200 col:5
 
 "\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit": ; preds = %".\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z.exit_crit_edge"
   call void @llvm.dbg.value(metadata float %.i019, i64 0, metadata !287, metadata !231), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i120, i64 0, metadata !287, metadata !232), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ComputeLighting"
   call void @llvm.dbg.value(metadata float %.i221, i64 0, metadata !287, metadata !233), !dbg !286 ; var:"result" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ComputeLighting"
-  %118 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !369 ; line:169 col:5
+  %118 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !369 ; line:220 col:5
   %119 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0), !dbg !370 ; line:161 col:12
   call void @llvm.dbg.value(metadata float %.i019, i64 0, metadata !371, metadata !231), !dbg !370 ; var:"directLight" !DIExpression(DW_OP_bit_piece, 0, 32) func:"PS"
   call void @llvm.dbg.value(metadata float %.i120, i64 0, metadata !371, metadata !232), !dbg !370 ; var:"directLight" !DIExpression(DW_OP_bit_piece, 32, 32) func:"PS"
@@ -658,7 +658,7 @@ attributes #2 = { nounwind readonly }
 !41 = !DIDerivedType(tag: DW_TAG_member, name: "PrimID", scope: !28, file: !1, line: 82, baseType: !42, size: 32, align: 32, offset: 384)
 !42 = !DIDerivedType(tag: DW_TAG_typedef, name: "uint", file: !1, line: 61, baseType: !43)
 !43 = !DIBasicType(name: "unsigned int", size: 32, align: 32, encoding: DW_ATE_unsigned)
-!44 = !DISubprogram(name: "ComputeLighting", linkageName: "\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z", scope: !45, file: !45, line: 143, type: !46, isLocal: false, isDefinition: true, scopeLine: 144, flags: DIFlagPrototyped, isOptimized: false)
+!44 = !DISubprogram(name: "ComputeLighting", linkageName: "\01?ComputeLighting@@YA?AV?$vector@M$03@@Y0BA@ULight@@UMaterial@@V?$vector@M$02@@222@Z", scope: !45, file: !45, line: 194, type: !46, isLocal: false, isDefinition: true, scopeLine: 195, flags: DIFlagPrototyped, isOptimized: false)
 !45 = !DIFile(filename: "C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders/LightingUtil.hlsli", directory: "")
 !46 = !DISubroutineType(types: !47)
 !47 = !{!15, !48, !59, !4, !4, !4, !4}
@@ -678,7 +678,7 @@ attributes #2 = { nounwind readonly }
 !61 = !DIDerivedType(tag: DW_TAG_member, name: "DiffuseAlbedo", scope: !59, file: !45, line: 15, baseType: !15, size: 128, align: 32)
 !62 = !DIDerivedType(tag: DW_TAG_member, name: "FresnelR0", scope: !59, file: !45, line: 16, baseType: !4, size: 96, align: 32, offset: 128)
 !63 = !DIDerivedType(tag: DW_TAG_member, name: "Shininess", scope: !59, file: !45, line: 17, baseType: !8, size: 32, align: 32, offset: 224)
-!64 = !DISubprogram(name: "ComputeDirectionalLight", linkageName: "\01?ComputeDirectionalLight@@YA?AV?$vector@M$02@@ULight@@UMaterial@@V1@2@Z", scope: !45, file: !45, line: 85, type: !65, isLocal: false, isDefinition: true, scopeLine: 86, flags: DIFlagPrototyped, isOptimized: false)
+!64 = !DISubprogram(name: "ComputeDirectionalLight", linkageName: "\01?ComputeDirectionalLight@@YA?AV?$vector@M$02@@ULight@@UMaterial@@V1@2@Z", scope: !45, file: !45, line: 115, type: !65, isLocal: false, isDefinition: true, scopeLine: 116, flags: DIFlagPrototyped, isOptimized: false)
 !65 = !DISubroutineType(types: !66)
 !66 = !{!4, !49, !59, !4, !4}
 !67 = !DISubprogram(name: "BlinnPhong", linkageName: "\01?BlinnPhong@@YA?AV?$vector@M$02@@V1@000UMaterial@@@Z", scope: !45, file: !45, line: 68, type: !68, isLocal: false, isDefinition: true, scopeLine: 69, flags: DIFlagPrototyped, isOptimized: false)
@@ -758,7 +758,7 @@ attributes #2 = { nounwind readonly }
 !141 = !{i32 2, !"Debug Info Version", i32 3}
 !142 = !{!"dxcoob 1.8.2502.11 (239921522)"}
 !143 = !{!"C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders\5CTreeBillboard.hlsl", !"#ifndef NUM_DIR_LIGHTS\0D\0A    #define NUM_DIR_LIGHTS 3\0D\0A#endif\0D\0A\0D\0A#ifndef NUM_POINT_LIGHTS\0D\0A    #define NUM_POINT_LIGHTS 0\0D\0A#endif\0D\0A\0D\0A#ifndef NUM_SPOT_LIGHTS\0D\0A    #define NUM_SPOT_LIGHTS 0\0D\0A#endif\0D\0A\0D\0A#include \22LightingUtil.hlsli\22\0D\0A\0D\0ATexture2DArray gTreeMapArray : register(t0);\0D\0A\0D\0ASamplerState gsamPointWrap : register(s0);\0D\0ASamplerState gsamPointClamp : register(s1);\0D\0ASamplerState gsamLinearWrap : register(s2);\0D\0ASamplerState gsamLinearClamp : register(s3);\0D\0ASamplerState gsamAnisotropicWrap : register(s4);\0D\0ASamplerState gsamAnisotropicClamp : register(s5);\0D\0A\0D\0Acbuffer cbPerObject : register(b0)\0D\0A{\0D\0A    float4x4 gWorld; //16DWARD\0D\0A    float4x4 gTexTransform;\0D\0A};\0D\0A\0D\0Acbuffer cbMaterial : register(b1)\0D\0A{\0D\0A    float4 gDiffuseAlbedo;\0D\0A    float3 gFresnelR0;\0D\0A    float gRoughness;\0D\0A    float4x4 gMatTransform;\0D\0A};\0D\0A\0D\0Acbuffer cbPass : register(b2)\0D\0A{\0D\0A    float4x4 gView;\0D\0A    float4x4 gInvView;\0D\0A    float4x4 gProj;\0D\0A    float4x4 gInvProj;\0D\0A    float4x4 gViewProj;\0D\0A    float4x4 gInvViewProj;\0D\0A    float3 gEyePosW;\0D\0A    float cbPerObjectPad1;\0D\0A    float2 gRenderTargetSize;\0D\0A    float2 gInvRenderTargetSize;\0D\0A    float gNearZ;\0D\0A    float gFarZ;\0D\0A    float gTotalTime;\0D\0A    float gDeltaTime;\0D\0A    float4 gAmbientLight;\0D\0A    \0D\0A    Light gLights[MaxLights];\0D\0A    \0D\0A    float4 gFogColor;\0D\0A    float gFogStart;\0D\0A    float gFogRange;\0D\0A    float2 cbPerObjectPad2;\0D\0A};\0D\0A\0D\0Astruct VertexIn\0D\0A{\0D\0A    float3 PosW : POSITION;\0D\0A    float2 SizeW : SIZE;\0D\0A};\0D\0A\0D\0Astruct VertexOut\0D\0A{\0D\0A    float3 CenterW : POSITION;\0D\0A    float2 SizeW : SIZE;\0D\0A};\0D\0A\0D\0Astruct GeoOut\0D\0A{\0D\0A    float4 PosH : SV_POSITION;\0D\0A    float3 PosW : POSITION;\0D\0A    float3 NormalW : NORMAL;\0D\0A    float2 TexC : TEXCOORD;\0D\0A    uint PrimID : SV_PrimitiveID;\0D\0A};\0D\0A\0D\0A//\B1\D7\B3\C9 \C6\D0\BD\BA\BD\BA\B7\E7 \BC\CE\C0\CC\B4\F5.\0D\0AVertexOut VS(VertexIn vin)\0D\0A{\0D\0A    VertexOut vout;\0D\0A    \0D\0A    vout.CenterW = vin.PosW;\0D\0A    vout.SizeW = vin.SizeW;\0D\0A\0D\0A    return vout;\0D\0A}\0D\0A \0D\0A//\C1\A1(CenterW)\B8\A6 \BB\E7\B0\A2\C7\FC(\C1\A1 4\B0\B3)\C0\B8\B7\CE \C8\AE\C0\E5.\0D\0A[maxvertexcount(4)]\0D\0Avoid GS(point VertexOut gin[1],\0D\0A        uint primID : SV_PrimitiveID,\0D\0A        inout TriangleStream<GeoOut> triStream)\0D\0A{\0D\0A\09//\C0\D3\BD\C3 \B7\CE\C4\C3 \C1\C2\C7\A5\B0\E8 -> \BF\F9\B5\E5 \C1\C2\C7\A5\B0\E8\0D\0A    //\BA\F4\BA\B8\B5\E5\B4\C2 y\C3\E0\BF\A1 \C1\A4\B7\C4\B5\C7\B0\ED \BD\C3\BC\B1\C0\BB \C7\E2\C7\D4\0D\0A    float3 up = float3(0.0f, 1.0f, 0.0f);\0D\0A    float3 look = gEyePosW - gin[0].CenterW;\0D\0A    look.y = 0.0f; //project to xz-plane\0D\0A    look = normalize(look);\0D\0A    float3 right = cross(up, look);\0D\0A\0D\0A    float halfWidth = 0.5f * gin[0].SizeW.x;\0D\0A    float halfHeight = 0.5f * gin[0].SizeW.y;\0D\0A\09\0D\0A    float4 v[4];\0D\0A    v[0] = float4(gin[0].CenterW + halfWidth * right - halfHeight * up, 1.0f);\0D\0A    v[1] = float4(gin[0].CenterW + halfWidth * right + halfHeight * up, 1.0f);\0D\0A    v[2] = float4(gin[0].CenterW - halfWidth * right - halfHeight * up, 1.0f);\0D\0A    v[3] = float4(gin[0].CenterW - halfWidth * right + halfHeight * up, 1.0f);\0D\0A    \0D\0A    float2 texC[4] =\0D\0A    {\0D\0A        float2(0.0f, 1.0f),\0D\0A\09\09float2(0.0f, 0.0f),\0D\0A\09\09float2(1.0f, 1.0f),\0D\0A\09\09float2(1.0f, 0.0f)\0D\0A    };\0D\0A\09\0D\0A    GeoOut gout;\0D\0A\09[unroll]\0D\0A    for (int i = 0; i < 4; ++i)\0D\0A    {\0D\0A        gout.PosH = mul(v[i], gViewProj);\0D\0A        gout.PosW = v[i].xyz;\0D\0A        gout.NormalW = look;\0D\0A        gout.TexC = texC[i];\0D\0A        gout.PrimID = primID;\0D\0A\09\09\0D\0A        triStream.Append(gout);\0D\0A    }\0D\0A}\0D\0A\0D\0Afloat4 PS(GeoOut pin) : SV_Target\0D\0A{\0D\0A    float3 uvw = float3(pin.TexC, pin.PrimID % 3);\0D\0A    float4 diffuseAlbedo = gTreeMapArray.Sample(gsamAnisotropicWrap, uvw) * gDiffuseAlbedo;\0D\0A\09\0D\0A#ifdef ALPHA_TEST\0D\0A\09clip(diffuseAlbedo.a - 0.1f);\0D\0A#endif\0D\0A    \0D\0A    pin.NormalW = normalize(pin.NormalW);\0D\0A    \0D\0A    float3 toEyeW = gEyePosW - pin.PosW;\0D\0A    float distToEye = length(toEyeW);\0D\0A    toEyeW /= distToEye; // normalize\0D\0A    \0D\0A    float4 ambient = gAmbientLight * diffuseAlbedo;\0D\0A\0D\0A    const float shininess = 1.0f - gRoughness;\0D\0A    Material mat = { diffuseAlbedo, gFresnelR0, shininess };\0D\0A    float3 shadowFactor = 1.0f;\0D\0A    float4 directLight = ComputeLighting(gLights, mat, pin.PosW,\0D\0A        pin.NormalW, toEyeW, shadowFactor);\0D\0A\0D\0A    float4 litColor = ambient + directLight;\0D\0A\0D\0A#ifdef FOG\0D\0A\09float fogAmount = saturate((distToEye - gFogStart) / gFogRange);\0D\0A\09litColor = lerp(litColor, gFogColor, fogAmount);\0D\0A#endif\0D\0A    \0D\0A    litColor.a = diffuseAlbedo.a;\0D\0A\0D\0A    return litColor;\0D\0A}\0D\0A\0D\0Afloat4 PS_Wireframe(GeoOut pin) : SV_Target\0D\0A{\0D\0A    return float4(1.0f, 1.0f, 1.0f, 1.0f);\0D\0A}"}
-!144 = !{!"C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders\5CLightingUtil.hlsli", !"#define MaxLights 16\0D\0A\0D\0Astruct Light\0D\0A{\0D\0A    float3 Strength;\0D\0A    float FalloffStart;     //point, spot\0D\0A    float3 Direction;       //directional, spot\0D\0A    float FalloffEnd;       //point, spot\0D\0A    float3 Position;        //point\0D\0A    float SpotPower;        //spot\0D\0A};\0D\0A\0D\0Astruct Material\0D\0A{\0D\0A    float4 DiffuseAlbedo;\0D\0A    float3 FresnelR0;\0D\0A    float Shininess;\0D\0A};\0D\0A\0D\0A//\EC\B9\B4\ED\88\B0\ED\99\94\0D\0Afloat QuantizeKd(float kd)\0D\0A{\0D\0A    if (kd <= 0.0f)\0D\0A        return 0.2f;\0D\0A    else if (kd <= 0.3f)\0D\0A        return 0.4f;\0D\0A    else if (kd <= 0.6f)\0D\0A        return 0.6f;\0D\0A    else if (kd <= 0.9f)\0D\0A        return 0.8f;\0D\0A    else\0D\0A        return 1.0f;\0D\0A}\0D\0A\0D\0Afloat QuantizeKs(float ks)\0D\0A{\0D\0A    if (ks <= 0.1f)\0D\0A        return 0.0f;\0D\0A    else if (ks <= 0.3f)\0D\0A        return 0.2f;\0D\0A    else if (ks <= 0.5f)\0D\0A        return 0.4f;\0D\0A    else if (ks <= 0.7f)\0D\0A        return 0.6f;\0D\0A    else if (ks <= 0.9f)\0D\0A        return 0.8f;\0D\0A    else\0D\0A        return 1.f;\0D\0A}\0D\0A\0D\0Afloat CalcAttenuation(float d, float falloffStart, float falloffEnd)\0D\0A{\0D\0A    //\EC\84\A0\ED\98\95 \EA\B0\90\EC\87\A0\0D\0A    return saturate((falloffEnd - d) / (falloffEnd - falloffStart));\0D\0A}\0D\0A\0D\0A//Schlick\EC\9D\80 \ED\94\84\EB\A0\88\EB\84\AC \EB\B0\98\EC\82\AC\EC\9C\A8\EC\97\90 \EB\8C\80\ED\95\9C \EA\B7\BC\EC\82\AC\EC\B9\98(233\ED\8E\98\EC\9D\B4\EC\A7\80 \22\EC\8B\A4\EC\8B\9C\EA\B0\84 \EB\A0\8C\EB\8D\94\EB\A7\81 3\ED\8C\90\22 \EC\B0\B8\EC\A1\B0)\0D\0A//R0 = ((n-1)/(n+1))^2, \EC\97\AC\EA\B8\B0\EC\84\9C n\EC\9D\80 \EA\B5\B4\EC\A0\88\EB\A5\A0\0D\0Afloat3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)\0D\0A{\0D\0A    float cosIncidentAngle = saturate(dot(normal, lightVec));\0D\0A    float f0 = 1.0f - cosIncidentAngle;\0D\0A    float3 reflectPercent = R0 + (1.0f - R0) * pow(f0, 5.0f);\0D\0A    \0D\0A    return reflectPercent;\0D\0A}\0D\0A\0D\0Afloat3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)\0D\0A{\0D\0A    const float m = mat.Shininess * 256.0f;\0D\0A    float3 halfVec = normalize(toEye + lightVec);\0D\0A    \0D\0A    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;\0D\0A    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);\0D\0A    \0D\0A    float3 specAlbedo = fresnelFactor * roughnessFactor;\0D\0A\0D\0A    //Blinn-Phong \EB\AA\A8\EB\8D\B8\EC\97\90\EC\84\A0\EB\8A\94 speccAlbedo\EA\B0\80 1\EB\B3\B4\EB\8B\A4 \ED\81\B4 \EC\88\98 \EC\9E\88\EB\8B\A4.\0D\0A    //LDR\EB\A0\8C\EB\8D\94\EB\A7\81\EC\9D\84 \EC\88\98\ED\96\89\ED\95\98\EA\B3\A0 \EC\9E\88\EC\9C\BC\EB\AF\80\EB\A1\9C \EB\B2\94\EC\9C\84\EB\A5\BC \EC\95\BD\EA\B0\84 \EC\B6\95\EC\86\8C\ED\95\9C\EB\8B\A4.\0D\0A    specAlbedo = specAlbedo / (specAlbedo + 1.0f);\0D\0A    \0D\0A    return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;\0D\0A}\0D\0A\0D\0Afloat3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)\0D\0A{\0D\0A    //\EA\B4\91 \EB\B2\A1\ED\84\B0\EB\8A\94 \EB\B9\9B\EC\9D\B4 \EC\A7\84\ED\96\89\ED\95\9C\EB\8A\94 \EB\B0\A9\ED\96\A5\EA\B3\BC \EB\B0\98\EB\8C\80 \EB\B0\A9\ED\96\A5.\0D\0A    float3 lightVec = -L.Direction;\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0\E3\84\B4.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A    float3 lightStrenght = L.Strength * ndotl;\0D\0A    \0D\0A    return BlinnPhong(lightStrenght, lightVec, normal, toEye, mat);\0D\0A}\0D\0A\0D\0Afloat3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)\0D\0A{\0D\0A    float3 lightVec = L.Position - pos;\0D\0A    float d = length(lightVec);\0D\0A    \0D\0A    if (d > L.FalloffEnd)\0D\0A        return 0;\0D\0A    \0D\0A    lightVec /= d; //\EC\A0\95\EA\B7\9C\ED\99\94\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A    float3 lightStrength = L.Strength * ndotl;\0D\0A    \0D\0A    //\EA\B1\B0\EB\A6\AC\EC\97\90 \EB\94\B0\EB\A5\B8 \EB\B9\9B \EA\B0\90\EC\87\A0 \EA\B3\84\EC\82\B0.\0D\0A    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);\0D\0A    lightStrength *= att;\0D\0A    \0D\0A    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);\0D\0A}\0D\0A\0D\0Afloat3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)\0D\0A{\0D\0A    float3 lightVec = L.Position - pos;\0D\0A    float d = length(lightVec);\0D\0A    \0D\0A    if (d > L.FalloffEnd)\0D\0A        return 0;\0D\0A    \0D\0A    lightVec /= d; //\EC\A0\95\EA\B7\9C\ED\99\94\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A    float3 lightStrength = L.Strength * ndotl;\0D\0A    \0D\0A    //\EA\B1\B0\EB\A6\AC\EC\97\90 \EB\94\B0\EB\A5\B8 \EB\B9\9B \EA\B0\90\EC\87\A0 \EA\B3\84\EC\82\B0.\0D\0A    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);\0D\0A    lightStrength *= att;\0D\0A    \0D\0A    //\EC\8A\A4\ED\8F\AC\ED\8A\B8\EB\9D\BC\EC\9D\B4\ED\8A\B8\EC\9D\98 \EA\B2\BD\EC\9A\B0, \EB\B9\9B\EC\9D\B4 \EC\8A\A4\ED\8F\AC\ED\8A\B8\EB\9D\BC\EC\9D\B4\ED\8A\B8\EC\9D\98 \EC\A4\91\EC\8B\AC\EC\97\90\EC\84\9C \EB\A9\80\EC\96\B4\EC\A7\88\EC\88\98\EB\A1\9D \EB\B9\9B\EC\9D\B4 \EC\95\BD\ED\95\B4\EC\A7\84\EB\8B\A4.\0D\0A    float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);\0D\0A    lightStrength *= spotFactor;\0D\0A    \0D\0A    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);\0D\0A}\0D\0A\0D\0Afloat4 ComputeLighting(Light gLights[MaxLights], Material mat, float3 pos, float3 normal, float3 toEye, float3 shadowFactor)\0D\0A{\0D\0A    float3 result = 0;\0D\0A    int i = 0;\0D\0A    \0D\0A#if (NUM_DIR_LIGHTS > 0)\0D\0A    for(i = 0; i < NUM_DIR_LIGHTS; ++i)\0D\0A    {\0D\0A        result += shadowFactor[i] * ComputeDirectionalLight(gLights[i], mat, normal, toEye);\0D\0A    }\0D\0A#endif\0D\0A\0D\0A#if (NUM_POINT_LIGHTS > 0)\0D\0A    for(i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS+NUM_POINT_LIGHTS; ++i)\0D\0A    {\0D\0A        result += ComputePointLight(gLights[i], mat, pos, normal, toEye);\0D\0A    }\0D\0A#endif\0D\0A\0D\0A#if (NUM_SPOT_LIGHTS > 0)\0D\0A    for(i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)\0D\0A    {\0D\0A        result += ComputeSpotLight(gLights[i], mat, pos, normal, toEye);\0D\0A    }\0D\0A#endif \0D\0A    \0D\0A    return float4(result, 0.0f);\0D\0A}"}
+!144 = !{!"C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders\5CLightingUtil.hlsli", !"#define MaxLights 16\0D\0A\0D\0Astruct Light\0D\0A{\0D\0A    float3 Strength;\0D\0A    float FalloffStart;     //point, spot\0D\0A    float3 Direction;       //directional, spot\0D\0A    float FalloffEnd;       //point, spot\0D\0A    float3 Position;        //point\0D\0A    float SpotPower;        //spot\0D\0A};\0D\0A\0D\0Astruct Material\0D\0A{\0D\0A    float4 DiffuseAlbedo;\0D\0A    float3 FresnelR0;\0D\0A    float Shininess;\0D\0A};\0D\0A\0D\0A//\EC\B9\B4\ED\88\B0\ED\99\94\0D\0Afloat QuantizeKd(float kd)\0D\0A{\0D\0A    if (kd <= 0.0f)\0D\0A        return 0.2f;\0D\0A    else if (kd <= 0.3f)\0D\0A        return 0.4f;\0D\0A    else if (kd <= 0.6f)\0D\0A        return 0.6f;\0D\0A    else if (kd <= 0.9f)\0D\0A        return 0.8f;\0D\0A    else\0D\0A        return 1.0f;\0D\0A}\0D\0A\0D\0Afloat QuantizeKs(float ks)\0D\0A{\0D\0A    if (ks <= 0.1f)\0D\0A        return 0.0f;\0D\0A    else if (ks <= 0.3f)\0D\0A        return 0.2f;\0D\0A    else if (ks <= 0.5f)\0D\0A        return 0.4f;\0D\0A    else if (ks <= 0.7f)\0D\0A        return 0.6f;\0D\0A    else if (ks <= 0.9f)\0D\0A        return 0.8f;\0D\0A    else\0D\0A        return 1.f;\0D\0A}\0D\0A\0D\0Afloat CalcAttenuation(float d, float falloffStart, float falloffEnd)\0D\0A{\0D\0A    //\EC\84\A0\ED\98\95 \EA\B0\90\EC\87\A0\0D\0A    return saturate((falloffEnd - d) / (falloffEnd - falloffStart));\0D\0A}\0D\0A\0D\0A//Schlick\EC\9D\80 \ED\94\84\EB\A0\88\EB\84\AC \EB\B0\98\EC\82\AC\EC\9C\A8\EC\97\90 \EB\8C\80\ED\95\9C \EA\B7\BC\EC\82\AC\EC\B9\98(233\ED\8E\98\EC\9D\B4\EC\A7\80 \22\EC\8B\A4\EC\8B\9C\EA\B0\84 \EB\A0\8C\EB\8D\94\EB\A7\81 3\ED\8C\90\22 \EC\B0\B8\EC\A1\B0)\0D\0A//R0 = ((n-1)/(n+1))^2, \EC\97\AC\EA\B8\B0\EC\84\9C n\EC\9D\80 \EA\B5\B4\EC\A0\88\EB\A5\A0\0D\0Afloat3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)\0D\0A{\0D\0A    float cosIncidentAngle = saturate(dot(normal, lightVec));\0D\0A    float f0 = 1.0f - cosIncidentAngle;\0D\0A    float3 reflectPercent = R0 + (1.0f - R0) * pow(f0, 5.0f);\0D\0A    \0D\0A    return reflectPercent;\0D\0A}\0D\0A\0D\0Afloat3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)\0D\0A{\0D\0A    const float m = mat.Shininess * 256.0f;\0D\0A    float3 halfVec = normalize(toEye + lightVec);\0D\0A    \0D\0A    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;\0D\0A    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);\0D\0A    \0D\0A    float3 specAlbedo = fresnelFactor * roughnessFactor;\0D\0A\0D\0A    //Blinn-Phong \EB\AA\A8\EB\8D\B8\EC\97\90\EC\84\A0\EB\8A\94 speccAlbedo\EA\B0\80 1\EB\B3\B4\EB\8B\A4 \ED\81\B4 \EC\88\98 \EC\9E\88\EB\8B\A4.\0D\0A    //LDR\EB\A0\8C\EB\8D\94\EB\A7\81\EC\9D\84 \EC\88\98\ED\96\89\ED\95\98\EA\B3\A0 \EC\9E\88\EC\9C\BC\EB\AF\80\EB\A1\9C \EB\B2\94\EC\9C\84\EB\A5\BC \EC\95\BD\EA\B0\84 \EC\B6\95\EC\86\8C\ED\95\9C\EB\8B\A4.\0D\0A    specAlbedo = specAlbedo / (specAlbedo + 1.0f);\0D\0A    \0D\0A    return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;\0D\0A}\0D\0A\0D\0Afloat3 BlinnPhongToon(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)\0D\0A{\0D\0A    // 1) kd\0D\0A    float kd = saturate(dot(lightVec, normal));\0D\0A    float kd_q = QuantizeKd(kd);\0D\0A\0D\0A    // 2) ks (Blinn-Phong)\0D\0A    const float m = mat.Shininess * 256.0f;\0D\0A    float3 halfVec = normalize(toEye + lightVec);\0D\0A    float ndoth = saturate(dot(halfVec, normal));\0D\0A\0D\0A    float ks = pow(max(ndoth, 0), m); // \EC\8A\A4\ED\8E\99\ED\81\98\EB\9F\AC \EA\B0\95\EB\8F\84\EC\9D\98 \ED\95\B5\EC\8B\AC\0D\0A    float ks_q = QuantizeKs(ks); // \EC\9D\B4\EC\82\B0\ED\99\94\0D\0A\0D\0A    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;\0D\0A    // fresnel(\EC\83\89) + (\ED\95\84\EC\9A\94\ED\95\98\EB\A9\B4) \EC\A0\95\EA\B7\9C\ED\99\94 \EA\B3\84\EC\88\98\EB\8A\94 \EC\B7\A8\ED\96\A5\0D\0A    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);\0D\0A\0D\0A    // ks_q\EB\A5\BC spec\EC\97\90 \EB\B0\98\EC\98\81\0D\0A    float3 specAlbedo = roughnessFactor * fresnelFactor * ks_q;\0D\0A\0D\0A    // LDR clamp\EB\8A\94 \EC\9C\A0\EC\A7\80 \EA\B0\80\EB\8A\A5\0D\0A    specAlbedo = specAlbedo / (specAlbedo + 1.0f);\0D\0A\0D\0A    // diffuse\EB\8A\94 kd_q\EB\A5\BC \EB\B0\98\EC\98\81\0D\0A    float3 diffuse = mat.DiffuseAlbedo.rgb * kd_q;\0D\0A    \0D\0A    return (diffuse + specAlbedo) * lightStrength;\0D\0A}\0D\0A\0D\0Afloat3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)\0D\0A{\0D\0A    //\EA\B4\91 \EB\B2\A1\ED\84\B0\EB\8A\94 \EB\B9\9B\EC\9D\B4 \EC\A7\84\ED\96\89\ED\95\9C\EB\8A\94 \EB\B0\A9\ED\96\A5\EA\B3\BC \EB\B0\98\EB\8C\80 \EB\B0\A9\ED\96\A5.\0D\0A    float3 lightVec = -L.Direction;\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A    \0D\0A#ifdef CARTOON\0D\0A    float3 lightStrength = L.Strength;\0D\0A    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);\0D\0A#else\0D\0A    float3 lightStrength = L.Strength * ndotl;\0D\0A    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);\0D\0A#endif\0D\0A}\0D\0A\0D\0Afloat3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)\0D\0A{\0D\0A    float3 lightVec = L.Position - pos;\0D\0A    float d = length(lightVec);\0D\0A    \0D\0A    if (d > L.FalloffEnd)\0D\0A        return 0;\0D\0A    \0D\0A    lightVec /= d; //\EC\A0\95\EA\B7\9C\ED\99\94\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A#ifdef CARTOON\0D\0A    float3 lightStrength = L.Strength;\0D\0A#else\0D\0A    float3 lightStrength = L.Strength * ndotl;\0D\0A#endif\0D\0A    \0D\0A    //\EA\B1\B0\EB\A6\AC\EC\97\90 \EB\94\B0\EB\A5\B8 \EB\B9\9B \EA\B0\90\EC\87\A0 \EA\B3\84\EC\82\B0.\0D\0A    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);\0D\0A    lightStrength *= att;\0D\0A    \0D\0A#ifdef CARTOON\0D\0A    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);\0D\0A#else\0D\0A    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);\0D\0A#endif\0D\0A}\0D\0A\0D\0Afloat3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)\0D\0A{\0D\0A    float3 lightVec = L.Position - pos;\0D\0A    float d = length(lightVec);\0D\0A    \0D\0A    if (d > L.FalloffEnd)\0D\0A        return 0;\0D\0A    \0D\0A    lightVec /= d; //\EC\A0\95\EA\B7\9C\ED\99\94\0D\0A    \0D\0A    //\EB\9E\8C\EB\B2\A0\EB\A5\B4\ED\8A\B8 \EC\BD\94\EC\82\AC\EC\9D\B8 \EB\B2\95\EC\B9\99\EC\97\90 \EB\94\B0\EB\9D\BC \EB\B9\9B \EA\B0\95\EB\8F\84 \EA\B3\84\EC\82\B0.\0D\0A    float ndotl = max(dot(lightVec, normal), 0.0f);\0D\0A#ifdef CARTOON\0D\0A    float3 lightStrength = L.Strength;\0D\0A#else\0D\0A    float3 lightStrength = L.Strength * ndotl;\0D\0A#endif\0D\0A    \0D\0A    //\EA\B1\B0\EB\A6\AC\EC\97\90 \EB\94\B0\EB\A5\B8 \EB\B9\9B \EA\B0\90\EC\87\A0 \EA\B3\84\EC\82\B0.\0D\0A    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);\0D\0A    lightStrength *= att;\0D\0A    \0D\0A    //\EC\8A\A4\ED\8F\AC\ED\8A\B8\EB\9D\BC\EC\9D\B4\ED\8A\B8\EC\9D\98 \EA\B2\BD\EC\9A\B0, \EB\B9\9B\EC\9D\B4 \EC\8A\A4\ED\8F\AC\ED\8A\B8\EB\9D\BC\EC\9D\B4\ED\8A\B8\EC\9D\98 \EC\A4\91\EC\8B\AC\EC\97\90\EC\84\9C \EB\A9\80\EC\96\B4\EC\A7\88\EC\88\98\EB\A1\9D \EB\B9\9B\EC\9D\B4 \EC\95\BD\ED\95\B4\EC\A7\84\EB\8B\A4.\0D\0A    float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);\0D\0A    lightStrength *= spotFactor;\0D\0A    \0D\0A#ifdef CARTOON\0D\0A    return BlinnPhongToon(lightStrength, lightVec, normal, toEye, mat);\0D\0A#else\0D\0A    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);\0D\0A#endif\0D\0A}\0D\0A\0D\0Afloat4 ComputeLighting(Light gLights[MaxLights], Material mat, float3 pos, float3 normal, float3 toEye, float3 shadowFactor)\0D\0A{\0D\0A    float3 result = 0;\0D\0A    int i = 0;\0D\0A    \0D\0A#if (NUM_DIR_LIGHTS > 0)\0D\0A    for(i = 0; i < NUM_DIR_LIGHTS; ++i)\0D\0A    {\0D\0A        result += shadowFactor[i] * ComputeDirectionalLight(gLights[i], mat, normal, toEye);\0D\0A    }\0D\0A#endif\0D\0A\0D\0A#if (NUM_POINT_LIGHTS > 0)\0D\0A    for(i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS+NUM_POINT_LIGHTS; ++i)\0D\0A    {\0D\0A        result += ComputePointLight(gLights[i], mat, pos, normal, toEye);\0D\0A    }\0D\0A#endif\0D\0A\0D\0A#if (NUM_SPOT_LIGHTS > 0)\0D\0A    for(i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)\0D\0A    {\0D\0A        result += ComputeSpotLight(gLights[i], mat, pos, normal, toEye);\0D\0A    }\0D\0A#endif \0D\0A    \0D\0A    return float4(result, 0.0f);\0D\0A}"}
 !145 = !{!"FOG=1", !"ALPHA_TEST=1", !"FOG=1", !"ALPHA_TEST=1"}
 !146 = !{!"C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders\5CTreeBillboard.hlsl"}
 !147 = !{!"-E", !"PS", !"-T", !"ps_6_0", !"-Zi", !"-Qembed_debug", !"-Od", !"-D", !"FOG=1", !"-D", !"ALPHA_TEST=1", !"-Fo", !"C:\5CUsers\5Ccjw78\5CDesktop\5CD12Engine\5CD12Engine\5CResource\5CShaders\5CCompiled\5CTreeBillboardPS.cso", !"-D", !"FOG=1", !"-D", !"ALPHA_TEST=1"}
@@ -877,18 +877,18 @@ attributes #2 = { nounwind readonly }
 !260 = !DILocation(line: 159, column: 20, scope: !25)
 !261 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "mat", scope: !25, file: !1, line: 159, type: !59)
 !262 = !DILocation(line: 159, column: 14, scope: !25)
-!263 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "mat", arg: 2, scope: !44, file: !45, line: 143, type: !59)
-!264 = !DILocation(line: 143, column: 59, scope: !44, inlinedAt: !265)
+!263 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "mat", arg: 2, scope: !44, file: !45, line: 194, type: !59)
+!264 = !DILocation(line: 194, column: 59, scope: !44, inlinedAt: !265)
 !265 = distinct !DILocation(line: 161, column: 26, scope: !25)
 !266 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "mat", arg: 5, scope: !67, file: !45, line: 68, type: !59)
 !267 = !DILocation(line: 68, column: 96, scope: !67, inlinedAt: !268)
-!268 = distinct !DILocation(line: 94, column: 12, scope: !64, inlinedAt: !269)
-!269 = distinct !DILocation(line: 151, column: 37, scope: !270, inlinedAt: !265)
-!270 = distinct !DILexicalBlock(scope: !271, file: !45, line: 150, column: 5)
-!271 = distinct !DILexicalBlock(scope: !272, file: !45, line: 149, column: 5)
-!272 = distinct !DILexicalBlock(scope: !44, file: !45, line: 149, column: 5)
-!273 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "mat", arg: 2, scope: !64, file: !45, line: 85, type: !59)
-!274 = !DILocation(line: 85, column: 50, scope: !64, inlinedAt: !269)
+!268 = distinct !DILocation(line: 128, column: 12, scope: !64, inlinedAt: !269)
+!269 = distinct !DILocation(line: 202, column: 37, scope: !270, inlinedAt: !265)
+!270 = distinct !DILexicalBlock(scope: !271, file: !45, line: 201, column: 5)
+!271 = distinct !DILexicalBlock(scope: !272, file: !45, line: 200, column: 5)
+!272 = distinct !DILexicalBlock(scope: !44, file: !45, line: 200, column: 5)
+!273 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "mat", arg: 2, scope: !64, file: !45, line: 115, type: !59)
+!274 = !DILocation(line: 115, column: 50, scope: !64, inlinedAt: !269)
 !275 = !DILocation(line: 159, column: 37, scope: !25)
 !276 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "R0", arg: 1, scope: !70, file: !45, line: 59, type: !4)
 !277 = !DILocation(line: 59, column: 30, scope: !70, inlinedAt: !278)
@@ -896,35 +896,35 @@ attributes #2 = { nounwind readonly }
 !279 = !DILocation(line: 160, column: 12, scope: !25)
 !280 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "shadowFactor", scope: !25, file: !1, line: 160, type: !4)
 !281 = !DILocation(line: 161, column: 26, scope: !25)
-!282 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "toEye", arg: 5, scope: !44, file: !45, line: 143, type: !4)
-!283 = !DILocation(line: 143, column: 98, scope: !44, inlinedAt: !265)
-!284 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "normal", arg: 4, scope: !44, file: !45, line: 143, type: !4)
-!285 = !DILocation(line: 143, column: 83, scope: !44, inlinedAt: !265)
-!286 = !DILocation(line: 145, column: 12, scope: !44, inlinedAt: !265)
-!287 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "result", scope: !44, file: !45, line: 145, type: !4)
-!288 = !DILocation(line: 146, column: 9, scope: !44, inlinedAt: !265)
-!289 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "i", scope: !44, file: !45, line: 146, type: !14)
-!290 = !DILocation(line: 149, column: 11, scope: !272, inlinedAt: !265)
-!291 = !DILocation(line: 149, column: 5, scope: !272, inlinedAt: !265)
-!292 = !DILocation(line: 151, column: 19, scope: !270, inlinedAt: !265)
-!293 = !DILocation(line: 151, column: 37, scope: !270, inlinedAt: !265)
-!294 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "toEye", arg: 4, scope: !64, file: !45, line: 85, type: !4)
-!295 = !DILocation(line: 85, column: 77, scope: !64, inlinedAt: !269)
-!296 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "normal", arg: 3, scope: !64, file: !45, line: 85, type: !4)
-!297 = !DILocation(line: 85, column: 62, scope: !64, inlinedAt: !269)
-!298 = !DILocation(line: 88, column: 26, scope: !64, inlinedAt: !269)
-!299 = !DILocation(line: 88, column: 23, scope: !64, inlinedAt: !269)
-!300 = !DILocation(line: 88, column: 12, scope: !64, inlinedAt: !269)
-!301 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "lightVec", scope: !64, file: !45, line: 88, type: !4)
-!302 = !DILocation(line: 91, column: 23, scope: !64, inlinedAt: !269)
-!303 = !DILocation(line: 91, column: 19, scope: !64, inlinedAt: !269)
-!304 = !DILocation(line: 91, column: 11, scope: !64, inlinedAt: !269)
-!305 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "ndotl", scope: !64, file: !45, line: 91, type: !8)
-!306 = !DILocation(line: 92, column: 30, scope: !64, inlinedAt: !269)
-!307 = !DILocation(line: 92, column: 39, scope: !64, inlinedAt: !269)
-!308 = !DILocation(line: 92, column: 12, scope: !64, inlinedAt: !269)
-!309 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "lightStrenght", scope: !64, file: !45, line: 92, type: !4)
-!310 = !DILocation(line: 94, column: 12, scope: !64, inlinedAt: !269)
+!282 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "toEye", arg: 5, scope: !44, file: !45, line: 194, type: !4)
+!283 = !DILocation(line: 194, column: 98, scope: !44, inlinedAt: !265)
+!284 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "normal", arg: 4, scope: !44, file: !45, line: 194, type: !4)
+!285 = !DILocation(line: 194, column: 83, scope: !44, inlinedAt: !265)
+!286 = !DILocation(line: 196, column: 12, scope: !44, inlinedAt: !265)
+!287 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "result", scope: !44, file: !45, line: 196, type: !4)
+!288 = !DILocation(line: 197, column: 9, scope: !44, inlinedAt: !265)
+!289 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "i", scope: !44, file: !45, line: 197, type: !14)
+!290 = !DILocation(line: 200, column: 11, scope: !272, inlinedAt: !265)
+!291 = !DILocation(line: 200, column: 5, scope: !272, inlinedAt: !265)
+!292 = !DILocation(line: 202, column: 19, scope: !270, inlinedAt: !265)
+!293 = !DILocation(line: 202, column: 37, scope: !270, inlinedAt: !265)
+!294 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "toEye", arg: 4, scope: !64, file: !45, line: 115, type: !4)
+!295 = !DILocation(line: 115, column: 77, scope: !64, inlinedAt: !269)
+!296 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "normal", arg: 3, scope: !64, file: !45, line: 115, type: !4)
+!297 = !DILocation(line: 115, column: 62, scope: !64, inlinedAt: !269)
+!298 = !DILocation(line: 118, column: 26, scope: !64, inlinedAt: !269)
+!299 = !DILocation(line: 118, column: 23, scope: !64, inlinedAt: !269)
+!300 = !DILocation(line: 118, column: 12, scope: !64, inlinedAt: !269)
+!301 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "lightVec", scope: !64, file: !45, line: 118, type: !4)
+!302 = !DILocation(line: 121, column: 23, scope: !64, inlinedAt: !269)
+!303 = !DILocation(line: 121, column: 19, scope: !64, inlinedAt: !269)
+!304 = !DILocation(line: 121, column: 11, scope: !64, inlinedAt: !269)
+!305 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "ndotl", scope: !64, file: !45, line: 121, type: !8)
+!306 = !DILocation(line: 127, column: 30, scope: !64, inlinedAt: !269)
+!307 = !DILocation(line: 127, column: 39, scope: !64, inlinedAt: !269)
+!308 = !DILocation(line: 127, column: 12, scope: !64, inlinedAt: !269)
+!309 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "lightStrength", scope: !64, file: !45, line: 127, type: !4)
+!310 = !DILocation(line: 128, column: 12, scope: !64, inlinedAt: !269)
 !311 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "toEye", arg: 4, scope: !67, file: !45, line: 68, type: !4)
 !312 = !DILocation(line: 68, column: 80, scope: !67, inlinedAt: !268)
 !313 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "normal", arg: 3, scope: !67, file: !45, line: 68, type: !4)
@@ -978,12 +978,12 @@ attributes #2 = { nounwind readonly }
 !361 = !DILocation(line: 82, column: 35, scope: !67, inlinedAt: !268)
 !362 = !DILocation(line: 82, column: 49, scope: !67, inlinedAt: !268)
 !363 = !DILocation(line: 82, column: 5, scope: !67, inlinedAt: !268)
-!364 = !DILocation(line: 94, column: 5, scope: !64, inlinedAt: !269)
-!365 = !DILocation(line: 151, column: 35, scope: !270, inlinedAt: !265)
-!366 = !DILocation(line: 151, column: 16, scope: !270, inlinedAt: !265)
-!367 = !DILocation(line: 149, column: 36, scope: !271, inlinedAt: !265)
-!368 = !DILocation(line: 149, column: 18, scope: !271, inlinedAt: !265)
-!369 = !DILocation(line: 169, column: 5, scope: !44, inlinedAt: !265)
+!364 = !DILocation(line: 128, column: 5, scope: !64, inlinedAt: !269)
+!365 = !DILocation(line: 202, column: 35, scope: !270, inlinedAt: !265)
+!366 = !DILocation(line: 202, column: 16, scope: !270, inlinedAt: !265)
+!367 = !DILocation(line: 200, column: 36, scope: !271, inlinedAt: !265)
+!368 = !DILocation(line: 200, column: 18, scope: !271, inlinedAt: !265)
+!369 = !DILocation(line: 220, column: 5, scope: !44, inlinedAt: !265)
 !370 = !DILocation(line: 161, column: 12, scope: !25)
 !371 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "directLight", scope: !25, file: !1, line: 161, type: !15)
 !372 = !DILocation(line: 164, column: 31, scope: !25)
@@ -1001,5 +1001,5 @@ attributes #2 = { nounwind readonly }
 !384 = !DILocation(line: 168, column: 11, scope: !25)
 !385 = !DILocation(line: 171, column: 16, scope: !25)
 !386 = !DILocation(line: 173, column: 5, scope: !25)
-!387 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "shadowFactor", arg: 6, scope: !44, file: !45, line: 143, type: !4)
-!388 = !DILocation(line: 143, column: 112, scope: !44, inlinedAt: !265)
+!387 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "shadowFactor", arg: 6, scope: !44, file: !45, line: 194, type: !4)
+!388 = !DILocation(line: 194, column: 112, scope: !44, inlinedAt: !265)

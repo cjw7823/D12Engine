@@ -253,21 +253,21 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-	<None Include="Resource\Shaders\Blur.hlsl">
-	    <FileType>Document</FileType>
-	</None>
-	<None Include="Resource\Shaders\Task_GS.hlsl">
-	    <FileType>Document</FileType>
-	</None>
-	<None Include="Resource\Shaders\TreeBillboard.hlsl">
-	    <FileType>Document</FileType>
-	</None>
+    <None Include="Resource\Shaders\Blur.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resource\Shaders\Task_GS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resource\Shaders\TreeBillboard.hlsl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
-    <ItemGroup>
-	    <None Include="Resource\Shaders\Sobel.hlsl">
-		    <FileType>Document</FileType>
-	    </None>
-</ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Sobel.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
@@ -283,7 +283,9 @@
     <TextureBlendDefines>$(FogDefines) -D TEXTURE_BLEND=1</TextureBlendDefines>
     <AlphaTestDefines>$(FogDefines) -D ALPHA_TEST=1</AlphaTestDefines>
     <WavesDefines>-D DISPLACEMENT_MAP=1</WavesDefines>
-  </PropertyGroup>
+	<tessWallDefines>-D WALL=1</tessWallDefines>
+  
+</PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <ShaderCompileOptions>-Zi -Qembed_debug -Od</ShaderCompileOptions>
   </PropertyGroup>
@@ -472,24 +474,68 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+      <Entry>SobelCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>SobelCS.cso</OutputName>
+      <AsmName>SobelCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+      <Entry>CompositeCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>CompositeCS.cso</OutputName>
+      <AsmName>CompositeCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
 
-	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
-		  <Entry>SobelCS</Entry>
-		  <Profile>cs_6_0</Profile>
-		  <OutputName>SobelCS.cso</OutputName>
-		  <AsmName>SobelCS.asm</AsmName>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+		  <Entry>VS</Entry>
+		  <Profile>vs_6_0</Profile>
+		  <OutputName>tessVS.cso</OutputName>
+		  <AsmName>tessVS.asm</AsmName>
 		  <DependsOn>@(ShaderInclude)</DependsOn>
 		  <Defines>$(NullDefines)</Defines>
 	  </ShaderCompile>
-
-	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
-		  <Entry>CompositeCS</Entry>
-		  <Profile>cs_6_0</Profile>
-		  <OutputName>CompositeCS.cso</OutputName>
-		  <AsmName>CompositeCS.asm</AsmName>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+		  <Entry>HS</Entry>
+		  <Profile>hs_6_0</Profile>
+		  <OutputName>tessHS.cso</OutputName>
+		  <AsmName>tessHS.asm</AsmName>
 		  <DependsOn>@(ShaderInclude)</DependsOn>
 		  <Defines>$(NullDefines)</Defines>
 	  </ShaderCompile>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+		  <Entry>DS</Entry>
+		  <Profile>ds_6_0</Profile>
+		  <OutputName>tessDS.cso</OutputName>
+		  <AsmName>tessDS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+		  <Entry>DS</Entry>
+		  <Profile>ds_6_0</Profile>
+		  <OutputName>tessDS_Wall.cso</OutputName>
+		  <AsmName>tessDS_Wall.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(tessWallDefines)</Defines>
+	  </ShaderCompile>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+		  <Entry>PS</Entry>
+		  <Profile>ps_6_0</Profile>
+		  <OutputName>tessPS.cso</OutputName>
+		  <AsmName>tessPS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Tessellation.hlsl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
     <MakeDir Directories="$(ShaderDir)" />

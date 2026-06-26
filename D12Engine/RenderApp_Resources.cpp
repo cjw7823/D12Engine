@@ -53,7 +53,7 @@ void RenderApp::LoadTextures()
 
 	auto bricksTex1 = std::make_unique<Texture>();
 	bricksTex1->Name = "bricksTex1";
-	bricksTex1->Filename = L"Resource/Textures/bricks3.dds";
+	bricksTex1->Filename = L"Resource/Textures/bricks2.dds";
 
 	auto checkboardTex = std::make_unique<Texture>();
 	checkboardTex->Name = "checkboardTex";
@@ -482,13 +482,13 @@ void RenderApp::BuildRenderItems()
 	landRI->ObjCBIndex = objCBIndex++;
 	landRI->Geo = mGeometries["landGeo"].get();
 	landRI->Mat = mMaterials["grass0"].get();
-	landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
 	landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
 	landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	landRI->BaseVertexLocation = landRI->Geo->DrawArgs["grid"].BaseVertexLocation;
 	landRI->VertexCount = landRI->Geo->DrawArgs["grid"].VertexCount;
 	excludeRI_InMirror.push_back(landRI.get());
-	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(landRI.get());
+	mRenderItemLayer[(int)RenderLayer::TessLand].push_back(landRI.get());
 	mAllRenderItems.push_back(std::move(landRI));
 
 	//wave
@@ -533,18 +533,33 @@ void RenderApp::BuildRenderItems()
 		XMMATRIX m1 = XMMatrixScaling(0.3f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10.001f, 3.0f, 0.0f);
 		XMStoreFloat4x4(&mirrorWallRI->World, m1);
 		XMMATRIX m2 = XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2);
-		XMStoreFloat4x4(&mirrorWallRI->TexTransform, m2);
-		mirrorWallRI->ObjCBIndex = objCBIndex++;
-		mirrorWallRI->Geo = mGeometries["shapeGeo"].get();
-		mirrorWallRI->Mat = mMaterials["bricks1"].get();
-		mirrorWallRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		mirrorWallRI->IndexCount = mirrorWallRI->Geo->DrawArgs["grid"].IndexCount;
-		mirrorWallRI->StartIndexLocation = mirrorWallRI->Geo->DrawArgs["grid"].StartIndexLocation;
-		mirrorWallRI->BaseVertexLocation = mirrorWallRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-		mirrorWallRI->VertexCount = mirrorWallRI->Geo->DrawArgs["grid"].VertexCount;
-		excludeRI_InMirror.push_back(mirrorWallRI.get());
-		mRenderItemLayer[(int)RenderLayer::MirrorWall].push_back(mirrorWallRI.get());
-		mAllRenderItems.push_back(std::move(mirrorWallRI));
+		//XMStoreFloat4x4(&mirrorWallRI->TexTransform, m2);
+		//mirrorWallRI->ObjCBIndex = objCBIndex++;
+		//mirrorWallRI->Geo = mGeometries["shapeGeo"].get();
+		//mirrorWallRI->Mat = mMaterials["bricks1"].get();
+		//mirrorWallRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		//mirrorWallRI->IndexCount = mirrorWallRI->Geo->DrawArgs["grid"].IndexCount;
+		//mirrorWallRI->StartIndexLocation = mirrorWallRI->Geo->DrawArgs["grid"].StartIndexLocation;
+		//mirrorWallRI->BaseVertexLocation = mirrorWallRI->Geo->DrawArgs["grid"].BaseVertexLocation;
+		//mirrorWallRI->VertexCount = mirrorWallRI->Geo->DrawArgs["grid"].VertexCount;
+		//excludeRI_InMirror.push_back(mirrorWallRI.get());
+		//mRenderItemLayer[(int)RenderLayer::MirrorWall].push_back(mirrorWallRI.get());
+		//mAllRenderItems.push_back(std::move(mirrorWallRI));
+
+		auto mirrorWallTessRI = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&mirrorWallTessRI->World, m1);
+		XMStoreFloat4x4(&mirrorWallTessRI->TexTransform, m2);
+		mirrorWallTessRI->ObjCBIndex = objCBIndex++;
+		mirrorWallTessRI->Geo = mGeometries["brickWallGeo"].get();
+		mirrorWallTessRI->Mat = mMaterials["bricks1"].get();
+		mirrorWallTessRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+		mirrorWallTessRI->IndexCount = mirrorWallTessRI->Geo->DrawArgs["brickWall"].IndexCount;
+		mirrorWallTessRI->StartIndexLocation = mirrorWallTessRI->Geo->DrawArgs["brickWall"].StartIndexLocation;
+		mirrorWallTessRI->BaseVertexLocation = mirrorWallTessRI->Geo->DrawArgs["brickWall"].BaseVertexLocation;
+		mirrorWallTessRI->VertexCount = mirrorWallTessRI->Geo->DrawArgs["brickWall"].VertexCount;
+		excludeRI_InMirror.push_back(mirrorWallTessRI.get());
+		mRenderItemLayer[(int)RenderLayer::TessWall].push_back(mirrorWallTessRI.get());
+		mAllRenderItems.push_back(std::move(mirrorWallTessRI));
 
 		//거울 백플레이트
 		auto mirrorBackRI = std::make_unique<RenderItem>();

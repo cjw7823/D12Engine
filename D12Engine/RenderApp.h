@@ -101,6 +101,7 @@ private:
 	void BuildWavesGeometry();
 	void BuildTreeBillboardGeometry();
 	void BuildCylinderWithoutTopGeometry();
+	void BuildBrickWallGeometry();
 
 	void BuildRenderItems();
 	void BuildRenderItems_InMirror(UINT& objCBIndex);

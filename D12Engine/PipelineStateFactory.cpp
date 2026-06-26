@@ -243,7 +243,7 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateMirrorWa
 {
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
 
-	D3D12_DEPTH_STENCIL_DESC mirrorDSD;
+	D3D12_DEPTH_STENCIL_DESC mirrorDSD{};
 	mirrorDSD.DepthEnable = true;
 	mirrorDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	mirrorDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
@@ -478,6 +478,87 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateExplodeP
 		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
 		ps->GetBufferSize()
 	};
+
+	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));
+
+	return PSO;
+}
+
+Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateTessellationPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps)
+{
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC state = BuildBaseGraphicsPsoDesc();
+	state.VS =
+	{
+		reinterpret_cast<BYTE*>(vs->GetBufferPointer()),
+		vs->GetBufferSize()
+	};
+	state.HS =
+	{
+		reinterpret_cast<BYTE*>(hs->GetBufferPointer()),
+		hs->GetBufferSize()
+	};
+	state.DS =
+	{
+		reinterpret_cast<BYTE*>(ds->GetBufferPointer()),
+		ds->GetBufferSize()
+	};
+	state.PS =
+	{
+		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
+		ps->GetBufferSize()
+	};
+
+	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));
+
+	return PSO;
+}
+
+Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateTessellateMirrorWallPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps)
+{
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
+
+	D3D12_DEPTH_STENCIL_DESC mirrorDSD{};
+	mirrorDSD.DepthEnable = true;
+	mirrorDSD.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	mirrorDSD.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	mirrorDSD.StencilEnable = true;
+	mirrorDSD.StencilReadMask = 0xff;
+	mirrorDSD.StencilWriteMask = 0x00;
+
+	mirrorDSD.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+	mirrorDSD.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSD.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSD.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+
+	mirrorDSD.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
+	mirrorDSD.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSD.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSD.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC state = BuildBaseGraphicsPsoDesc();
+	state.VS =
+	{
+		reinterpret_cast<BYTE*>(vs->GetBufferPointer()),
+		vs->GetBufferSize()
+	};
+	state.HS =
+	{
+		reinterpret_cast<BYTE*>(hs->GetBufferPointer()),
+		hs->GetBufferSize()
+	};
+	state.DS =
+	{
+		reinterpret_cast<BYTE*>(ds->GetBufferPointer()),
+		ds->GetBufferSize()
+	};
+	state.PS =
+	{
+		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
+		ps->GetBufferSize()
+	};
+	state.DepthStencilState = mirrorDSD;
 
 	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));
 

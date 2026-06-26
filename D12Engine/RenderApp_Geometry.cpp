@@ -89,36 +89,42 @@ void RenderApp::BuildShapeGeometry()
 	{
 		vertices[k].Position = box.Vertices[i].Position;
 		vertices[k].Normal = box.Vertices[i].Normal;
+		vertices[k].TangentU = box.Vertices[i].TangentU;
 		vertices[k].TexC = box.Vertices[i].TexC;
 	}
 	for (size_t i = 0; i < grid.Vertices.size(); i++, k++)
 	{
 		vertices[k].Position = grid.Vertices[i].Position;
 		vertices[k].Normal = grid.Vertices[i].Normal;
+		vertices[k].TangentU = grid.Vertices[i].TangentU;
 		vertices[k].TexC = grid.Vertices[i].TexC;
 	}
 	for (size_t i = 0; i < sphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Position = sphere.Vertices[i].Position;
 		vertices[k].Normal = sphere.Vertices[i].Normal;
+		vertices[k].TangentU = sphere.Vertices[i].TangentU;
 		vertices[k].TexC = sphere.Vertices[i].TexC;
 	}
 	for (size_t i = 0; i < geoSphere.Vertices.size(); i++, k++)
 	{
 		vertices[k].Position = geoSphere.Vertices[i].Position;
 		vertices[k].Normal = geoSphere.Vertices[i].Normal;
+		vertices[k].TangentU = geoSphere.Vertices[i].TangentU;
 		vertices[k].TexC = geoSphere.Vertices[i].TexC;
 	}
 	for (size_t i = 0; i < cylinder.Vertices.size(); i++, k++)
 	{
 		vertices[k].Position = cylinder.Vertices[i].Position;
 		vertices[k].Normal = cylinder.Vertices[i].Normal;
+		vertices[k].TangentU = cylinder.Vertices[i].TangentU;
 		vertices[k].TexC = cylinder.Vertices[i].TexC;
 	}
 	for (size_t i = 0; i < skull.Vertices.size(); i++, k++)
 	{
 		vertices[k].Position = skull.Vertices[i].Position;
 		vertices[k].Normal = skull.Vertices[i].Normal;
+		vertices[k].TangentU = skull.Vertices[i].TangentU;
 		vertices[k].TexC = skull.Vertices[i].TexC;
 	}
 
@@ -164,32 +170,48 @@ void RenderApp::BuildShapeGeometry()
 void RenderApp::BuildLandGeometry()
 {
 	GeometryGenerator geoGen;
-	MeshData grid = geoGen.CreateGrid(160, 160, 50, 50);
+	//MeshData grid = geoGen.CreateGrid(160, 160, 17, 17);
+	const int rows = 2;
+	const int cols = 2;
+	MeshData grid = geoGen.CreateGrid(160, 160, rows, cols);
 
 	std::vector<Vertex> vertices(grid.Vertices.size());
 	for (int i = 0; i < grid.Vertices.size(); i++)
 	{
 		DirectX::XMFLOAT3& p = grid.Vertices[i].Position;
 		vertices[i].Position = p;
-		vertices[i].Position.y = GetHillsHeight(p.x, p.z);
-		vertices[i].Normal = GetHillsNormal(p.x, p.z);
+		vertices[i].Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);//실제 높이 등은 DS에서 계산
+		vertices[i].TangentU = grid.Vertices[i].TangentU;
 		vertices[i].TexC = grid.Vertices[i].TexC;
 	}
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-	std::vector<std::uint16_t> indices = grid.GetIndices16();
+
+	std::vector<std::uint16_t> indices;
+	indices.reserve((rows - 1) * (cols - 1) * 4);
+	for (int i = 0; i < rows - 1; ++i)
+	{
+		for (int j = 0; j < cols - 1; ++j)
+		{
+			indices.push_back(i * cols + j);
+			indices.push_back(i * cols + j + 1);
+			indices.push_back((i + 1) * cols + j);
+			indices.push_back((i + 1) * cols + j + 1);
+		}
+	}
+
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	auto geo = std::make_unique<MeshGeometry>();
 	geo->Name = "landGeo";
 
-	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, geo->VertexBufferCPU.GetAddressOf()));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->IndexBufferCPU));
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, geo->IndexBufferCPU.GetAddressOf()));
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, geo->VertexBufferUploader);
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
 	geo->VertexByteStride = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -327,6 +349,7 @@ void RenderApp::BuildCylinderWithoutTopGeometry()
 	{
 		vertices[i].Position = cylinder.Vertices[i].Position;
 		vertices[i].Normal = cylinder.Vertices[i].Normal;
+		vertices[i].TangentU = cylinder.Vertices[i].TangentU;
 		vertices[i].TexC = cylinder.Vertices[i].TexC;
 	}
 
@@ -350,5 +373,72 @@ void RenderApp::BuildCylinderWithoutTopGeometry()
 	geo->IndexBufferByteSize = ibByteSize;
 
 	geo->DrawArgs["cylinderWithoutTop"] = cylinderSubmesh;
+	mGeometries[geo->Name] = std::move(geo);
+}
+
+void RenderApp::BuildBrickWallGeometry()
+{
+	std::array<Vertex, 4> vertices{};
+
+	float w = 20.0f;
+	float d = 30.0f;
+
+	vertices[0].Position = XMFLOAT3(-w * 0.5f, 0.0f, -d * 0.5f);
+	vertices[1].Position = XMFLOAT3(w * 0.5f, 0.0f, -d * 0.5f);
+	vertices[2].Position = XMFLOAT3(-w * 0.5f, 0.0f, d * 0.5f);
+	vertices[3].Position = XMFLOAT3(w * 0.5f, 0.0f, d * 0.5f);
+
+	for (auto& v : vertices)
+	{
+		v.Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
+		v.TangentU = XMFLOAT3(1.0f, 0.0f, 0.0f);
+	}
+
+	vertices[0].TexC = XMFLOAT2(0.0f, 1.0f);
+	vertices[1].TexC = XMFLOAT2(1.0f, 1.0f);
+	vertices[2].TexC = XMFLOAT2(0.0f, 0.0f);
+	vertices[3].TexC = XMFLOAT2(1.0f, 0.0f);
+
+	std::array<std::uint16_t, 4> indices = { 0, 1, 2, 3 };
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "brickWallGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, geo->VertexBufferCPU.GetAddressOf()));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, geo->IndexBufferCPU.GetAddressOf()));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
+		md3dDevice.Get(),
+		mCommandList.Get(),
+		vertices.data(),
+		vbByteSize,
+		geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
+		md3dDevice.Get(),
+		mCommandList.Get(),
+		indices.data(),
+		ibByteSize,
+		geo->IndexBufferUploader);
+
+	geo->VertexByteStride = sizeof(Vertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize = ibByteSize;
+
+	SubmeshGeometry sm;
+	sm.IndexCount = (UINT)indices.size();
+	sm.StartIndexLocation = 0;
+	sm.BaseVertexLocation = 0;
+	sm.VertexCount = (UINT)vertices.size();
+
+	geo->DrawArgs["brickWall"] = sm;
+
 	mGeometries[geo->Name] = std::move(geo);
 }
