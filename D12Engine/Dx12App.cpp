@@ -463,7 +463,7 @@ bool Dx12App::InitDirect3D()
 #endif
 	/*
 		DXGI 팩토리 생성
-		- GPU 어댑터, Output(모니터) 열거
+		- GPU 어댑터, SobelOutput(모니터) 열거
 		- 스왑체인 생성
 		- 전체 화면 전환 및 디스플레이 관련 관리	
 	*/
@@ -671,7 +671,7 @@ void Dx12App::LogAdapterOutputs(IDXGIAdapter* adapter)
 		DXGI_OUTPUT_DESC desc;
 		output->GetDesc(&desc);
 
-		std::wstring text = L"---------------------Output---------------------";
+		std::wstring text = L"---------------------SobelOutput---------------------";
 		text += desc.DeviceName;
 		text += L"\n\n";
 

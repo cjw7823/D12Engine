@@ -37,7 +37,10 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{948ab57d-363f-4d14-ba88-936a43859abd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Rendering\Compute Shader">
+    <Filter Include="Shaders\PostProcess">
+      <UniqueIdentifier>{50039c30-1030-4417-90f6-bc36884e6f49}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\GPGPU">
       <UniqueIdentifier>{88c78b53-2e5f-4f35-8837-5981cede80b5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -112,11 +115,12 @@
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="GpuWaves.cpp">
-      <Filter>Rendering\Compute Shader</Filter>
+      <Filter>Rendering\GPGPU</Filter>
     </ClCompile>
     <ClCompile Include="BlurFilter.cpp">
-      <Filter>Rendering\Compute Shader</Filter>
+      <Filter>Rendering\GPGPU</Filter>
     </ClCompile>
+    <ClCompile Include="SobelFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -183,10 +187,13 @@
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="GpuWaves.h">
-      <Filter>Rendering\Compute Shader</Filter>
+      <Filter>Rendering\GPGPU</Filter>
     </ClInclude>
     <ClInclude Include="BlurFilter.h">
-      <Filter>Rendering\Compute Shader</Filter>
+      <Filter>Rendering\GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="SobelFilter.h">
+      <Filter>Rendering\GPGPU</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -202,14 +209,17 @@
     <None Include="Resource\Shaders\WaveSim.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Resource\Shaders\Blur.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Resource\Shaders\Task_GS.hlsl">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Resource\Shaders\TreeBillboard.hlsl">
       <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\Blur.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Resource\Shaders\Sobel.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -199,6 +199,7 @@
     <ClCompile Include="RenderApp_Input.cpp" />
     <ClCompile Include="RenderApp_Pipeline.cpp" />
     <ClCompile Include="RenderApp_Resources.cpp" />
+    <ClCompile Include="SobelFilter.cpp" />
     <ClCompile Include="TextureLoader_Blocking.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -223,6 +224,7 @@
     <ClInclude Include="PipelineStateFactory.h" />
     <ClInclude Include="RenderApp.h" />
     <ClInclude Include="RenderData.h" />
+    <ClInclude Include="SobelFilter.h" />
     <ClInclude Include="TextureLoader_Blocking.h" />
     <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
@@ -250,6 +252,22 @@
       <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
     </None>
   </ItemGroup>
+  <ItemGroup>
+	<None Include="Resource\Shaders\Blur.hlsl">
+	    <FileType>Document</FileType>
+	</None>
+	<None Include="Resource\Shaders\Task_GS.hlsl">
+	    <FileType>Document</FileType>
+	</None>
+	<None Include="Resource\Shaders\TreeBillboard.hlsl">
+	    <FileType>Document</FileType>
+	</None>
+  </ItemGroup>
+    <ItemGroup>
+	    <None Include="Resource\Shaders\Sobel.hlsl">
+		    <FileType>Document</FileType>
+	    </None>
+</ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
@@ -454,17 +472,24 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Blur.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Resource\Shaders\Task_GS.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Resource\Shaders\TreeBillboard.hlsl">
-      <FileType>Document</FileType>
-    </None>
+
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+		  <Entry>SobelCS</Entry>
+		  <Profile>cs_6_0</Profile>
+		  <OutputName>SobelCS.cso</OutputName>
+		  <AsmName>SobelCS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
+
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+		  <Entry>CompositeCS</Entry>
+		  <Profile>cs_6_0</Profile>
+		  <OutputName>CompositeCS.cso</OutputName>
+		  <AsmName>CompositeCS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
   </ItemGroup>
   <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
     <MakeDir Directories="$(ShaderDir)" />

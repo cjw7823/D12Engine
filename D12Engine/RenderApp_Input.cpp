@@ -65,6 +65,7 @@ void RenderApp::OnKeyDown(WPARAM key)
 
 	if (key == VK_F1) NextMsaaOoption();
 	else if (key == VK_F2) NextBlurCount();
+	else if (key == VK_F3) is_Sobel = !is_Sobel;
 }
 
 void RenderApp::OnKeyboardInput(const GameTimer& gt)

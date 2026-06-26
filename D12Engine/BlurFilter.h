@@ -14,7 +14,7 @@ public:
 	BlurFilter& operator=(const BlurFilter& rhs) = delete;
 	~BlurFilter() = default;
 
-	ID3D12Resource* Output();
+	ID3D12Resource* SobelOutput();
 
 	void BuildDescriptors(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor,

@@ -8,6 +8,7 @@
 #include "RenderData.h"
 #include <unordered_map>
 #include "BlurFilter.h"
+#include "SobelFilter.h"
 
 /*
 	1. Resource Heap / Resource Memory
@@ -93,6 +94,7 @@ private:
 	void BuildRootSignature();
 	void BuildWavesRootSignature();
 	void BuildShadersAndInputLayout();
+	void BuildBackbufferSRV();
 
 	void BuildShapeGeometry();
 	void BuildLandGeometry();
@@ -133,6 +135,9 @@ private:
 	DirectX::XMFLOAT3 GetHillsNormal(float x, float z) const;
 
 private:
+	CD3DX12_GPU_DESCRIPTOR_HANDLE CurrentBackBufferSRV() const;
+
+private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
 	int mCurrFrameResourceIndex = 0;
@@ -155,6 +160,7 @@ private:
 	PassConstants mReflectedPassCB;
 	std::unique_ptr<TextureLoader_Blocking> mTexLoader;
 	std::unique_ptr<BlurFilter> mBlurFilter;
+	std::unique_ptr<SobelFilter> mSobelFilter;
 
 	RenderItem* mMirror = nullptr;
 	std::vector<RenderItem*> excludeRI_InMirror;
@@ -201,4 +207,6 @@ private:
 
 	bool is_Blur = false;
 	UINT mBlurCount = 1;
+
+	bool is_Sobel = false;
 };

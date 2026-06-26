@@ -263,8 +263,8 @@ void RenderApp::BuildTreeBillboardGeometry()
 			z = MathHelper::RandF(-range, range);
 			if ((x > -15.f && x < 15.f) || (z > -15.f && z < 15.f))
 			{
-				std::string s = std::to_string(i) + "\n";
-				OutputDebugStringA(s.c_str());
+				//std::string s = std::to_string(i) + "\n";
+				//OutputDebugStringA(s.c_str());
 				continue;
 			}
 

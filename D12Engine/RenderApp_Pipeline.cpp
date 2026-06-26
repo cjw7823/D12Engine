@@ -83,19 +83,24 @@ void RenderApp::BuildRootSignature()
 	{
 		CD3DX12_DESCRIPTOR_RANGE srvTable;
 		srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+		CD3DX12_DESCRIPTOR_RANGE srvTable1;
+		srvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+
 		CD3DX12_DESCRIPTOR_RANGE uavTable;
 		uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-		std::array<CD3DX12_ROOT_PARAMETER, 3> slotRootParameter;
+		std::array<CD3DX12_ROOT_PARAMETER, 4> slotRootParameter;
 		slotRootParameter[0].InitAsConstants(12, 0);
 		slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
-		slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+		slotRootParameter[2].InitAsDescriptorTable(1, &srvTable1);
+		slotRootParameter[3].InitAsDescriptorTable(1, &uavTable);
 
 		CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
 			slotRootParameter.size(),
 			slotRootParameter.data(),
-			0,
-			nullptr,
+			(UINT)staticSamplers.size(),
+			staticSamplers.data(),
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> serializedRootSig = nullptr;
@@ -212,6 +217,9 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["blurH"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_1");
 	mShaders["blurV"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_1");
 
+	mShaders["sobelCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_1");
+	mShaders["CompositeCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
+
 #else
 	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
 	mShaders["opaquePS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps.cso");
@@ -244,6 +252,9 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["blurH"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\HorzBlurCS.cso");
 	mShaders["blurV"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertBlurCS.cso");
 
+	mShaders["sobelCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\SobelCS.cso");
+	mShaders["CompositeCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
+
 #endif
 
 	double elapsedMs = (mTimer.TotalTime() - start) * 1000.0;
@@ -270,6 +281,24 @@ void RenderApp::BuildShadersAndInputLayout()
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{"SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
+}
+
+void RenderApp::BuildBackbufferSRV()
+{
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < SwapChainBufferCount; i++)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = mBackBufferFormat;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+		md3dDevice->CreateShaderResourceView(mSwapChainBuffer[i].Get(), &srvDesc, hDescriptor);
+		hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	}
 }
 
 void RenderApp::BuildPSOs()
@@ -403,6 +432,13 @@ void RenderApp::BuildPSOs()
 	PipelineStateFactory blurFactory(blurCtx);
 	mPSOs["blurH"] = blurFactory.CreateComputePSO(mShaders["blurH"].Get());
 	mPSOs["blurV"] = blurFactory.CreateComputePSO(mShaders["blurV"].Get());
+
+	//sobel
+	PsoBuildContext sobelCtx = ctx;
+	sobelCtx.RootSignature = mPostProcessRootSignature.Get();
+	PipelineStateFactory sobelFactory(sobelCtx);
+	mPSOs["sobel"] = sobelFactory.CreateComputePSO(mShaders["sobelCS"].Get());
+	mPSOs["composite"] = sobelFactory.CreateComputePSO(mShaders["CompositeCS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

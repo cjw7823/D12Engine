@@ -14,7 +14,7 @@ BlurFilter::BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMA
 	BuildResources();
 }
 
-ID3D12Resource* BlurFilter::Output()
+ID3D12Resource* BlurFilter::SobelOutput()
 {
 	return mBlurMap0.Get();
 }
@@ -80,7 +80,7 @@ void BlurFilter::Excute(ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature
 		//수평 블러
 		cmdList->SetPipelineState(horzBlurPSO);
 		cmdList->SetComputeRootDescriptorTable(1, mBlur0GpuSrv);
-		cmdList->SetComputeRootDescriptorTable(2, mBlur1GpuUav);
+		cmdList->SetComputeRootDescriptorTable(3, mBlur1GpuUav);
 
 		//Blur.hlsl에 스레드 개수가 256으로 정의되어 있음.
 		UINT numGroupsX = (UINT)ceilf(mWidth / 256.0f);
@@ -101,7 +101,7 @@ void BlurFilter::Excute(ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature
 		//수직 블러
 		cmdList->SetPipelineState(vertBlurPSO);
 		cmdList->SetComputeRootDescriptorTable(1, mBlur1GpuSrv);
-		cmdList->SetComputeRootDescriptorTable(2, mBlur0GpuUav);
+		cmdList->SetComputeRootDescriptorTable(3, mBlur0GpuUav);
 
 		//Blur.hlsl에 스레드 개수가 256으로 정의되어 있음.
 		UINT numGroupsY = (UINT)ceilf(mHeight / 256.0f);

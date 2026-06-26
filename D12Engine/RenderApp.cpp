@@ -38,6 +38,11 @@ bool RenderApp::Initialize()
 		mClientWidth, mClientHeight,
 		DXGI_FORMAT_R8G8B8A8_UNORM);
 
+	mSobelFilter = std::make_unique<SobelFilter>(
+		md3dDevice.Get(),
+		mClientWidth, mClientHeight,
+		mBackBufferFormat);
+
     LoadTextures();
     BuildDescriptorHeaps();
     BuildRootSignature();
@@ -100,6 +105,9 @@ void RenderApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 
 	if (mBlurFilter != nullptr) mBlurFilter->OnResize(mClientWidth, mClientHeight);
+	if (mSobelFilter != nullptr) mSobelFilter->OnResize(mClientWidth, mClientHeight);
+
+	if(mSrvHeap != nullptr) BuildBackbufferSRV();
 }
 
 void RenderApp::Update(const GameTimer& gt)
@@ -288,6 +296,30 @@ void RenderApp::Draw(const GameTimer& gt)
 	if (mMsaaOption.IsEnable())
 		ResolveMsaaToBackBuffer();
 
+	if (is_Sobel)
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_GENERIC_READ);
+		mCommandList->ResourceBarrier(1, &barrier);
+
+		mSobelFilter->Excute(mCommandList.Get(), mPostProcessRootSignature.Get(), mPSOs["sobel"].Get(), CurrentBackBufferSRV());
+
+		mSobelFilter->Composite(mCommandList.Get(), mPostProcessRootSignature.Get(), mPSOs["composite"].Get(), CurrentBackBufferSRV(), mSobelFilter->SobelOutputSrv());
+
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_COPY_DEST);
+		mCommandList->ResourceBarrier(1, &barrier);
+
+		mCommandList->CopyResource(CurrentBackBuffer(), mSobelFilter->CompositeOutput());
+
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		mCommandList->ResourceBarrier(1, &barrier);
+	}
+
 	if (is_Blur)
 	{
 		mBlurFilter->Excute(mCommandList.Get(), mPostProcessRootSignature.Get(),
@@ -298,7 +330,7 @@ void RenderApp::Draw(const GameTimer& gt)
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 		mCommandList->ResourceBarrier(1, &backbufferBarrier);
 
-		mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->Output());
+		mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->SobelOutput());
 
 		backbufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -733,4 +765,9 @@ DirectX::XMFLOAT3 RenderApp::GetHillsNormal(float x, float z) const
 	DirectX::XMStoreFloat3(&n, unitNormal);
 
 	return n;
+}
+
+CD3DX12_GPU_DESCRIPTOR_HANDLE RenderApp::CurrentBackBufferSRV() const
+{
+	return CD3DX12_GPU_DESCRIPTOR_HANDLE(mSrvHeap->GetGPUDescriptorHandleForHeapStart(), mCurrBackBuffer, mCbvSrvUavDescriptorSize);
 }
