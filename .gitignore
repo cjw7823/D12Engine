@@ -1,3 +1,8 @@
+#Compiled Shader Files
+*.asm
+*.cso
+D12Engine/Resource/Shaders/Compiled/
+
 # Created by https://www.toptal.com/developers/gitignore/api/windows,visualstudio,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,visualstudio,c++
 

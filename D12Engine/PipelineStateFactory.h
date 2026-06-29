@@ -38,6 +38,7 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateDepthCountPSO(ID3DBlob* vs, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateDepthCountPSO(ID3DBlob* vs, ID3DBlob* gs, ID3DBlob* ps);
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateDepthCountPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateDepthComplexityDebugPSO(ID3DBlob* vs, ID3DBlob* ps);
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateMirrorStencilPSO(ID3DBlob* vs, ID3DBlob* ps);

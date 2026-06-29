@@ -120,7 +120,9 @@
     <ClCompile Include="BlurFilter.cpp">
       <Filter>Rendering\GPGPU</Filter>
     </ClCompile>
-    <ClCompile Include="SobelFilter.cpp" />
+    <ClCompile Include="SobelFilter.cpp">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -220,6 +222,9 @@
     </None>
     <None Include="Resource\Shaders\Sobel.hlsl">
       <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Resource\Shaders\Tessellation.hlsl">
+      <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
 </Project>

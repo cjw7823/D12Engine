@@ -160,6 +160,55 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateDepthCou
 	return PSO;
 }
 
+Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateDepthCountPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps)
+{
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
+
+	D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+	depthStencilDesc.DepthEnable = false;
+	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	depthStencilDesc.StencilEnable = true;
+	depthStencilDesc.StencilReadMask = 0xff;
+	depthStencilDesc.StencilWriteMask = 0xff;
+
+	depthStencilDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	depthStencilDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	depthStencilDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR_SAT;
+	depthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_INCR_SAT;
+
+	//D3D12_CULL_MODE_BACK이므로 설정 중요도 없음.
+	depthStencilDesc.BackFace = depthStencilDesc.FrontFace;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC depthCountDesc = BuildBaseGraphicsPsoDesc();
+	depthCountDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(vs->GetBufferPointer()),
+		vs->GetBufferSize()
+	};
+	depthCountDesc.HS =
+	{
+		reinterpret_cast<BYTE*>(hs->GetBufferPointer()),
+		hs->GetBufferSize()
+	};
+	depthCountDesc.DS =
+	{
+		reinterpret_cast<BYTE*>(ds->GetBufferPointer()),
+		ds->GetBufferSize()
+	};
+	depthCountDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
+		ps->GetBufferSize()
+	};
+	depthCountDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = 0;
+	depthCountDesc.DepthStencilState = depthStencilDesc;
+
+	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&depthCountDesc, IID_PPV_ARGS(PSO.GetAddressOf())));
+
+	return PSO;
+}
+
 Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateDepthComplexityDebugPSO(ID3DBlob* vs, ID3DBlob* ps)
 {
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
@@ -423,7 +472,6 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateTreeBill
 		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
 		ps->GetBufferSize()
 	};
-	state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	state.BlendState.AlphaToCoverageEnable = a2c;
 
 	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));

@@ -393,15 +393,13 @@ void RenderApp::BuildPSOs()
 	//tree billboard
 	PsoBuildContext treeCtx = ctx;
 	treeCtx.InputLayout = &mTreeBillboardInputLayout;
+	treeCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	PipelineStateFactory treeFactory(treeCtx);
 	mPSOs["treeBillboard"] = treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get(), true);
+	mPSOs["treeBillboard_depthCount"] = treeFactory.CreateDepthCountPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get());
 	treeCtx.IsWireframe = true;
 	treeFactory(treeCtx);
 	mPSOs["treeBillboard_wireframe"] = treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS_Wireframe"].Get(), true);
-	treeCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-	treeCtx.IsWireframe = false;
-	treeFactory(treeCtx);
-	mPSOs["treeBillboard_depthCount"] = treeFactory.CreateDepthCountPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get());
 
 	//extended Cylinder
 	PsoBuildContext exCylCtx = ctx;
@@ -410,18 +408,17 @@ void RenderApp::BuildPSOs()
 	exCylCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 	PipelineStateFactory exCylFactory(exCylCtx);
 	mPSOs["lineToCylinder"] = exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
+	mPSOs["lineToCylinder_depthCount"] = exCylFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
 	exCylCtx.IsWireframe = true;
 	exCylFactory(exCylCtx);
 	mPSOs["lineToCylinder_wireframe"] = exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
-	exCylCtx.IsWireframe = false;
-	exCylFactory(exCylCtx);
-	mPSOs["lineToCylinder_depthCount"] = exCylFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
 
 	//explode
 	PsoBuildContext explodeCtx = ctx;
 	explodeCtx.CullMode = D3D12_CULL_MODE_NONE;
 	PipelineStateFactory explodeFactory(explodeCtx);
 	mPSOs["geoExplode"] = explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
+	mPSOs["geoExplode_depthCount"] = explodeFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
 	explodeCtx.IsWireframe = true;
 	explodeFactory(explodeCtx);
 	mPSOs["geoExplode_wireframe"] = explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
@@ -430,12 +427,10 @@ void RenderApp::BuildPSOs()
 	PsoBuildContext lodCtx = ctx;
 	PipelineStateFactory lodFactory(lodCtx);
 	mPSOs["geoSphereLOD"] = lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
+	mPSOs["geoSphereLOD_depthCount"] = lodFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
 	lodCtx.IsWireframe = true;
 	lodFactory(lodCtx);
 	mPSOs["geoSphereLOD_wireframe"] = lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
-	lodCtx.IsWireframe = false;
-	lodFactory(lodCtx);
-	mPSOs["geoSphereLOD_depthCount"] = lodFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
 
 	//vertex normal debug
 	PsoBuildContext normalDebugCtx = ctx;
@@ -464,7 +459,9 @@ void RenderApp::BuildPSOs()
 	tessCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 	PipelineStateFactory tessFactory(tessCtx);
 	mPSOs["tessLand"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+	mPSOs["tessLand_depthCount"] = tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
 	mPSOs["tessWall"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+	mPSOs["tessWall_depthCount"] = tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
 	tessCtx.IsWireframe = true;
 	tessFactory(tessCtx);
 	mPSOs["tessLand_wireframe"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());

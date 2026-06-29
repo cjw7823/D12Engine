@@ -279,6 +279,15 @@ void RenderApp::Draw(const GameTimer& gt)
 			case (int)RenderLayer::GeoSphereLOD:
 				mCommandList->SetPipelineState(mPSOs["geoSphereLOD_depthCount"].Get());
 				break;
+			case (int)RenderLayer::GeoExplode:
+				mCommandList->SetPipelineState(mPSOs["geoExplode_depthCount"].Get());
+				break;
+			case (int)RenderLayer::TessWall:
+				mCommandList->SetPipelineState(mPSOs["tessWall_depthCount"].Get());
+				break;
+			case (int)RenderLayer::TessLand:
+				mCommandList->SetPipelineState(mPSOs["tessLand_depthCount"].Get());
+				break;
 			default:
 				mCommandList->SetPipelineState(mPSOs["depthCount"].Get());
 				break;
