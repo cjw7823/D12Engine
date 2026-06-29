@@ -15,7 +15,7 @@ public:
 
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
-	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
+	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialBuffer = nullptr;
 	std::unique_ptr<UploadBuffer<DebugColorConstants>> debugColorCB = nullptr;
 
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;

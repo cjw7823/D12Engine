@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "BlurFilter.h"
 #include "SobelFilter.h"
+#include "Camera.h"
 
 /*
 	1. Resource Heap / Resource Memory
@@ -118,7 +119,6 @@ private:
 	DirectX::XMVECTOR GetMirrorPlane();
 
 	void OnKeyboardInput(const GameTimer& gt);
-	void UpdateCamera(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateReflectedPassCB(const GameTimer& gt);
@@ -176,30 +176,14 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
-	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 mCamPos = MathHelper::Identity4x4();
-	DirectX::XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
-
-	float mTheta = 1.55f * DirectX::XM_PI;
-	float mPhi = DirectX::XM_PIDIV4;
-	float mRadius = 50.0f;
-
 	float mSunTheta = 1.25f * DirectX::XM_PI;
 	float mSunPhi = DirectX::XM_PIDIV4;
 
 	bool mIsWireframe = false;
 	bool mIsDepthComplexityDebug = false;
 	bool mIsVertexNormalDebug = false;
-	bool isMoving = false;
 
-	/*
-		1 : w
-		2 : s
-		3 : a
-		4 : d
-	*/
-	int md = 0;
+	Camera mCamera;
 
 	POINT mLastMousePos = {};
 

@@ -12,7 +12,18 @@
 
 #include "LightingUtil.hlsli"
 
-Texture2D gDiffuseMap : register(t0);
+struct MaterialData
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 MatTransform;
+    uint DiffuseMapIndex;
+    uint3 MatPad;
+};
+
+Texture2D gDiffuseMap[] : register(t0);
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -25,17 +36,12 @@ cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld; //16DWARD
     float4x4 gTexTransform;
+    float2 gDisplacementMapTexelSize;
+    float gGridSpatialStep;
+    uint gMaterialIndex;
 };
 
-cbuffer cbMaterial : register(b1)
-{
-    float4 gDiffuseAlbedo;
-    float3 gFresnelR0;
-    float gRoughness;
-    float4x4 gMatTransform;
-};
-
-cbuffer cbPass : register(b2)
+cbuffer cbPass : register(b1)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -63,7 +69,7 @@ cbuffer cbPass : register(b2)
 
 struct VertexIn
 {
-    float3 PosW : POSITION;
+    float3 PosL : POSITION;
     float3 NormalL : NORMAL;
     float2 TexC : TEXCOORD;
 };
@@ -154,7 +160,7 @@ VertexOut VS(VertexIn vin)
 {
     VertexOut vout;
     
-    float4 posW = mul(float4(vin.PosW, 1.0f), gWorld);
+    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
     vout.PosW = posW.xyz;
     vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
     vout.TexC = vin.TexC;
@@ -342,8 +348,14 @@ void GS_Debugging(point VertexOut gin[1],
 
 float4 PS(GeoOut pin) : SV_Target
 {
-    float3 uvw = float3(pin.TexC, pin.PrimID % 3);
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicClamp, pin.TexC) * gDiffuseAlbedo;
+    MaterialData matData = gMaterialData[gMaterialIndex];
+    
+    float4 diffuseAlbedo = matData.DiffuseAlbedo;
+    float3 fresnelR0 = matData.FresnelR0;
+    float roughness = matData.Roughness;
+    uint diffuseTexIndex = matData.DiffuseMapIndex;
+    
+    diffuseAlbedo = gDiffuseMap[diffuseTexIndex].Sample(gsamPointWrap, pin.TexC) * diffuseAlbedo;
     
     if (pin.LODLevel == 2)
     {
@@ -366,8 +378,8 @@ float4 PS(GeoOut pin) : SV_Target
     
     float4 ambient = gAmbientLight * diffuseAlbedo;
 
-    const float shininess = 1.0f - gRoughness;
-    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    const float shininess = 1.0f - roughness;
+    Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float3 shadowFactor = 1.0f;
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         pin.NormalW, toEyeW, shadowFactor);

@@ -43,6 +43,8 @@ bool RenderApp::Initialize()
 		mClientWidth, mClientHeight,
 		mBackBufferFormat);
 
+	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
+
     LoadTextures();
     BuildDescriptorHeaps();
     BuildRootSignature();
@@ -102,8 +104,7 @@ void RenderApp::OnResize()
 {
 	Dx12App::OnResize();
 
-	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, AspectRatio(), 1.0f, 200.0f);
-	XMStoreFloat4x4(&mProj, P);
+	mCamera.SetLens(DirectX::XM_PIDIV4, AspectRatio(), 1.0f, 200.0f);
 
 	if (mBlurFilter != nullptr) mBlurFilter->OnResize(mClientWidth, mClientHeight);
 	if (mSobelFilter != nullptr) mSobelFilter->OnResize(mClientWidth, mClientHeight);
@@ -114,7 +115,6 @@ void RenderApp::OnResize()
 void RenderApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
-	UpdateCamera(gt);
 
 	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
 	mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
@@ -131,32 +131,6 @@ void RenderApp::Update(const GameTimer& gt)
 	UpdateMainPassCB(gt);
 	UpdateReflectedPassCB(gt);
 	UpdateMaterialCBs(gt);
-
-	//이동 로직. 회전과 연동 안됨.
-	float dt = gt.DeltaTime();
-	if (isMoving)
-	{
-		float speed = 30.0f;//units/sec
-		float forward = 0;
-		float right = 0;
-		float up = 0;
-
-		if (md == 1) forward = +1;      // W
-		else if (md == 2) forward = -1; // S
-		else if (md == 3) right = -1; // A
-		else if (md == 4) right = +1; // D
-		else if (md == 5) up = -1; // Q
-		else if (md == 6) up = +1; // E
-
-		float moveZ = forward * speed * dt;
-		float moveX = right * speed * dt;
-		float moveY = up * speed * dt;
-
-		XMMATRIX cam = XMLoadFloat4x4(&mCamPos);
-		XMMATRIX delta = XMMatrixTranslation(-moveX, -moveY, -moveZ);
-		cam *= delta;
-		XMStoreFloat4x4(&mCamPos, cam);
-	}
 }
 
 void RenderApp::Draw(const GameTimer& gt)
@@ -193,14 +167,23 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	UpdateWavesGPU(gt);
-	mCommandList->SetGraphicsRootDescriptorTable(5, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
+	mCommandList->SetGraphicsRootDescriptorTable(4, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	mCommandList->SetGraphicsRootDescriptorTable(2, hTable);
+	hTable.Offset(mTextures["treeArrayTex"]->SrvHeapIndex, mCbvSrvUavDescriptorSize);
+	mCommandList->SetGraphicsRootDescriptorTable(5, hTable);
+
+	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
+	mCommandList->SetGraphicsRootShaderResourceView(3, matBuffer->GetGPUVirtualAddress());
+
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
 		mCommandList->OMSetStencilRef(0);
-		mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress());
+		mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 		switch (layer)
 		{
 		case (int)RenderLayer::Opaque:
@@ -211,9 +194,6 @@ void RenderApp::Draw(const GameTimer& gt)
 			break;
 		case (int)RenderLayer::MultiTextureBlend:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["multiTextureBlend"].Get());
-			CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-			hTable.Offset(mTextures["swirlingMaskTex"]->SrvHeapIndex, mCbvSrvUavDescriptorSize);
-			mCommandList->SetGraphicsRootDescriptorTable(1, hTable);
 			break;
 		case (int)RenderLayer::AlphaTestOpaque:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["alphaTest"].Get());
@@ -252,7 +232,7 @@ void RenderApp::Draw(const GameTimer& gt)
 		case (int)RenderLayer::Reflected:
 			//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
 			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetGraphicsRootConstantBufferView(4, passCB->GetGPUVirtualAddress() + passCBByteSize);
+			mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress() + passCBByteSize);
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["mirrorReflected"].Get());
 			break;
 		case (int)RenderLayer::Shadow:
@@ -462,19 +442,6 @@ DirectX::XMVECTOR RenderApp::GetMirrorPlane()
 	return XMVectorSetW(nWorld, d);
 }
 
-void RenderApp::UpdateCamera(const GameTimer& gt)
-{
-	XMVECTOR pos = MathHelper::SphericalToCatesian(mRadius, mTheta, mPhi);
-	XMStoreFloat3(&mEyePos, pos);
-
-	XMVECTOR target = XMVectorZero();
-	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-	//좌수 좌표계 행렬 생성.
-	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
-	XMStoreFloat4x4(&mView, view);
-}
-
 void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
@@ -490,6 +457,7 @@ void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
 			objConstants.DisplacementMapTexelSize = e->DisplacementMapTexelSize;
 			objConstants.GridSpatialStep = e->GridSpatialStep;
+			objConstants.MaterialIndex = e->Mat->MatCBIndex;
 
 			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 			e->NumFramesDirty--;
@@ -499,10 +467,8 @@ void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 
 void RenderApp::UpdateMainPassCB(const GameTimer& gt)
 {
-	XMMATRIX cam = XMLoadFloat4x4(&mCamPos);
-
-	XMMATRIX view = XMLoadFloat4x4(&mView) * cam;
-	XMMATRIX proj = XMLoadFloat4x4(&mProj);
+	XMMATRIX view = mCamera.GetView();
+	XMMATRIX proj = mCamera.GetProj();
 	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
 
 	XMVECTOR viewDet = XMMatrixDeterminant(view);
@@ -520,7 +486,7 @@ void RenderApp::UpdateMainPassCB(const GameTimer& gt)
 	XMStoreFloat4x4(&mMainPassCB.ViewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&mMainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
 
-	mMainPassCB.EyePosW = mEyePos;
+	mMainPassCB.EyePosW = mCamera.GetPosition3f();
 	mMainPassCB.RenderTargetSize = XMFLOAT2((float)mClientWidth, (float)mClientHeight);
 	mMainPassCB.InvRenderTargetSize = XMFLOAT2(1.0f / mClientWidth, 1.0f / mClientHeight);
 	mMainPassCB.NearZ = 1.0f;
@@ -564,7 +530,7 @@ void RenderApp::UpdateReflectedPassCB(const GameTimer& gt)
 
 void RenderApp::UpdateMaterialCBs(const GameTimer& gt)
 {
-	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
+	auto currMaterialCB = mCurrFrameResource->MaterialBuffer.get();
 	for (auto& e : mMaterials)
 	{
 		Material* mat = e.second.get();
@@ -577,6 +543,7 @@ void RenderApp::UpdateMaterialCBs(const GameTimer& gt)
 			matConstants.FresnelR0 = mat->FresnelR0;
 			matConstants.Roughness = mat->Roughness;
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
+			matConstants.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
 
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
 			mat->NumFramesDirty--;
@@ -649,10 +616,8 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
 	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
-	auto matCB = mCurrFrameResource->MaterialCB->Resource();
 
 	for (auto& ri : renderLayers)
 	{
@@ -663,16 +628,10 @@ void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
 		objCBAddress += ri->ObjCBIndex * objCBByteSize;
-		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
-		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
 
-		cmdList->SetGraphicsRootDescriptorTable(0, tex);
-		cmdList->SetGraphicsRootConstantBufferView(2, objCBAddress);
-		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
@@ -681,10 +640,8 @@ void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 void RenderApp::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
 	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
-	auto matCB = mCurrFrameResource->MaterialCB->Resource();
 
 	for (auto& ri : renderLayers)
 	{
@@ -695,16 +652,10 @@ void RenderApp::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmd
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
 		objCBAddress += ri->ObjCBIndex * objCBByteSize;
-		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress();
-		matCBAddress += ri->Mat->MatCBIndex * matCBByteSize;
 
-		cmdList->SetGraphicsRootDescriptorTable(0, tex);
-		cmdList->SetGraphicsRootConstantBufferView(2, objCBAddress);
-		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}

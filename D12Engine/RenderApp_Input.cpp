@@ -22,11 +22,8 @@ void RenderApp::OnMouseMove(WPARAM btnState, int x, int y)
 		float dx = DirectX::XMConvertToRadians(0.5f * static_cast<float>(x - mLastMousePos.x));
 		float dy = DirectX::XMConvertToRadians(0.5f * static_cast<float>(y - mLastMousePos.y));
 
-		mTheta += dx;
-		mPhi += dy;
-
-		//LookAt 행렬 생성 시 up 벡터와 시선 벡터가 평행해져서 직교 기저를 만들 수 없는 수학적 퇴화 현상 방지.
-		mPhi = MathHelper::Clamp(mPhi, 0.1f, DirectX::XM_PI - 0.1f);
+		mCamera.Pitch(dy);
+		mCamera.RotateY(dx);
 	}
 
 	mLastMousePos = { x,y };
@@ -35,8 +32,8 @@ void RenderApp::OnMouseMove(WPARAM btnState, int x, int y)
 void RenderApp::OnMouseWheel(short zDelta, int x, int y)
 {
 	constexpr float wheelSpeed = 0.01f;
-	mRadius -= zDelta * wheelSpeed;
-	mRadius = MathHelper::Clamp(mRadius, 0.1f, 150.0f);
+	mCamera.MoveForward(zDelta * wheelSpeed);
+	mCamera.UpdateViewMatrix();
 }
 
 void RenderApp::OnKeyUp(WPARAM key)
@@ -44,8 +41,6 @@ void RenderApp::OnKeyUp(WPARAM key)
 	std::wstring s(1, static_cast<wchar_t>(key));
 	s += L" ";
 	OutputDebugStringW((std::wstring(L"UP : ") + s).c_str());
-
-	isMoving = false;
 }
 
 void RenderApp::OnKeyDown(WPARAM key)
@@ -53,15 +48,6 @@ void RenderApp::OnKeyDown(WPARAM key)
 	std::wstring s(1, static_cast<wchar_t>(key));
 	s += L" ";
 	OutputDebugStringW((std::wstring(L"DOWN : ") + s).c_str());
-
-	isMoving = true;
-	if (key == 'W') md = 1;
-	else if (key == 'S') md = 2;
-	else if (key == 'A') md = 3;
-	else if (key == 'D') md = 4;
-	else if (key == 'Q') md = 5;
-	else if (key == 'E') md = 6;
-	else isMoving = false;
 
 	if (key == VK_F1) NextMsaaOoption();
 	else if (key == VK_F2) NextBlurCount();
@@ -116,4 +102,15 @@ void RenderApp::OnKeyboardInput(const GameTimer& gt)
 		mSunPhi += 1.0f * dt;
 
 	mSunPhi = MathHelper::Clamp(mSunPhi, 1.0f, XM_PIDIV2);
+
+	//camera move
+	const float speed = 10.0f;
+	if (d3dUtil::IsKeyDown('W')) mCamera.MoveForward(speed * dt);
+	if (d3dUtil::IsKeyDown('S')) mCamera.MoveForward(-speed * dt);
+	if (d3dUtil::IsKeyDown('A')) mCamera.MoveRight(-speed * dt);
+	if (d3dUtil::IsKeyDown('D')) mCamera.MoveRight(speed * dt);
+	if (d3dUtil::IsKeyDown('Q')) mCamera.MoveUp(-speed * dt);
+	if (d3dUtil::IsKeyDown('E')) mCamera.MoveUp(speed * dt);
+
+	mCamera.UpdateViewMatrix();
 }

@@ -14,9 +14,18 @@
 
 #include "LightingUtil.hlsli"
 
-Texture2D gDiffuseMap : register(t0);
-Texture2D gDiffuseMap2 : register(t1);
-Texture2D gDisplacementMap : register(t2);
+struct MaterialData
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 MatTransform;
+    uint DiffuseMapIndex;
+    uint3 MatPad;
+};
+
+Texture2D gDiffuseMap[] : register(t0);
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -31,18 +40,10 @@ cbuffer cbPerObject : register(b0)
     float4x4 gTexTransform;
     float2 gDisplacementMapTexelSize;
     float gGridSpatialStep;
-    float cbPerObjectPad1;
+    uint gMaterialIndex;
 };
 
-cbuffer cbMaterial : register(b1)
-{
-    float4 gDiffuseAlbedo;
-    float3 gFresnelR0;
-    float gRoughness;
-    float4x4 gMatTransform;
-};
-
-cbuffer cbPass : register(b2)
+cbuffer cbPass : register(b1)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -203,14 +204,21 @@ DomainOut DS(PatchTess patchTess,
     dout.NormalW = normalW;    
     
     float4 texC = mul(float4(uv, 0.f, 1.f), gTexTransform);
-    dout.TexC = mul(texC, gMatTransform).xy;
+    dout.TexC = mul(texC, gMaterialData[gMaterialIndex].MatTransform).xy;
     
     return dout;
 }
 
 float4 PS(DomainOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamLinearWrap, pin.TexC) * gDiffuseAlbedo;
+    MaterialData matData = gMaterialData[gMaterialIndex];
+    
+    float4 diffuseAlbedo = matData.DiffuseAlbedo;
+    float3 fresnelR0 = matData.FresnelR0;
+    float roughness = matData.Roughness;
+    uint diffuseTexIndex = matData.DiffuseMapIndex;
+    
+    diffuseAlbedo = gDiffuseMap[diffuseTexIndex].Sample(gsamPointWrap, pin.TexC) * diffuseAlbedo;
     
     //보간된 법선 벡터는 길이가 1이 아닐 수 있으므로.
     pin.NormalW = normalize(pin.NormalW);
@@ -221,14 +229,19 @@ float4 PS(DomainOut pin) : SV_Target
     toEyeW /= distToEye; //normalize
     
     float4 ambient = gAmbientLight * diffuseAlbedo;
-    const float shininess = 1.0f - gRoughness;
-    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    const float shininess = 1.0f - roughness;
+    Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float3 shadowFactor = 1.0f;
     
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
+    
+#ifdef FOG
+    float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
+    litColor = lerp(litColor, gFogColor, fogAmount);
+#endif
 
     //일반적으로 알파 값은 디퓨즈 머티리얼의 알파 값을 사용한다.
     litColor.a = diffuseAlbedo.a;

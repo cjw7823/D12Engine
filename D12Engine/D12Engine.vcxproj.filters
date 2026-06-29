@@ -123,6 +123,7 @@
     <ClCompile Include="SobelFilter.cpp">
       <Filter>Rendering\GPGPU</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -196,6 +197,9 @@
     </ClInclude>
     <ClInclude Include="SobelFilter.h">
       <Filter>Rendering\GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

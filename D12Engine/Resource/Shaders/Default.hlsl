@@ -11,14 +11,29 @@
 #endif
 
 //#define CARTOON
-
 #include "LightingUtil.hlsli"
 
-Texture2D gDiffuseMap : register(t0);
-Texture2D gDiffuseMap2 : register(t1);
-Texture2D gDisplacementMap : register(t2);
+struct MaterialData
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 MatTransform;
+    uint DiffuseMapIndex;
+    uint3 MatPad;
+};
 
-SamplerState gsamLinear : register(s0);
+Texture2D gDiffuseMap[] : register(t0);
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+
+Texture2D gDisplacementMap : register(t0, space2);
+
+SamplerState gsamPointWrap : register(s0);
+SamplerState gsamPointClamp : register(s1);
+SamplerState gsamLinearWrap : register(s2);
+SamplerState gsamLinearClamp : register(s3);
+SamplerState gsamAnisotropicWrap : register(s4);
+SamplerState gsamAnisotropicClamp : register(s5);
 
 cbuffer cbPerObject : register(b0)
 {
@@ -26,18 +41,10 @@ cbuffer cbPerObject : register(b0)
     float4x4 gTexTransform;
     float2 gDisplacementMapTexelSize;
     float gGridSpatialStep;
-    float cbPerObjectPad1;
+    uint gMaterialIndex;
 };
 
-cbuffer cbMaterial : register(b1)
-{
-    float4 gDiffuseAlbedo;
-    float3 gFresnelR0;
-    float gRoughness;
-    float4x4 gMatTransform;
-};
-
-cbuffer cbPass : register(b2)
+cbuffer cbPass : register(b1)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -87,20 +94,20 @@ struct VertexOut
 VertexOut VS(VertexIn vin)
 {
     VertexOut vout = (VertexOut) 0.0f;
+    MaterialData matData = gMaterialData[gMaterialIndex];
     
 #ifdef DISPLACEMENT_MAP
     //변환되지 않은 [0,1]^2 tex 좌표를 사용하여 변위 맵을 샘플링.
-    vin.PosL.y += gDisplacementMap.SampleLevel(gsamLinear, vin.TexC, 1.0f).r;
+    vin.PosL.y += gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC, 1.0f).r;
 	
 	//유한차분법을 이용하여 정규분포를 추정.
     float du = gDisplacementMapTexelSize.x;
     float dv = gDisplacementMapTexelSize.y;
-    float l = gDisplacementMap.SampleLevel(gsamLinear, vin.TexC - float2(du, 0.0f), 0.0f).r;
-    float r = gDisplacementMap.SampleLevel(gsamLinear, vin.TexC + float2(du, 0.0f), 0.0f).r;
-    float t = gDisplacementMap.SampleLevel(gsamLinear, vin.TexC - float2(0.0f, dv), 0.0f).r;
-    float b = gDisplacementMap.SampleLevel(gsamLinear, vin.TexC + float2(0.0f, dv), 0.0f).r;
+    float l = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(du, 0.0f), 0.0f).r;
+    float r = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(du, 0.0f), 0.0f).r;
+    float t = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(0.0f, dv), 0.0f).r;
+    float b = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(0.0f, dv), 0.0f).r;
     vin.NormalL = normalize(float3(-r + l, 2.0f * gGridSpatialStep, b - t));
-    
 #endif
     
     float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
@@ -113,17 +120,24 @@ VertexOut VS(VertexIn vin)
     vout.PosH = mul(posW, gViewProj);
     
     float4 texC = mul(float4(vin.TexC, 0.f, 1.f), gTexTransform);
-    vout.TexC = mul(texC, gMatTransform).xy;
+    vout.TexC = mul(texC, matData.MatTransform).xy;
     
     return vout;
 }
  
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo;
+    MaterialData matData = gMaterialData[gMaterialIndex];
+    
+    float4 diffuseAlbedo = matData.DiffuseAlbedo;
+    float3 fresnelR0 = matData.FresnelR0;
+    float roughness = matData.Roughness;
+    uint diffuseTexIndex = matData.DiffuseMapIndex;
+    
+    diffuseAlbedo = gDiffuseMap[diffuseTexIndex].Sample(gsamPointWrap, pin.TexC) * diffuseAlbedo;
     
 #ifdef TEXTURE_BLEND
-    diffuseAlbedo *= (gDiffuseMap2.Sample(gsamLinear, pin.TexC) * gDiffuseAlbedo).r;
+    diffuseAlbedo *= (gDiffuseMap[2].Sample(gsamPointWrap, pin.TexC) * diffuseAlbedo).r;
 #endif
     
 #ifdef ALPHA_TEST
@@ -140,8 +154,8 @@ float4 PS(VertexOut pin) : SV_Target
     toEyeW /= distToEye; //normalize
     
     float4 ambient = gAmbientLight * diffuseAlbedo;
-    const float shininess = 1.0f - gRoughness;
-    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    const float shininess = 1.0f - roughness;
+    Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float3 shadowFactor = 1.0f;
     
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
@@ -162,5 +176,5 @@ float4 PS(VertexOut pin) : SV_Target
 
 float4 PS_MirrorBaseFill(VertexOut pin) : SV_Target
 {
-    return gDiffuseAlbedo;
+    return gMaterialData[gMaterialIndex].DiffuseAlbedo;
 }

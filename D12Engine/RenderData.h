@@ -24,7 +24,7 @@ struct ObjectConstants
 	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
-	float Pad = 0.0f;
+	UINT MaterialIndex = 0;
 };
 
 struct PassConstants
@@ -66,6 +66,9 @@ struct MaterialConstants
 	float Roughness = 0.25;
 
 	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
+
+	UINT DiffuseMapIndex = 0;
+	UINT Pad[3]{};
 };
 
 struct DebugColorConstants

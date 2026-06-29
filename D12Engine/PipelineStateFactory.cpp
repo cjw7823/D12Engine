@@ -499,7 +499,6 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateLineToCy
 		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
 		ps->GetBufferSize()
 	};
-	state.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
 	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));
 

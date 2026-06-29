@@ -6,20 +6,20 @@ using namespace Microsoft::WRL;
 
 void RenderApp::BuildRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable1;
-	diffuseMapTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); //t0
-	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable2;
-	diffuseMapTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1); //t1
+	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable;
+	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, mTextures.size() + SwapChainBufferCount, 0); //t0
 	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
-	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2); //t2
+	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2); //t0, space2
+	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
+	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
 
 	std::array<CD3DX12_ROOT_PARAMETER, 6> slotRootParameter;
-	slotRootParameter[0].InitAsDescriptorTable(1, &diffuseMapTable1, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[1].InitAsDescriptorTable(1, &diffuseMapTable2, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[2].InitAsConstantBufferView(0); //obj CB (b0)
-	slotRootParameter[3].InitAsConstantBufferView(1); //material CB (b1)
-	slotRootParameter[4].InitAsConstantBufferView(2); //pass CB (b2)
-	slotRootParameter[5].InitAsDescriptorTable(1, &displacementMapTable);
+	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) obj CB + material index
+	slotRootParameter[1].InitAsConstantBufferView(1);	// (b1) pass CB
+	slotRootParameter[2].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
+	slotRootParameter[3].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
+	slotRootParameter[4].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
+	slotRootParameter[5].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
 
 	auto staticSamplers = GetStaticSamplers();
 
@@ -176,7 +176,7 @@ void RenderApp::BuildShadersAndInputLayout()
 		NULL, NULL
 	};
 
-	const D3D_SHADER_MACRO defines[] =
+	const D3D_SHADER_MACRO fogDefines[] =
 	{
 		"FOG", "1",
 		NULL, NULL
@@ -193,7 +193,7 @@ void RenderApp::BuildShadersAndInputLayout()
 #define USE_COMPILED_SHADER
 #ifndef USE_COMPILED_SHADER
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", defines, "PS", "ps_5_1");
+	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", fogDefines, "PS", "ps_5_1");
 	mShaders["mirrorBaseFillPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "PS_MirrorBaseFill", "ps_5_1");
 	mShaders["multiTextureBlendPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", textureBlendDefines, "PS", "ps_5_1");
 	mShaders["alphaTestPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
@@ -230,7 +230,7 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["tessHS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "HS", "hs_5_1");
 	mShaders["tessDS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "DS", "ds_5_1");
 	mShaders["tessDS_Wall"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", tessWallDefines, "DS", "ds_5_1");
-	mShaders["tessPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "PS", "ps_5_1");
+	mShaders["tessPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", fogDefines, "PS", "ps_5_1");
 
 #else
 	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
