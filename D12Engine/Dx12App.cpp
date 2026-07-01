@@ -2,6 +2,7 @@
 #include "Dx12App.h"
 #include <windowsX.h> // GET_X_LPARAM(), GET_Y_LPARAM()
 #include "d3dUtil.h"
+#include "RenderData.h"
 
 using namespace Microsoft::WRL;
 
@@ -521,6 +522,8 @@ bool Dx12App::InitDirect3D()
 	if (!mFenceEvent.Get())
 		ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 
+	CreateQueryHeap();
+
 	return true;
 }
 
@@ -604,6 +607,32 @@ void Dx12App::FlushCommandQueue()
 		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrentFence, mFenceEvent.Get()));
 		WaitForSingleObject(mFenceEvent.Get(), INFINITE);
 	}
+}
+
+void Dx12App::CreateQueryHeap()
+{
+	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};
+	queryHeapDesc.Count = 4 * gNumFrameResources;
+	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+
+	ThrowIfFailed(md3dDevice->CreateQueryHeap(
+		&queryHeapDesc,
+		IID_PPV_ARGS(&mTimestampQueryHeap)));
+
+	const UINT64 bufferSize = sizeof(UINT64) * 4 * gNumFrameResources;
+
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
+
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&mTimestampReadbackBuffer)));
+
+	mCommandQueue->GetTimestampFrequency(&mGpuTimestampFrequency);
 }
 
 void Dx12App::CalculateFrameStats()

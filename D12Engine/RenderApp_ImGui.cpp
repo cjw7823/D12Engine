@@ -130,6 +130,11 @@ void RenderApp::RenderImGui()
 		std::string s2 = "Blur Count : " + std::to_string(mBlurCount);
 		ImGui::TextUnformatted(s2.c_str());
 
+		ImGui::Text("Culling: %s", mFrustumCullingEnabled ? "ON" : "OFF");
+		ImGui::Text("Instances: %u / %u", mVisibleInstanceCount, mInstanceCount);
+		ImGui::Text("Scene GPU: %.3f ms", mSceneGpuMs);
+		ImGui::Text("Full GPU : %.3f ms", mFullGpuMs);
+
 		ImGui::End();
 	}
 

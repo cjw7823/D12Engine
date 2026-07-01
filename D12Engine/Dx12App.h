@@ -77,6 +77,9 @@ protected:
 	void CreateSwapChain();
 	void FlushCommandQueue();
 
+	void CreateQueryHeap();
+	virtual void ReadbackTimestampData(int frameResourceIndex) {};
+
 	void CalculateFrameStats();
 
 	void LogAdapters();
@@ -116,6 +119,11 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
+
+	//GPU Timestamp를 위한 qury heap
+	Microsoft::WRL::ComPtr<ID3D12QueryHeap> mTimestampQueryHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mTimestampReadbackBuffer = nullptr;
+	UINT64 mGpuTimestampFrequency = 0;
 
 	D3D12_VIEWPORT mScreenViewport = {};
 	D3D12_RECT mScissorRect = {};

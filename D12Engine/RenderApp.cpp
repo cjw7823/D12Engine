@@ -127,6 +127,9 @@ void RenderApp::Update(const GameTimer& gt)
 		WaitForSingleObject(mFenceEvent.Get(), INFINITE);
 	}
 
+	// 이 시점이면 이 FrameResource slot의 이전 GPU 작업은 완료됨.
+	ReadbackTimestampData(mCurrFrameResourceIndex);
+
 	AnimateMaterials(gt);
 	UpdateShadowTransform();
 	UpdateMainPassCB(gt);
@@ -140,6 +143,16 @@ void RenderApp::Draw(const GameTimer& gt)
 	auto& cmdListAlloc = mCurrFrameResource->cmdListAlloc;
 	ThrowIfFailed(cmdListAlloc->Reset());
 	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), nullptr));
+
+	//Timestamp start
+	UINT baseQuery = mCurrFrameResourceIndex * 4;
+
+	UINT FullStart = baseQuery + 0;
+	UINT FullEnd = baseQuery + 1;
+	UINT SceneStart = baseQuery + 2;
+	UINT SceneEnd = baseQuery + 3;
+	D3D12_QUERY_TYPE queryType = D3D12_QUERY_TYPE_TIMESTAMP;
+	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, FullStart);
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
@@ -184,6 +197,11 @@ void RenderApp::Draw(const GameTimer& gt)
 
 	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
 	mCommandList->SetGraphicsRootShaderResourceView(3, matBuffer->GetGPUVirtualAddress());
+
+	mCommandList->EndQuery(
+		mTimestampQueryHeap.Get(),
+		queryType,
+		SceneStart);
 
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
@@ -288,6 +306,11 @@ void RenderApp::Draw(const GameTimer& gt)
 		}
 	}
 
+	mCommandList->EndQuery(
+		mTimestampQueryHeap.Get(),
+		queryType,
+		SceneEnd);
+
 	if (mIsDepthComplexityDebug)
 	{
 		mCommandList->SetGraphicsRootSignature(mRootSignature_debug.Get());
@@ -346,6 +369,17 @@ void RenderApp::Draw(const GameTimer& gt)
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
 		D3D12_RESOURCE_STATE_PRESENT);
 	mCommandList->ResourceBarrier(1, &barrier2);
+
+	//Timestamp end
+	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, FullEnd);
+
+	mCommandList->ResolveQueryData(
+		mTimestampQueryHeap.Get(),
+		queryType,
+		baseQuery,
+		4,
+		mTimestampReadbackBuffer.Get(),
+		sizeof(UINT64)* baseQuery);
 
 	ThrowIfFailed(mCommandList->Close());
 
@@ -806,4 +840,61 @@ DirectX::XMFLOAT3 RenderApp::GetHillsNormal(float x, float z) const
 CD3DX12_GPU_DESCRIPTOR_HANDLE RenderApp::CurrentBackBufferSRV() const
 {
 	return CD3DX12_GPU_DESCRIPTOR_HANDLE(mSrvHeap->GetGPUDescriptorHandleForHeapStart(), mCurrBackBuffer, mCbvSrvUavDescriptorSize);
+}
+
+void RenderApp::ReadbackTimestampData(int frameResourceIndex)
+{
+	if (mTimestampReadbackBuffer == nullptr)
+		return;
+
+	if (mGpuTimestampFrequency == 0)
+		return;
+
+	// 아직 이 frame resource slot으로 한 번도 Draw/Resolve가 끝난 적 없으면 읽을 값 없음.
+	if (mCurrFrameResource->Fence == 0)
+		return;
+
+	const UINT queryCountPerFrame = 4;
+	const UINT baseQuery = frameResourceIndex * queryCountPerFrame;
+
+	const UINT fullStartIndex = baseQuery + 0;
+	const UINT fullEndIndex = baseQuery + 1;
+	const UINT sceneStartIndex = baseQuery + 2;
+	const UINT sceneEndIndex = baseQuery + 3;
+
+	const UINT64 readStart = sizeof(UINT64) * baseQuery;
+	const UINT64 readEnd = sizeof(UINT64) * (baseQuery + queryCountPerFrame);
+
+	D3D12_RANGE readRange = {};
+	readRange.Begin = readStart;
+	readRange.End = readEnd;
+
+	UINT64* mappedData = nullptr;
+
+	ThrowIfFailed(mTimestampReadbackBuffer->Map(
+		0,
+		&readRange,
+		reinterpret_cast<void**>(&mappedData)));
+
+	const UINT64 fullStart = mappedData[fullStartIndex];
+	const UINT64 fullEnd = mappedData[fullEndIndex];
+	const UINT64 sceneStart = mappedData[sceneStartIndex];
+	const UINT64 sceneEnd = mappedData[sceneEndIndex];
+
+	mTimestampReadbackBuffer->Unmap(0, nullptr);
+
+	// 첫 몇 프레임 또는 query 누락 방어.
+	if (fullEnd > fullStart)
+	{
+		mFullGpuMs =
+			double(fullEnd - fullStart) * 1000.0 /
+			double(mGpuTimestampFrequency);
+	}
+
+	if (sceneEnd > sceneStart)
+	{
+		mSceneGpuMs =
+			double(sceneEnd - sceneStart) * 1000.0 /
+			double(mGpuTimestampFrequency);
+	}
 }

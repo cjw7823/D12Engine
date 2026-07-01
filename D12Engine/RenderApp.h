@@ -89,6 +89,7 @@ private:
 	virtual void OnMouseWheel(short zDelta, int x, int y) override;
 	virtual void OnKeyUp(WPARAM key) override;
 	virtual void OnKeyDown(WPARAM key) override;
+	virtual void ReadbackTimestampData(int frameResourceIndex) override;
 
 	void LoadTextures();
 	void BuildDescriptorHeaps();
@@ -138,7 +139,6 @@ private:
 	float GetHillsHeight(float x, float z) const;
 	DirectX::XMFLOAT3 GetHillsNormal(float x, float z) const;
 
-private:
 	CD3DX12_GPU_DESCRIPTOR_HANDLE CurrentBackBufferSRV() const;
 
 private:
@@ -202,4 +202,7 @@ private:
 	UINT mBlurCount = 1;
 
 	bool is_Sobel = false;
+
+	double mFullGpuMs = 0.0;
+	double mSceneGpuMs = 0.0;
 };
