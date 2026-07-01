@@ -12,6 +12,16 @@
 
 #include "LightingUtil.hlsli"
 
+struct InstanceData
+{
+    float4x4 World;
+    float4x4 WorldInvTranspose;
+    float4x4 TexTransform;
+    float2 DisplacementMapTexelSize;
+    float GridSpatialStep;
+    uint MaterialIndex;
+};
+
 struct MaterialData
 {
     float4 DiffuseAlbedo;
@@ -24,6 +34,7 @@ struct MaterialData
 
 Texture2D gDiffuseMap[] : register(t0);
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -32,16 +43,7 @@ SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-cbuffer cbPerObject : register(b0)
-{
-    float4x4 gWorld; //16DWARD
-    float4x4 gTexTransform;
-    float2 gDisplacementMapTexelSize;
-    float gGridSpatialStep;
-    uint gMaterialIndex;
-};
-
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b0)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -67,6 +69,11 @@ cbuffer cbPass : register(b1)
     float2 cbPerObjectPad2;
 };
 
+cbuffer cbInstanceIndex : register(b1)
+{
+    uint gInstanceIndex;
+};
+
 struct VertexIn
 {
     float3 PosL : POSITION;
@@ -79,6 +86,9 @@ struct VertexOut
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
+    
+    nointerpolation uint MatIndex : MATINDEX;
+    nointerpolation uint InstanceID : INSTANCEID;
 };
 
 struct SubVertex
@@ -86,6 +96,9 @@ struct SubVertex
     float3 PosW;
     float3 NormalW;
     float2 TexC;
+    
+    nointerpolation uint MatIndex : MATINDEX;
+    nointerpolation uint InstanceID : INSTANCEID;
 };
 
 struct GeoOut
@@ -96,6 +109,7 @@ struct GeoOut
     float2 TexC : TEXCOORD;
     uint PrimID : SV_PrimitiveID;
     nointerpolation uint LODLevel : TEXCOORD1;
+    nointerpolation uint MatIndex : MATINDEX;
 };
 
 SubVertex MakeMidVertex(SubVertex a, SubVertex b, float3 centerW, float radius)
@@ -108,7 +122,9 @@ SubVertex MakeMidVertex(SubVertex a, SubVertex b, float3 centerW, float radius)
     r.PosW = p;
     r.NormalW = normalize(r.PosW - centerW);
     r.TexC = 0.5f * (a.TexC + b.TexC);
-
+    r.MatIndex = a.MatIndex;
+    r.InstanceID = a.InstanceID;
+    
     return r;
 }
 
@@ -122,6 +138,7 @@ void EmitTriangle(SubVertex a, SubVertex b, SubVertex c, uint primID, uint lodLe
     gout.TexC = a.TexC;
     gout.PrimID = primID;
     gout.LODLevel = lodLevel;
+    gout.MatIndex = a.MatIndex;
     triStream.Append(gout);
 
     gout.PosW = b.PosW;
@@ -130,6 +147,7 @@ void EmitTriangle(SubVertex a, SubVertex b, SubVertex c, uint primID, uint lodLe
     gout.TexC = b.TexC;
     gout.PrimID = primID;
     gout.LODLevel = lodLevel;
+    gout.MatIndex = b.MatIndex;
     triStream.Append(gout);
 
     gout.PosW = c.PosW;
@@ -138,6 +156,7 @@ void EmitTriangle(SubVertex a, SubVertex b, SubVertex c, uint primID, uint lodLe
     gout.TexC = c.TexC;
     gout.PrimID = primID;
     gout.LODLevel = lodLevel;
+    gout.MatIndex = c.MatIndex;
     triStream.Append(gout);
 
     triStream.RestartStrip();
@@ -156,14 +175,28 @@ void SubdivideOnce(SubVertex v0, SubVertex v1, SubVertex v2, float3 centerW, flo
 }
 
 //그냥 패스스루 셰이더.
-VertexOut VS(VertexIn vin)
+VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
     VertexOut vout;
     
-    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
+    uint globalInstanceID = gInstanceIndex + instanceID;
+    InstanceData instData = gInstanceData[globalInstanceID];
+    float4x4 world = instData.World;
+    float4x4 worldInvTranspose = instData.WorldInvTranspose;
+    float4x4 texTransform = instData.TexTransform;
+    float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;
+    float gridSpatialStep = instData.GridSpatialStep;
+    uint matIndex = instData.MaterialIndex;
+    
+    MaterialData matData = gMaterialData[matIndex];
+    
+    float4 posW = mul(float4(vin.PosL, 1.0f), world);
     vout.PosW = posW.xyz;
-    vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
-    vout.TexC = vin.TexC;
+    vout.NormalW = mul(vin.NormalL, (float3x3) worldInvTranspose);
+    float4 texC = mul(float4(vin.TexC, 0.f, 1.f), texTransform);
+    vout.TexC = mul(texC, matData.MatTransform).xy;
+    vout.MatIndex = matIndex;
+    vout.InstanceID = globalInstanceID;
 
     return vout;
 }
@@ -195,6 +228,13 @@ void GS(line VertexOut gin[2],
 		float2(1.0f, 1.0f),
 		float2(1.0f, 0.0f)
     };
+    float2 texC2[4] =
+    {
+        float2(0.0f, 1.0f),
+        float2(1.0f, 1.0f),
+        float2(0.0f, 0.0f),
+        float2(1.0f, 0.0f)
+    };
 	
     GeoOut gout;
 	[unroll]//컴파일할 때 루프를 풀어서 각 반복마다 별도의 명령어로 만들어준다. 이렇게 하면 GPU가 명령어를 더 효율적으로 실행할 수 있다.
@@ -206,6 +246,7 @@ void GS(line VertexOut gin[2],
         gout.TexC = texC[i];
         gout.PrimID = primID;
         gout.LODLevel = 0;
+        gout.MatIndex = gin[0].MatIndex;
 		
         triStream.Append(gout);
     }
@@ -220,19 +261,27 @@ void GS_LOD(triangle VertexOut gin[3],
     float3 center = (gin[0].PosW + gin[1].PosW + gin[2].PosW) / 3.0f;
     float distToEye = distance(gEyePosW, center);
     
-    float3 centerW = mul(float4(0, 0, 0, 1), gWorld).xyz; // 구 중심의 월드좌표
+    float3 centerW = mul(float4(0, 0, 0, 1), gInstanceData[gin[0].InstanceID].World).xyz; // 구 중심의 월드좌표
     float radius = length(gin[0].PosW - centerW);
     
     SubVertex v0, v1, v2;
     v0.PosW = gin[0].PosW;
     v0.NormalW = gin[0].NormalW;
     v0.TexC = gin[0].TexC;
+    v0.MatIndex = gin[0].MatIndex;
+    v0.InstanceID = gin[0].InstanceID;
+
     v1.PosW = gin[1].PosW;
     v1.NormalW = gin[1].NormalW;
     v1.TexC = gin[1].TexC;
+    v1.MatIndex = gin[1].MatIndex;
+    v1.InstanceID = gin[1].InstanceID;
+
     v2.PosW = gin[2].PosW;
     v2.NormalW = gin[2].NormalW;
     v2.TexC = gin[2].TexC;
+    v2.MatIndex = gin[2].MatIndex;
+    v2.InstanceID = gin[2].InstanceID;
     
     if(distToEye < 15)
     {
@@ -264,6 +313,7 @@ void GS_LOD(triangle VertexOut gin[3],
             gout.TexC = gin[i].TexC;
             gout.PrimID = primID;
             gout.LODLevel = 0;
+            gout.MatIndex = gin[0].MatIndex;
 		
             triStream.Append(gout);
         }
@@ -307,6 +357,7 @@ void GS_Explode(triangle VertexOut gin[3],
         gout.PosH = mul(float4(newPosW, 1.0f), gViewProj);
         gout.PrimID = primID;
         gout.LODLevel = 0;
+        gout.MatIndex = gin[0].MatIndex;
 
         triStream.Append(gout);
     }
@@ -332,6 +383,7 @@ void GS_Debugging(point VertexOut gin[1],
     gout.PosH = mul(float4(p0, 1.0f), gViewProj);
     gout.PrimID = primID;
     gout.LODLevel = 0;
+    gout.MatIndex = gin[0].MatIndex;
     lineStream.Append(gout);
 
     // 끝점
@@ -341,6 +393,7 @@ void GS_Debugging(point VertexOut gin[1],
     gout.PosH = mul(float4(p1, 1.0f), gViewProj);
     gout.PrimID = primID;
     gout.LODLevel = 0;
+    gout.MatIndex = gin[0].MatIndex;
     lineStream.Append(gout);
 
     lineStream.RestartStrip();
@@ -348,7 +401,7 @@ void GS_Debugging(point VertexOut gin[1],
 
 float4 PS(GeoOut pin) : SV_Target
 {
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    MaterialData matData = gMaterialData[pin.MatIndex];
     
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;

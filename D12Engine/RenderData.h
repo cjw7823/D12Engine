@@ -18,9 +18,20 @@ struct Light
 	float SpotPower = 64.0f;								//spot
 };
 
-struct ObjectConstants
+struct [[deprecated("Use InstanceData instead.")]]
+ObjectConstants
 {
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
+	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
+	float GridSpatialStep = 1.0f;
+	UINT MaterialIndex = 0;
+};
+
+struct InstanceData
+{
+	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
@@ -59,7 +70,7 @@ struct PassConstants
 	DirectX::XMFLOAT2 cbPassPadding2 = {};
 };
 
-struct MaterialConstants
+struct MaterialData
 {
 	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
@@ -137,7 +148,7 @@ struct Material
 {
 	std::string Name;
 
-	int MatCBIndex = -1;
+	int MatBufferIndex = -1;
 	int DiffuseSrvHeapIndex = -1;
 	int NormalSrvHeapIndex = -1;
 
@@ -184,22 +195,13 @@ enum class RenderLayer : int
 struct RenderItem
 {
 	RenderItem() = default;
-
-	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	int NumFramesDirty = gNumFrameResources;
-
-	UINT ObjCBIndex = -1;
-
-	MeshGeometry* Geo = nullptr;
-	Material* Mat = nullptr;
+	RenderItem(const RenderItem& rhs) = delete;
 
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
+	MeshGeometry* Geo = nullptr;
 	//Geo의 특정 서브메시를 그리도록 책임.
 	//추후 LOD 등 해당 서브메시에서 또 인덱스 제한을 걸 수도 있음.
-	UINT VertexCount = 0;
 	UINT IndexCount = 0;
 	UINT BaseVertexLocation = 0;
 	UINT StartIndexLocation = 0;
@@ -207,6 +209,14 @@ struct RenderItem
 	//For GPU waves render items.
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
+
+	int NumFramesDirty = gNumFrameResources;
+
+	UINT StartInstanceLocation = 0;
+	UINT VisibleInstanceCount = 0;
+	std::vector<InstanceData> Instances;
+
+	DirectX::BoundingBox Bounds;
 };
 
 struct Vertex
@@ -216,7 +226,7 @@ struct Vertex
 		const DirectX::XMFLOAT3& n,
 		const DirectX::XMFLOAT3& t,
 		const DirectX::XMFLOAT2& uv) :
-		Position(p),
+		Position(p), 
 		Normal(n),
 		TangentU(t),
 		TexC(uv) {}

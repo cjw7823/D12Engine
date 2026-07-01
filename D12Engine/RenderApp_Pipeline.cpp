@@ -7,19 +7,20 @@ using namespace Microsoft::WRL;
 void RenderApp::BuildRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable;
-	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, mTextures.size() + SwapChainBufferCount, 0); //t0
+	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, (UINT)mTextures.size() + SwapChainBufferCount, 0); //t0
 	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
 	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2); //t0, space2
 	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
 	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
 
-	std::array<CD3DX12_ROOT_PARAMETER, 6> slotRootParameter;
-	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) obj CB + material index
-	slotRootParameter[1].InitAsConstantBufferView(1);	// (b1) pass CB
+	std::array<CD3DX12_ROOT_PARAMETER, 7> slotRootParameter{};
+	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
+	slotRootParameter[1].InitAsConstants(1, 1, 0 , D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location
 	slotRootParameter[2].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
 	slotRootParameter[3].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
-	slotRootParameter[4].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
-	slotRootParameter[5].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
+	slotRootParameter[4].InitAsShaderResourceView(1, 1);							// (t1, space1) instances + mat index
+	slotRootParameter[5].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
+	slotRootParameter[6].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
 
 	auto staticSamplers = GetStaticSamplers();
 

@@ -17,7 +17,7 @@ void RenderApp::OnMouseUp(WPARAM btnState, int x, int y)
 
 void RenderApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
-	if ((btnState & MK_LBUTTON) != 0)
+	if ((btnState & MK_LBUTTON) || (btnState & MK_RBUTTON))
 	{
 		float dx = DirectX::XMConvertToRadians(0.5f * static_cast<float>(x - mLastMousePos.x));
 		float dy = DirectX::XMConvertToRadians(0.5f * static_cast<float>(y - mLastMousePos.y));
@@ -52,6 +52,7 @@ void RenderApp::OnKeyDown(WPARAM key)
 	if (key == VK_F1) NextMsaaOoption();
 	else if (key == VK_F2) NextBlurCount();
 	else if (key == VK_F3) is_Sobel = !is_Sobel;
+	else if (key == VK_F4) mFrustumCullingEnabled = !mFrustumCullingEnabled;
 }
 
 void RenderApp::OnKeyboardInput(const GameTimer& gt)

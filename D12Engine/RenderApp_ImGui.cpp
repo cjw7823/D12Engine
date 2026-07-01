@@ -7,7 +7,7 @@ bool RenderApp::InitImGui()
 	ImGui_ImplWin32_Init(mhMainWnd);
 
 	UINT textureCount = (UINT)mTextures.size();
-	UINT imguiFontIndex = textureCount;
+	UINT imguiFontIndex = SwapChainBufferCount + textureCount;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
 	cpuHandle.Offset(imguiFontIndex, mCbvSrvUavDescriptorSize);

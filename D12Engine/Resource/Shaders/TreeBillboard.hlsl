@@ -12,6 +12,16 @@
 
 #include "LightingUtil.hlsli"
 
+struct InstanceData
+{
+    float4x4 World;
+    float4x4 WorldInvTranspose;
+    float4x4 TexTransform;
+    float2 DisplacementMapTexelSize;
+    float GridSpatialStep;
+    uint MaterialIndex;
+};
+
 struct MaterialData
 {
     float4 DiffuseAlbedo;
@@ -23,6 +33,7 @@ struct MaterialData
 };
 
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 Texture2DArray gTreeMapArray : register(t0, space3);
 
 SamplerState gsamPointWrap : register(s0);
@@ -32,16 +43,7 @@ SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-cbuffer cbPerObject : register(b0)
-{
-    float4x4 gWorld; //16DWARD
-    float4x4 gTexTransform;
-    float2 gDisplacementMapTexelSize;
-    float gGridSpatialStep;
-    uint gMaterialIndex;
-};
-
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b0)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -67,6 +69,11 @@ cbuffer cbPass : register(b1)
     float2 cbPerObjectPad2;
 };
 
+cbuffer cbInstanceIndex : register(b1)
+{
+    uint gInstanceIndex;
+};
+
 struct VertexIn
 {
     float3 PosW : POSITION;
@@ -77,6 +84,8 @@ struct VertexOut
 {
     float3 CenterW : POSITION;
     float2 SizeW : SIZE;
+    
+    nointerpolation uint gInstanceID : INSTANCEID;
 };
 
 struct GeoOut
@@ -86,16 +95,18 @@ struct GeoOut
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
     uint PrimID : SV_PrimitiveID;
+    nointerpolation uint gInstanceID : INSTANCEID;
 };
 
 //그냥 패스스루 셰이더.
-VertexOut VS(VertexIn vin)
+VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
     VertexOut vout;
     
     vout.CenterW = vin.PosW;
     vout.SizeW = vin.SizeW;
-
+    vout.gInstanceID = gInstanceIndex + instanceID;
+    
     return vout;
 }
  
@@ -139,6 +150,7 @@ void GS(point VertexOut gin[1],
         gout.NormalW = look;
         gout.TexC = texC[i];
         gout.PrimID = primID;
+        gout.gInstanceID = gin[0].gInstanceID;
 		
         triStream.Append(gout);
     }
@@ -146,7 +158,8 @@ void GS(point VertexOut gin[1],
 
 float4 PS(GeoOut pin) : SV_Target
 {
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    InstanceData instData = gInstanceData[pin.gInstanceID];
+    MaterialData matData = gMaterialData[instData.MaterialIndex];
     
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;

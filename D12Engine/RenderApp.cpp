@@ -106,6 +106,8 @@ void RenderApp::OnResize()
 
 	mCamera.SetLens(DirectX::XM_PIDIV4, AspectRatio(), 1.0f, 200.0f);
 
+	BoundingFrustum::CreateFromMatrix(mCamFrustum, mCamera.GetProj());
+
 	if (mBlurFilter != nullptr) mBlurFilter->OnResize(mClientWidth, mClientHeight);
 	if (mSobelFilter != nullptr) mSobelFilter->OnResize(mClientWidth, mClientHeight);
 
@@ -127,10 +129,10 @@ void RenderApp::Update(const GameTimer& gt)
 
 	AnimateMaterials(gt);
 	UpdateShadowTransform();
-	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateReflectedPassCB(gt);
-	UpdateMaterialCBs(gt);
+	UpdateInstanceBuffer(gt);
+	UpdateMaterialBuffer(gt);
 }
 
 void RenderApp::Draw(const GameTimer& gt)
@@ -167,7 +169,7 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	UpdateWavesGPU(gt);
-	mCommandList->SetGraphicsRootDescriptorTable(4, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
+	mCommandList->SetGraphicsRootDescriptorTable(5, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
@@ -175,7 +177,10 @@ void RenderApp::Draw(const GameTimer& gt)
 	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetGraphicsRootDescriptorTable(2, hTable);
 	hTable.Offset(mTextures["treeArrayTex"]->SrvHeapIndex, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(5, hTable);
+	mCommandList->SetGraphicsRootDescriptorTable(6, hTable);
+
+	auto instanceBufferAddress = mCurrFrameResource->InstanceBuffer->Resource()->GetGPUVirtualAddress();
+	mCommandList->SetGraphicsRootShaderResourceView(4, instanceBufferAddress);
 
 	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
 	mCommandList->SetGraphicsRootShaderResourceView(3, matBuffer->GetGPUVirtualAddress());
@@ -183,7 +188,7 @@ void RenderApp::Draw(const GameTimer& gt)
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
 		mCommandList->OMSetStencilRef(0);
-		mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+		mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress());
 		switch (layer)
 		{
 		case (int)RenderLayer::Opaque:
@@ -232,7 +237,7 @@ void RenderApp::Draw(const GameTimer& gt)
 		case (int)RenderLayer::Reflected:
 			//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
 			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress() + passCBByteSize);
+			mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress() + passCBByteSize);
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["mirrorReflected"].Get());
 			break;
 		case (int)RenderLayer::Shadow:
@@ -426,7 +431,7 @@ void RenderApp::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 
 DirectX::XMVECTOR RenderApp::GetMirrorPlane()
 {
-	XMMATRIX W = XMLoadFloat4x4(&mMirror->World);
+	XMMATRIX W = XMLoadFloat4x4(&mMirror->Instances[0].World);
 
 	XMVECTOR pLocal = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);	// 점 벡터
 	XMVECTOR nLocal = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);	// grid가 XZ Plane일 때
@@ -444,22 +449,22 @@ DirectX::XMVECTOR RenderApp::GetMirrorPlane()
 
 void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 {
-	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
+	//auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for (auto& e : mAllRenderItems)
 	{
 		if (e->NumFramesDirty > 0)
 		{
-			XMMATRIX world = XMLoadFloat4x4(&e->World);
-			XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
+			//XMMATRIX world = XMLoadFloat4x4(&e->World);
+			//XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
-			ObjectConstants objConstants;
-			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
-			objConstants.DisplacementMapTexelSize = e->DisplacementMapTexelSize;
-			objConstants.GridSpatialStep = e->GridSpatialStep;
-			objConstants.MaterialIndex = e->Mat->MatCBIndex;
+			//ObjectConstants objConstants;
+			//XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+			//XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+			//objConstants.DisplacementMapTexelSize = e->DisplacementMapTexelSize;
+			//objConstants.GridSpatialStep = e->GridSpatialStep;
+			//objConstants.MaterialIndex = e->Mat->MatBufferIndex;
 
-			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
+			//currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 			e->NumFramesDirty--;
 		}
 	}
@@ -528,7 +533,58 @@ void RenderApp::UpdateReflectedPassCB(const GameTimer& gt)
 	mCurrFrameResource->PassCB->CopyData(1, mReflectedPassCB);
 }
 
-void RenderApp::UpdateMaterialCBs(const GameTimer& gt)
+void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
+{
+	XMMATRIX view = mCamera.GetView();
+	XMVECTOR det = XMMatrixDeterminant(view);
+	XMMATRIX invView = XMMatrixInverse(&det, view);
+
+	auto currInstanceBuffer = mCurrFrameResource->InstanceBuffer.get();
+
+	mVisibleInstanceCount = 0;
+	for (auto& ri : mAllRenderItems)
+	{
+		UINT visibleInstanceCount = 0;
+
+		for (UINT i = 0; i < ri->Instances.size(); ++i)
+		{
+			InstanceData copyData = ri->Instances[i];
+
+			XMMATRIX world = XMLoadFloat4x4(&copyData.World);
+			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&copyData.WorldInvTranspose);
+			XMMATRIX texTransform = XMLoadFloat4x4(&copyData.TexTransform);
+
+			// 카메라 프러스텀을 뷰 공간에서 월드 공간으로 변환한다.
+			BoundingFrustum worldFrustum;
+			mCamFrustum.Transform(worldFrustum, invView);
+
+			BoundingBox worldBounds;
+			ri->Bounds.Transform(worldBounds, world);
+
+			// 월드 공간에서 박스/프러스텀 교차 테스트를 수행한다.
+			if ((worldFrustum.Contains(worldBounds) != DirectX::DISJOINT) || !mFrustumCullingEnabled)
+			{
+				XMStoreFloat4x4(&copyData.World, XMMatrixTranspose(world));
+				XMStoreFloat4x4(&copyData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
+				XMStoreFloat4x4(&copyData.TexTransform, XMMatrixTranspose(texTransform));
+
+				currInstanceBuffer->CopyData(ri->StartInstanceLocation + visibleInstanceCount, copyData);
+				visibleInstanceCount++;
+			}
+		}
+
+		ri->VisibleInstanceCount = visibleInstanceCount;
+		mVisibleInstanceCount += visibleInstanceCount;
+	}
+
+	std::wostringstream outs;
+	outs.precision(6);
+	outs << "Direct3D 12 App" << L"  " << mVisibleInstanceCount <<
+		L" objects visible out of " << mInstanceCount;
+	mMainWndCaption = outs.str();
+}
+
+void RenderApp::UpdateMaterialBuffer(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialBuffer.get();
 	for (auto& e : mMaterials)
@@ -538,14 +594,14 @@ void RenderApp::UpdateMaterialCBs(const GameTimer& gt)
 		{
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
-			MaterialConstants matConstants;
+			MaterialData matConstants;
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
 			matConstants.FresnelR0 = mat->FresnelR0;
 			matConstants.Roughness = mat->Roughness;
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
 			matConstants.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
 
-			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
+			currMaterialCB->CopyData(mat->MatBufferIndex, matConstants);
 			mat->NumFramesDirty--;
 		}
 	}
@@ -578,10 +634,10 @@ void RenderApp::UpdateShadowTransform()
 	XMMATRIX s = XMMatrixShadow(shadowPlane, toMainLight);
 	XMMATRIX s2 = XMMatrixShadow(shadowPlane, toReflectedLight);
 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
-	XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->World);
-	XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->World);
-	XMStoreFloat4x4(&mSkullShadow->World, skullWorld * s * shadowOffsetY);
-	XMStoreFloat4x4(&mSkullShadowMirror->World, mirrorSkullWorld * s2 * shadowOffsetY);
+	XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->Instances[0].World);
+	XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->Instances[0].World);
+	XMStoreFloat4x4(&mSkullShadow->Instances[0].World, skullWorld * s * shadowOffsetY);
+	XMStoreFloat4x4(&mSkullShadowMirror->Instances[0].World, mirrorSkullWorld * s2 * shadowOffsetY);
 	mSkullShadow->NumFramesDirty = gNumFrameResources;
 	mSkullShadowMirror->NumFramesDirty = gNumFrameResources;
 }
@@ -615,12 +671,12 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 
 void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
-	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto instanceBuffer = mCurrFrameResource->InstanceBuffer->Resource();
 
 	for (auto& ri : renderLayers)
 	{
+		if (ri->VisibleInstanceCount == 0) continue;
+
 		auto vbv = ri->Geo->VertexBufferView();
 		auto ibv = ri->Geo->IndexBufferView();
 
@@ -628,23 +684,20 @@ void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
-		objCBAddress += ri->ObjCBIndex * objCBByteSize;
+		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation, 0);
 
-		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-
-		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+		cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
 }
 
 void RenderApp::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
-	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto instanceBuffer = mCurrFrameResource->InstanceBuffer->Resource();
 
 	for (auto& ri : renderLayers)
 	{
+		if (ri->VisibleInstanceCount == 0) continue;
+
 		auto vbv = ri->Geo->VertexBufferView();
 		auto ibv = ri->Geo->IndexBufferView();
 
@@ -652,12 +705,9 @@ void RenderApp::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmd
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress();
-		objCBAddress += ri->ObjCBIndex * objCBByteSize;
+		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation, 0);
 
-		cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-
-		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+		cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
 }
 
@@ -694,12 +744,28 @@ MeshData RenderApp::LoadModelFromFile(const std::wstring& path)
 		float v1, v2, v3, n1, n2, n3;
 		iss >> v1 >> v2 >> v3 >> n1 >> n2 >> n3;
 		
-		Vertex v{};
-		v.Position = { v1, v2, v3 };
-		v.Normal = { n1, n2, n3 };
-		v.TangentU = { 1.0f, 0.0f, 0.0f };
-		v.TexC = { 0.0f, 0.0f };
-		md.Vertices.push_back(v);
+		Vertex vertex{};
+		vertex.Position = { v1, v2, v3 };
+		vertex.Normal = { n1, n2, n3 };
+		vertex.TangentU = { 1.0f, 0.0f, 0.0f };
+
+		XMVECTOR P = XMLoadFloat3(&vertex.Position);
+		XMFLOAT3 spherePos;
+		XMStoreFloat3(&spherePos, XMVector3Normalize(P));
+
+		float theta = atan2f(spherePos.z, spherePos.x);
+
+		// Put in [0, 2pi].
+		if (theta < 0.0f)
+			theta += XM_2PI;
+
+		float phi = acosf(spherePos.y);
+
+		float u = theta / (2.0f * XM_PI);
+		float v = phi / XM_PI;
+		vertex.TexC = { u,v };
+
+		md.Vertices.push_back(vertex);
 	}
 	for (int i = 31083; i < 31083 + indexCount; i++)
 	{

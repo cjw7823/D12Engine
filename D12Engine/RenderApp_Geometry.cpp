@@ -42,36 +42,42 @@ void RenderApp::BuildShapeGeometry()
 	boxSubmesh.StartIndexLocation = boxIndexOffset;
 	boxSubmesh.BaseVertexLocation = boxVertexOffset;
 	boxSubmesh.VertexCount = boxVertexCount;
+	BoundingBox::CreateFromPoints(boxSubmesh.Bounds, box.Vertices.size(), &box.Vertices[0].Position, sizeof(Vertex));
 
 	SubmeshGeometry gridSubmesh;
 	gridSubmesh.IndexCount = (UINT)grid.Indices32.size();
 	gridSubmesh.StartIndexLocation = gridIndexOffset;
 	gridSubmesh.BaseVertexLocation = gridVertexOffset;
 	gridSubmesh.VertexCount = gridVertexCount;
+	BoundingBox::CreateFromPoints(gridSubmesh.Bounds, grid.Vertices.size(), &grid.Vertices[0].Position, sizeof(Vertex));
 
 	SubmeshGeometry sphereSubmesh;
 	sphereSubmesh.IndexCount = (UINT)sphere.Indices32.size();
 	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
 	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
 	sphereSubmesh.VertexCount = sphereVertexCount;
+	BoundingBox::CreateFromPoints(sphereSubmesh.Bounds, sphere.Vertices.size(), &sphere.Vertices[0].Position, sizeof(Vertex));
 
 	SubmeshGeometry geoSphereSubmesh;
 	geoSphereSubmesh.IndexCount = (UINT)geoSphere.Indices32.size();
 	geoSphereSubmesh.StartIndexLocation = geoSphereIndexOffset;
 	geoSphereSubmesh.BaseVertexLocation = geoSphereVertexOffset;
 	geoSphereSubmesh.VertexCount = geoSphereVertexCount;
+	BoundingBox::CreateFromPoints(geoSphereSubmesh.Bounds, geoSphere.Vertices.size(), &geoSphere.Vertices[0].Position, sizeof(Vertex));
 
 	SubmeshGeometry cylinderSubmesh;
 	cylinderSubmesh.IndexCount = (UINT)cylinder.Indices32.size();
 	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
 	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 	cylinderSubmesh.VertexCount = cylinderVertexCount;
+	BoundingBox::CreateFromPoints(cylinderSubmesh.Bounds, cylinder.Vertices.size(), &cylinder.Vertices[0].Position, sizeof(Vertex));
 
 	SubmeshGeometry skullSubmesh;
 	skullSubmesh.IndexCount = (UINT)skull.Indices32.size();
 	skullSubmesh.StartIndexLocation = skullIndexOffset;
 	skullSubmesh.BaseVertexLocation = skullVertexOffset;
 	skullSubmesh.VertexCount = skullVertexCount;
+	BoundingBox::CreateFromPoints(skullSubmesh.Bounds, skull.Vertices.size(), &skull.Vertices[0].Position, sizeof(Vertex));
 
 	//여러 메시들을 한 버퍼에 관리.
 	auto totalVertexCount =
@@ -223,6 +229,7 @@ void RenderApp::BuildLandGeometry()
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
 	sm.VertexCount = (UINT)vertices.size();
+	BoundingBox::CreateFromPoints(sm.Bounds, grid.Vertices.size(), &grid.Vertices[0].Position, sizeof(Vertex));
 
 	geo->DrawArgs["grid"] = sm;
 	mGeometries[geo->Name] = std::move(geo);
@@ -259,6 +266,7 @@ void RenderApp::BuildWavesGeometry()
 	sm.IndexCount = (UINT)indices.size();
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
+	BoundingBox::CreateFromPoints(sm.Bounds, grid.Vertices.size(), &grid.Vertices[0].Position, sizeof(Vertex));
 
 	geo->DrawArgs["grid"] = sm;
 
@@ -284,11 +292,7 @@ void RenderApp::BuildTreeBillboardGeometry()
 			x = MathHelper::RandF(-range, range);
 			z = MathHelper::RandF(-range, range);
 			if ((x > -15.f && x < 15.f) || (z > -15.f && z < 15.f))
-			{
-				//std::string s = std::to_string(i) + "\n";
-				//OutputDebugStringA(s.c_str());
 				continue;
-			}
 
 			y = GetHillsHeight(x, z);
 			if (y > 2) break;
@@ -327,6 +331,7 @@ void RenderApp::BuildTreeBillboardGeometry()
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
 	sm.VertexCount = (UINT)vertices.size();
+	BoundingBox::CreateFromPoints(sm.Bounds, vertices.size(), &vertices[0].pos, sizeof(TreeVertex));
 
 	geo->DrawArgs["tree"] = sm;
 	mGeometries[geo->Name] = std::move(geo);
@@ -342,6 +347,7 @@ void RenderApp::BuildCylinderWithoutTopGeometry()
 	cylinderSubmesh.StartIndexLocation = 0;
 	cylinderSubmesh.BaseVertexLocation = 0;
 	cylinderSubmesh.VertexCount = (UINT)cylinder.Vertices.size();
+	BoundingBox::CreateFromPoints(cylinderSubmesh.Bounds, cylinder.Vertices.size(), &cylinder.Vertices[0].Position, sizeof(Vertex));
 
 	std::vector<Vertex> vertices(cylinder.Vertices.size());
 
@@ -437,6 +443,7 @@ void RenderApp::BuildBrickWallGeometry()
 	sm.StartIndexLocation = 0;
 	sm.BaseVertexLocation = 0;
 	sm.VertexCount = (UINT)vertices.size();
+	BoundingBox::CreateFromPoints(sm.Bounds, vertices.size(), &vertices[0].Position, sizeof(Vertex));
 
 	geo->DrawArgs["brickWall"] = sm;
 

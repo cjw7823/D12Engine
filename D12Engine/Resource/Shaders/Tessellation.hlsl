@@ -14,6 +14,16 @@
 
 #include "LightingUtil.hlsli"
 
+struct InstanceData
+{
+    float4x4 World;
+    float4x4 WorldInvTranspose;
+    float4x4 TexTransform;
+    float2 DisplacementMapTexelSize;
+    float GridSpatialStep;
+    uint MaterialIndex;
+};
+
 struct MaterialData
 {
     float4 DiffuseAlbedo;
@@ -26,6 +36,7 @@ struct MaterialData
 
 Texture2D gDiffuseMap[] : register(t0);
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -34,16 +45,7 @@ SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-cbuffer cbPerObject : register(b0)
-{
-    float4x4 gWorld; //16DWARD
-    float4x4 gTexTransform;
-    float2 gDisplacementMapTexelSize;
-    float gGridSpatialStep;
-    uint gMaterialIndex;
-};
-
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b0)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -74,11 +76,27 @@ cbuffer cbPass : register(b1)
     float2 cbPerObjectPad2;
 };
 
+cbuffer cbInstanceIndex : register(b1)
+{
+    uint gInstanceIndex;
+};
+
 struct VertexIn
 {
     float3 PosL : POSITION;
     float3 NormalL : NORMAL;
     float2 TexC : TEXCOORD;
+};
+
+struct VertexOut
+{
+    float3 PosL : POSITION;
+    float3 NormalL : NORMAL;
+    float2 TexC : TEXCOORD;
+    
+    //보간 방지
+    nointerpolation uint MatIndex : MATINDEX;
+    nointerpolation uint gInstanceID : INSTANCEID;
 };
 
 struct PatchTess
@@ -93,6 +111,8 @@ struct DomainOut
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
+    
+    nointerpolation uint MatIndex : MATINDEX;
 };
 
 float GetHillsHeight(float x, float z)
@@ -111,17 +131,26 @@ float3 GetHillsNormal(float x, float z)
     return normalize(float3(-df_dx, 1.0f, -df_dz));
 }
 
-VertexIn VS(VertexIn vin)
+VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
-    return vin;
+    uint globalInstanceID = gInstanceIndex + instanceID;
+    
+    VertexOut vout;
+    vout.PosL = vin.PosL;
+    vout.NormalL = vin.NormalL;
+    vout.TexC = vin.TexC;
+    vout.MatIndex = gInstanceData[globalInstanceID].MaterialIndex;
+    vout.gInstanceID = globalInstanceID;
+    
+    return vout;
 }
 
-PatchTess ConstantHS(InputPatch<VertexIn, 4> patch, uint patchID : SV_PrimitiveID)
+PatchTess ConstantHS(InputPatch<VertexOut, 4> patch, uint patchID : SV_PrimitiveID)
 {
     PatchTess pt;
     
     float3 centerL = 0.25f * (patch[0].PosL + patch[1].PosL + patch[2].PosL + patch[3].PosL);
-    float3 centerW = mul(float4(centerL, 1.0f), gWorld).xyz;
+    float3 centerW = mul(float4(centerL, 1.0f), gInstanceData[patch[0].gInstanceID].World).xyz;
     
     float d = distance(centerW, gEyePosW);
     
@@ -152,7 +181,7 @@ PatchTess ConstantHS(InputPatch<VertexIn, 4> patch, uint patchID : SV_PrimitiveI
 [outputcontrolpoints(4)]
 [patchconstantfunc("ConstantHS")]
 [maxtessfactor(64.0f)]
-VertexIn HS(InputPatch<VertexIn, 4> p,
+VertexOut HS(InputPatch<VertexOut, 4> p,
            uint i : SV_OutputControlPointID,
            uint patchId : SV_PrimitiveID)
 {
@@ -170,7 +199,7 @@ float Hash12(float2 p)
 [domain("quad")]
 DomainOut DS(PatchTess patchTess,
             float2 uv : SV_DomainLocation,
-            const OutputPatch<VertexIn, 4> quad)
+            const OutputPatch<VertexOut, 4> quad)
 {
     DomainOut dout;
     
@@ -194,24 +223,29 @@ DomainOut DS(PatchTess patchTess,
     normalL = GetHillsNormal(posL.x, posL.z);
 #endif
     
+    InstanceData instData = gInstanceData[quad[0].gInstanceID];
+    float4x4 world = instData.World;
+    float4x4 worldInvTranspose = instData.WorldInvTranspose;
+    float4x4 texTransform = instData.TexTransform;
+    float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;
+    float gridSpatialStep = instData.GridSpatialStep;
+    uint matIndex = instData.MaterialIndex;
+    
     //변위 매핑
-    float4 posW = mul(float4(posL, 1.0f), gWorld);
+    float4 posW = mul(float4(posL, 1.0f), world);
     dout.PosW = posW.xyz;
-    
     dout.PosH = mul(posW, gViewProj);
-    
-    float3 normalW = normalize(mul(normalL, (float3x3) gWorld));
-    dout.NormalW = normalW;    
-    
-    float4 texC = mul(float4(uv, 0.f, 1.f), gTexTransform);
-    dout.TexC = mul(texC, gMaterialData[gMaterialIndex].MatTransform).xy;
+    dout.NormalW = normalize(mul(normalL, (float3x3) worldInvTranspose));
+    float4 texC = mul(float4(uv, 0.f, 1.f), texTransform);
+    dout.TexC = mul(texC, gMaterialData[matIndex].MatTransform).xy;
+    dout.MatIndex = matIndex;
     
     return dout;
 }
 
 float4 PS(DomainOut pin) : SV_Target
 {
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    MaterialData matData = gMaterialData[pin.MatIndex];
     
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;

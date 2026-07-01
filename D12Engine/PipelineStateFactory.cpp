@@ -52,7 +52,7 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateTranspar
 		ps->GetBufferSize()
 	};
 	transparentDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
-	transparentDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	transparentDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	transparentDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 
 	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&transparentDesc, IID_PPV_ARGS(PSO.GetAddressOf())));

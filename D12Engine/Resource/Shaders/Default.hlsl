@@ -13,6 +13,16 @@
 //#define CARTOON
 #include "LightingUtil.hlsli"
 
+struct InstanceData
+{
+    float4x4 World;
+    float4x4 WorldInvTranspose;
+    float4x4 TexTransform;
+    float2 DisplacementMapTexelSize;
+    float GridSpatialStep;
+    uint MaterialIndex;
+};
+
 struct MaterialData
 {
     float4 DiffuseAlbedo;
@@ -25,6 +35,7 @@ struct MaterialData
 
 Texture2D gDiffuseMap[] : register(t0);
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
 
 Texture2D gDisplacementMap : register(t0, space2);
 
@@ -35,16 +46,7 @@ SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-cbuffer cbPerObject : register(b0)
-{
-    float4x4 gWorld; //16DWARD
-    float4x4 gTexTransform;
-    float2 gDisplacementMapTexelSize;
-    float gGridSpatialStep;
-    uint gMaterialIndex;
-};
-
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b0)
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -75,6 +77,11 @@ cbuffer cbPass : register(b1)
     float2 cbPerObjectPad2;
 };
 
+cbuffer cbInstanceIndex : register(b1)
+{
+    uint gInstanceIndex;
+};
+
 struct VertexIn
 {
     float3 PosL : POSITION;
@@ -89,37 +96,50 @@ struct VertexOut
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
+    
+    //보간 방지
+    nointerpolation uint MatIndex : MATINDEX;
 };
 
-VertexOut VS(VertexIn vin)
+VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
     VertexOut vout = (VertexOut) 0.0f;
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    
+    InstanceData instData = gInstanceData[gInstanceIndex + instanceID];
+    float4x4 world = instData.World;
+    float4x4 worldInvTranspose = instData.WorldInvTranspose;
+    float4x4 texTransform = instData.TexTransform;
+    float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;
+    float gridSpatialStep = instData.GridSpatialStep;
+    uint matIndex = instData.MaterialIndex;
+    vout.MatIndex = matIndex;
+    
+    MaterialData matData = gMaterialData[matIndex];
     
 #ifdef DISPLACEMENT_MAP
     //변환되지 않은 [0,1]^2 tex 좌표를 사용하여 변위 맵을 샘플링.
     vin.PosL.y += gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC, 1.0f).r;
 	
 	//유한차분법을 이용하여 정규분포를 추정.
-    float du = gDisplacementMapTexelSize.x;
-    float dv = gDisplacementMapTexelSize.y;
+    float du = displacementMapTexelSize.x;
+    float dv = displacementMapTexelSize.y;
     float l = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(du, 0.0f), 0.0f).r;
     float r = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(du, 0.0f), 0.0f).r;
     float t = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(0.0f, dv), 0.0f).r;
     float b = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(0.0f, dv), 0.0f).r;
-    vin.NormalL = normalize(float3(-r + l, 2.0f * gGridSpatialStep, b - t));
+    vin.NormalL = normalize(float3(-r + l, 2.0f * gridSpatialStep, b - t));
 #endif
     
-    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
+    float4 posW = mul(float4(vin.PosL, 1.0f), world);
     vout.PosW = posW.xyz;
     
-    // 비균일 스케일링을 가정. 아니라면 월드 행렬의 역전치 행렬을 사용해야 한다.
-    vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
+    // 균일 스케일링을 가정. 아니라면 월드 행렬의 역전치 행렬을 사용해야 한다.
+    vout.NormalW = mul(vin.NormalL, (float3x3) worldInvTranspose);
     
     // homogeneous clip 공간으로 변환.
     vout.PosH = mul(posW, gViewProj);
     
-    float4 texC = mul(float4(vin.TexC, 0.f, 1.f), gTexTransform);
+    float4 texC = mul(float4(vin.TexC, 0.f, 1.f), texTransform);
     vout.TexC = mul(texC, matData.MatTransform).xy;
     
     return vout;
@@ -127,13 +147,12 @@ VertexOut VS(VertexIn vin)
  
 float4 PS(VertexOut pin) : SV_Target
 {
-    MaterialData matData = gMaterialData[gMaterialIndex];
-    
+    MaterialData matData = gMaterialData[pin.MatIndex];
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;
     float roughness = matData.Roughness;
     uint diffuseTexIndex = matData.DiffuseMapIndex;
-    
+	
     diffuseAlbedo = gDiffuseMap[diffuseTexIndex].Sample(gsamPointWrap, pin.TexC) * diffuseAlbedo;
     
 #ifdef TEXTURE_BLEND
@@ -176,5 +195,5 @@ float4 PS(VertexOut pin) : SV_Target
 
 float4 PS_MirrorBaseFill(VertexOut pin) : SV_Target
 {
-    return gMaterialData[gMaterialIndex].DiffuseAlbedo;
+    return gMaterialData[pin.MatIndex].DiffuseAlbedo;
 }

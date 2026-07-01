@@ -10,6 +10,7 @@
 #include "BlurFilter.h"
 #include "SobelFilter.h"
 #include "Camera.h"
+#include <DirectXCollision.h>
 
 /*
 	1. Resource Heap / Resource Memory
@@ -105,7 +106,7 @@ private:
 	void BuildBrickWallGeometry();
 
 	void BuildRenderItems();
-	void BuildRenderItems_InMirror(UINT& objCBIndex);
+	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildFrameResources();
 	void BuildPSOs();
 	void SetDebugColorCB();
@@ -119,10 +120,12 @@ private:
 	DirectX::XMVECTOR GetMirrorPlane();
 
 	void OnKeyboardInput(const GameTimer& gt);
+	[[deprecated("ObjectCB is Closed.")]]
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateReflectedPassCB(const GameTimer& gt);
-	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateInstanceBuffer(const GameTimer& gt);
+	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateWavesGPU(const GameTimer& gt);
 	void UpdateShadowTransform();
 	void AnimateMaterials(const GameTimer& gt);
@@ -182,6 +185,11 @@ private:
 	bool mIsWireframe = false;
 	bool mIsDepthComplexityDebug = false;
 	bool mIsVertexNormalDebug = false;
+	bool mFrustumCullingEnabled = true;
+
+	UINT mInstanceCount = 0;
+	UINT mVisibleInstanceCount = 0;
+	DirectX::BoundingFrustum mCamFrustum;
 
 	Camera mCamera;
 
