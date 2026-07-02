@@ -120,7 +120,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
 
-	//GPU Timestampë¥¼ ìœ„í•œ qury heap
+	//GPU Timestamp¸¦ À§ÇÑ qury heap
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> mTimestampQueryHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mTimestampReadbackBuffer = nullptr;
 	UINT64 mGpuTimestampFrequency = 0;

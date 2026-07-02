@@ -36,6 +36,21 @@ struct InstanceData
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
 	UINT MaterialIndex = 0;
+
+	bool visible = true;
+	bool selected = false;
+
+	std::string name;
+};
+
+struct InstanceData_GPU
+{
+	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
+	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
+	float GridSpatialStep = 1.0f;
+	UINT MaterialIndex = 0;
 };
 
 struct PassConstants
@@ -189,6 +204,7 @@ enum class RenderLayer : int
 	Reflected,
 	Shadow,
 	Transparent,
+	Highlight,
 	Count,
 };
 
@@ -196,6 +212,9 @@ struct RenderItem
 {
 	RenderItem() = default;
 	RenderItem(const RenderItem& rhs) = delete;
+
+	bool Visible = true;
+	bool InMirror = false;
 
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
@@ -217,6 +236,12 @@ struct RenderItem
 	std::vector<InstanceData> Instances;
 
 	DirectX::BoundingBox Bounds;
+};
+
+struct SelectedInstance
+{
+	RenderItem* renderItem = nullptr;
+	UINT instanceIndex = UINT_MAX;
 };
 
 struct Vertex

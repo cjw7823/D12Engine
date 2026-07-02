@@ -6,8 +6,16 @@ using namespace DirectX;
 
 void RenderApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
-	mLastMousePos = { x,y };
-	SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
+	if (btnState & MK_RBUTTON)
+	{
+		mLastMousePos = { x,y };
+		SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
+	}
+	else if (btnState & MK_LBUTTON)
+	{
+		ClearSelectedInstance();
+		SelectRenderItemByMouseClick(x, y);
+	}
 }
 
 void RenderApp::OnMouseUp(WPARAM btnState, int x, int y)

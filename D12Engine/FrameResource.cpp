@@ -14,5 +14,5 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInsta
 
 	WavesVB = std::make_unique<UploadBuffer<Vertex>>(device, waveVertexCount, false);
 
-	InstanceBuffer = std::make_unique<UploadBuffer<InstanceData>>(device, maxInstanceCount, false);
+	InstanceBuffer = std::make_unique<UploadBuffer<InstanceData_GPU>>(device, maxInstanceCount, false);
 }

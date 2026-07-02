@@ -467,6 +467,11 @@ void RenderApp::BuildPSOs()
 	tessFactory(tessCtx);
 	mPSOs["tessLand_wireframe"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
 	mPSOs["tessWall_wireframe"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+
+	//selected PSO
+	PsoBuildContext selectedCtx = ctx;
+	PipelineStateFactory selectedFactory(selectedCtx);
+	mPSOs["highlight"] = selectedFactory.CreateSelectedPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

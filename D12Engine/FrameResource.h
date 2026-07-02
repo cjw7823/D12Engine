@@ -26,7 +26,7 @@ public:
 	// 이는 부담스러운 작업처럼 들릴 수 있지만, 실제로는 인스턴싱을 사용하지 않을 때 필요한 객체별 상수 데이터(per-object constant data)의 양과 다를 바 없습니다. 
 	// 예를 들어, 인스턴싱 없이 1,000개의 객체를 그린다면 1,000개 분량의 데이터를 담을 수 있는 상수 버퍼(constant buffer)를 생성하게 됩니다. 
 	// 인스턴싱을 사용할 때도 마찬가지로, 1,000개 인스턴스의 데이터를 저장할 수 있을 만큼 충분히 큰 구조화된 버퍼를 생성하기만 하면 됩니다.
-	std::unique_ptr<UploadBuffer<InstanceData>> InstanceBuffer = nullptr;
+	std::unique_ptr<UploadBuffer<InstanceData_GPU>> InstanceBuffer = nullptr;
 
 	UINT64 Fence = 0;
 	inline static constexpr UINT debugColorNum = 10;

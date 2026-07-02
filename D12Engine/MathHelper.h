@@ -31,7 +31,4 @@ public:
 	static DirectX::XMVECTOR RandHemisphereUnitVec3(DirectX::XMVECTOR n);
 	//역전치 계산
 	static DirectX::XMMATRIX InverseTranspose(DirectX::CXMMATRIX M);
-
-public:
-	inline static const float Infinity = FLT_MAX;
 };

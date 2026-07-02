@@ -321,6 +321,14 @@ void RenderApp::BuildMaterials()
 	mirrorBaseMat->FresnelR0 = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	mirrorBaseMat->Roughness = 1.0f;
 
+	auto highlightMat = std::make_unique<Material>();
+	highlightMat->Name = "highlightMat";
+	highlightMat->MatBufferIndex = index++;
+	highlightMat->DiffuseSrvHeapIndex = mTextures["defaultTex"]->SrvHeapIndex;
+	highlightMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.6f);
+	highlightMat->FresnelR0 = XMFLOAT3(0.06f, 0.06f, 0.06f);
+	highlightMat->Roughness = 0.0f;
+
 	mMaterials[defaultMat->Name] = std::move(defaultMat);
 	mMaterials[tileMat->Name] = std::move(tileMat);
 	mMaterials[bricksMat0->Name] = std::move(bricksMat0);
@@ -337,12 +345,22 @@ void RenderApp::BuildMaterials()
 	mMaterials[shadowMat_skull->Name] = std::move(shadowMat_skull);
 	mMaterials[treeBillboardMat->Name] = std::move(treeBillboardMat);
 	mMaterials[mirrorBaseMat->Name] = std::move(mirrorBaseMat);
+	mMaterials[highlightMat->Name] = std::move(highlightMat);
 }
 
 void RenderApp::BuildRenderItems()
 {
-	mInstanceCount = 0;
 	UINT StartInstanceLocation = 0;
+	BuildRenderItems_Common(StartInstanceLocation);
+	BuildRenderItems_InMirror(StartInstanceLocation);
+	//BuildRenderItems_Selected(StartInstanceLocation);
+
+	for (const auto& ri : mAllRenderItems)
+		mInstanceCount += (UINT)ri->Instances.size();
+}
+
+void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
+{
 	{
 		auto boxRI = std::make_unique<RenderItem>();
 		boxRI->Geo = mGeometries["shapeGeo"].get();
@@ -351,6 +369,7 @@ void RenderApp::BuildRenderItems()
 		boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
 		boxRI->Bounds = boxRI->Geo->DrawArgs["box"].Bounds;
 		boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		boxRI->InMirror = true;
 		{
 			InstanceData instance;
 			auto world = XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, -5.f);
@@ -360,8 +379,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["woodCrate"]->MatBufferIndex;
 			boxRI->Instances.push_back(instance);
 		}
-		boxRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += boxRI->Instances.size();
+		boxRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)boxRI->Instances.size();
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(boxRI.get());
 		mAllRenderItems.push_back(std::move(boxRI));
 
@@ -372,6 +391,7 @@ void RenderApp::BuildRenderItems()
 		blendBoxRI->BaseVertexLocation = blendBoxRI->Geo->DrawArgs["box"].BaseVertexLocation;
 		blendBoxRI->Bounds = blendBoxRI->Geo->DrawArgs["box"].Bounds;
 		blendBoxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		blendBoxRI->InMirror = true;
 		{
 			InstanceData instance;
 			auto world = XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 8.f);
@@ -381,8 +401,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["swirling"]->MatBufferIndex;
 			blendBoxRI->Instances.push_back(instance);
 		}
-		blendBoxRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += blendBoxRI->Instances.size();
+		blendBoxRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)blendBoxRI->Instances.size();
 		mRenderItemLayer[(int)RenderLayer::MultiTextureBlend].push_back(blendBoxRI.get());
 		mAllRenderItems.push_back(std::move(blendBoxRI));
 
@@ -393,6 +413,7 @@ void RenderApp::BuildRenderItems()
 		netBoxRI->BaseVertexLocation = netBoxRI->Geo->DrawArgs["box"].BaseVertexLocation;
 		netBoxRI->Bounds = netBoxRI->Geo->DrawArgs["box"].Bounds;
 		netBoxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		netBoxRI->InMirror = true;
 		{
 			InstanceData instance;
 			auto world = XMMatrixTranslation(0.f, 1.f, -10.f);
@@ -402,8 +423,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["wireFence"]->MatBufferIndex;
 			netBoxRI->Instances.push_back(instance);
 		}
-		netBoxRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += netBoxRI->Instances.size();
+		netBoxRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)netBoxRI->Instances.size();
 		mRenderItemLayer[(int)RenderLayer::AlphaTestOpaque].push_back(netBoxRI.get());
 		mAllRenderItems.push_back(std::move(netBoxRI));
 
@@ -414,14 +435,15 @@ void RenderApp::BuildRenderItems()
 		gridRI->BaseVertexLocation = gridRI->Geo->DrawArgs["grid"].BaseVertexLocation;
 		gridRI->Bounds = gridRI->Geo->DrawArgs["grid"].Bounds;
 		gridRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		gridRI->InMirror = true;
 		{
 			InstanceData instance;
 			instance.MaterialIndex = mMaterials["tile0"]->MatBufferIndex;
 			XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
 			gridRI->Instances.push_back(instance);
 		}
-		gridRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += gridRI->Instances.size();
+		gridRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)gridRI->Instances.size();
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(gridRI.get());
 		mAllRenderItems.push_back(std::move(gridRI));
 
@@ -432,6 +454,7 @@ void RenderApp::BuildRenderItems()
 		CylinderRI->BaseVertexLocation = CylinderRI->Geo->DrawArgs["cylinder"].BaseVertexLocation;
 		CylinderRI->Bounds = CylinderRI->Geo->DrawArgs["cylinder"].Bounds;
 		CylinderRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		CylinderRI->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(CylinderRI.get());
 
 		auto SphereRitem = std::make_unique<RenderItem>();
@@ -441,6 +464,7 @@ void RenderApp::BuildRenderItems()
 		SphereRitem->BaseVertexLocation = SphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 		SphereRitem->Bounds = SphereRitem->Geo->DrawArgs["sphere"].Bounds;
 		SphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		SphereRitem->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(SphereRitem.get());
 
 		auto GeoSphereRitem = std::make_unique<RenderItem>();
@@ -450,6 +474,7 @@ void RenderApp::BuildRenderItems()
 		GeoSphereRitem->BaseVertexLocation = GeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
 		GeoSphereRitem->Bounds = GeoSphereRitem->Geo->DrawArgs["geoSphere"].Bounds;
 		GeoSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		GeoSphereRitem->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::GeoSphereLOD].push_back(GeoSphereRitem.get());
 
 		for (int i = 0; i < 5; ++i)
@@ -484,20 +509,20 @@ void RenderApp::BuildRenderItems()
 			GeoSphereRitem->Instances.push_back(instance);
 		}
 
-		CylinderRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += CylinderRI->Instances.size();
+		CylinderRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)CylinderRI->Instances.size();
 
-		SphereRitem->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += SphereRitem->Instances.size();
+		SphereRitem->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)SphereRitem->Instances.size();
 
-		GeoSphereRitem->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += GeoSphereRitem->Instances.size();
+		GeoSphereRitem->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)GeoSphereRitem->Instances.size();
 
 		mAllRenderItems.push_back(std::move(CylinderRI));
 		mAllRenderItems.push_back(std::move(SphereRitem));
 		mAllRenderItems.push_back(std::move(GeoSphereRitem));
 	}
-
+	
 	//skull
 	auto skullRI = std::make_unique<RenderItem>();
 	skullRI->Geo = mGeometries["shapeGeo"].get();
@@ -506,6 +531,7 @@ void RenderApp::BuildRenderItems()
 	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
 	skullRI->Bounds = skullRI->Geo->DrawArgs["skull"].Bounds;
 	skullRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	skullRI->InMirror = true;
 	{
 		InstanceData instance;
 		auto world = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f);
@@ -515,8 +541,8 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["defaultMat"]->MatBufferIndex;
 		skullRI->Instances.push_back(instance);
 	}
-	skullRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += skullRI->Instances.size();
+	skullRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)skullRI->Instances.size();
 	mSkull = skullRI.get();
 	mRenderItemLayer[(int)RenderLayer::Opaque].push_back(skullRI.get());
 	mAllRenderItems.push_back(std::move(skullRI));
@@ -539,8 +565,8 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["grass0"]->MatBufferIndex;
 		landRI->Instances.push_back(instance);
 	}
-	landRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += landRI->Instances.size();
+	landRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)landRI->Instances.size();
 	excludeRI_InMirror.push_back(landRI.get());
 	mRenderItemLayer[(int)RenderLayer::TessLand].push_back(landRI.get());
 	mAllRenderItems.push_back(std::move(landRI));
@@ -564,8 +590,8 @@ void RenderApp::BuildRenderItems()
 		instance.DisplacementMapTexelSize = { 1.0f / mWaves->ColumnCount(), 1.0f / mWaves->RowCount() };
 		waveRI->Instances.push_back(instance);
 	}
-	waveRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += waveRI->Instances.size();
+	waveRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)waveRI->Instances.size();
 	mRenderItemLayer[(int)RenderLayer::Waves].push_back(waveRI.get());
 	mWavesRenderItem = waveRI.get();
 	mAllRenderItems.push_back(std::move(waveRI));
@@ -589,8 +615,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["iceMirrorMat"]->MatBufferIndex;
 			mirrorRI->Instances.push_back(instance);
 		}
-		mirrorRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += mirrorRI->Instances.size();
+		mirrorRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)mirrorRI->Instances.size();
 		mMirror = mirrorRI.get();
 		excludeRI_InMirror.push_back(mirrorRI.get());
 		mRenderItemLayer[(int)RenderLayer::MirrorStencil].push_back(mirrorRI.get());
@@ -614,8 +640,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["bricks1"]->MatBufferIndex;
 			mirrorWallTessRI->Instances.push_back(instance);
 		}
-		mirrorWallTessRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += mirrorWallTessRI->Instances.size();
+		mirrorWallTessRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)mirrorWallTessRI->Instances.size();
 		excludeRI_InMirror.push_back(mirrorWallTessRI.get());
 		mRenderItemLayer[(int)RenderLayer::TessWall].push_back(mirrorWallTessRI.get());
 		mAllRenderItems.push_back(std::move(mirrorWallTessRI));
@@ -637,8 +663,8 @@ void RenderApp::BuildRenderItems()
 			instance.MaterialIndex = mMaterials["mirrorBaseMat"]->MatBufferIndex;
 			mirrorBackRI->Instances.push_back(instance);
 		}
-		mirrorBackRI->StartInstanceLocation = StartInstanceLocation;
-		StartInstanceLocation += mirrorBackRI->Instances.size();
+		mirrorBackRI->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)mirrorBackRI->Instances.size();
 		excludeRI_InMirror.push_back(mirrorBackRI.get());
 		mRenderItemLayer[(int)RenderLayer::MirrorBaseFill].push_back(mirrorBackRI.get());
 		mAllRenderItems.push_back(std::move(mirrorBackRI));
@@ -657,13 +683,11 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["shadowMat_skull"]->MatBufferIndex;
 		skullShadowRI->Instances.push_back(instance);
 	}
-	skullShadowRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += skullShadowRI->Instances.size();
+	skullShadowRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)skullShadowRI->Instances.size();
 	mSkullShadow = skullShadowRI.get();
 	mRenderItemLayer[(int)RenderLayer::Shadow].push_back(skullShadowRI.get());
 	mAllRenderItems.push_back(std::move(skullShadowRI));
-
-	BuildRenderItems_InMirror(StartInstanceLocation);
 
 	//tree billboard
 	auto treeBillboardRI = std::make_unique<RenderItem>();
@@ -678,8 +702,8 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["treeBillboardMat"]->MatBufferIndex;
 		treeBillboardRI->Instances.push_back(instance);
 	}
-	treeBillboardRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += treeBillboardRI->Instances.size();
+	treeBillboardRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)treeBillboardRI->Instances.size();
 	mRenderItemLayer[(int)RenderLayer::A2C_TreeBillboard].push_back(treeBillboardRI.get());
 	mAllRenderItems.push_back(std::move(treeBillboardRI));
 
@@ -700,8 +724,8 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["bricks0"]->MatBufferIndex;
 		cylRI->Instances.push_back(instance);
 	}
-	cylRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += cylRI->Instances.size();
+	cylRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)cylRI->Instances.size();
 	mRenderItemLayer[(int)RenderLayer::LineToCylinder].push_back(cylRI.get());
 	mAllRenderItems.push_back(std::move(cylRI));
 
@@ -722,13 +746,10 @@ void RenderApp::BuildRenderItems()
 		instance.MaterialIndex = mMaterials["bricks0"]->MatBufferIndex;
 		explodeRI->Instances.push_back(instance);
 	}
-	explodeRI->StartInstanceLocation = StartInstanceLocation;
-	StartInstanceLocation += explodeRI->Instances.size();
+	explodeRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += (UINT)explodeRI->Instances.size();
 	mRenderItemLayer[(int)RenderLayer::GeoExplode].push_back(explodeRI.get());
 	mAllRenderItems.push_back(std::move(explodeRI));
-
-	for (const auto& ri : mAllRenderItems)
-		mInstanceCount += ri->Instances.size();
 }
 
 void RenderApp::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
@@ -740,6 +761,8 @@ void RenderApp::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
 	//for (auto& ri : mRenderItemLayer[(int)RenderLayer::Opaque])
 	for (auto& ri : mAllRenderItems)
 	{
+		if (ri->InMirror == false) continue;
+
 		bool flag = false;
 		for (auto ex : excludeRI_InMirror)
 		{
@@ -761,7 +784,7 @@ void RenderApp::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		}
 		reflectedRI->StartInstanceLocation = InstanceBufferIndex;
-		InstanceBufferIndex += reflectedRI->Instances.size();
+		InstanceBufferIndex += (UINT)reflectedRI->Instances.size();
 
 		if (ri.get() == mSkullShadow) mSkullShadowMirror = reflectedRI.get();
 		if (ri.get() == mSkull) mSkullMirror = reflectedRI.get();
@@ -774,6 +797,18 @@ void RenderApp::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
 		mAllRenderItems.end(),
 		std::make_move_iterator(renderItems.begin()),
 		std::make_move_iterator(renderItems.end()));
+}
+
+void RenderApp::BuildRenderItems_Selected(UINT& InstanceBufferIndex)
+{
+	//미완성된 객체. 클릭시 완성
+	auto selectedRI = std::make_unique<RenderItem>();
+	selectedRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	selectedRI->StartInstanceLocation = InstanceBufferIndex;
+	selectedRI->Visible = false;
+	InstanceBufferIndex += (UINT)selectedRI->Instances.size();
+	mRenderItemLayer[(int)RenderLayer::Highlight].push_back(selectedRI.get());
+	mAllRenderItems.push_back(std::move(selectedRI));
 }
 
 void RenderApp::BuildFrameResources()

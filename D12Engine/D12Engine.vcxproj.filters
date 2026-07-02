@@ -232,5 +232,8 @@
     <None Include="Resource\Shaders\Tessellation.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Resource\Shaders\Outline.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -107,7 +107,9 @@ private:
 	void BuildBrickWallGeometry();
 
 	void BuildRenderItems();
+	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
+	void BuildRenderItems_Selected(UINT& InstanceBufferIndex);
 	void BuildFrameResources();
 	void BuildPSOs();
 	void SetDebugColorCB();
@@ -117,6 +119,8 @@ private:
 	void ResolveMsaaToBackBuffer();
 
 	void DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList);
+	void SelectRenderItemByMouseClick(int sx, int sy);
+	void ClearSelectedInstance();
 
 	DirectX::XMVECTOR GetMirrorPlane();
 
@@ -172,6 +176,8 @@ private:
 	RenderItem* mSkullMirror = nullptr;
 	RenderItem* mSkullShadow = nullptr;
 	RenderItem* mSkullShadowMirror = nullptr;
+
+	std::vector<SelectedInstance> mSelectedInstances;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_debug = nullptr;

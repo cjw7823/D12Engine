@@ -264,6 +264,9 @@ void RenderApp::Draw(const GameTimer& gt)
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["transparent"].Get());
 			break;
+		case (int)RenderLayer::Highlight:
+			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["highlight"].Get());
+			break;
 		default:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
 			break;
@@ -463,6 +466,83 @@ void RenderApp::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 	}
 }
 
+void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
+{
+	XMFLOAT4X4 P = mCamera.GetProj4x4f();
+
+	// 스크린 좌표를 뷰 공간 좌표로 변환
+	float vx = (+2.0f * sx / mClientWidth - 1.0f) / P(0, 0);
+	float vy = (-2.0f * sy / mClientHeight + 1.0f) / P(1, 1);
+
+	// 뷰 공간에서 Ray 생성.
+	XMVECTOR viewRayOrigin = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	XMVECTOR viewRayDir = XMVectorSet(vx, vy, 1.0f, 0.0f);
+
+	XMMATRIX V = mCamera.GetView();
+	auto det = XMMatrixDeterminant(V);
+	XMMATRIX invView = XMMatrixInverse(&det, V);
+
+	RenderItem* selectedRenderItem = nullptr;
+	UINT selectedInstanceIndex = UINT_MAX;
+	float closestDist = FLT_MAX;
+
+	float tmin = 0.0f;
+	//for (auto& ri : mAllRenderItems)
+	for (auto ri : mRenderItemLayer[(int)RenderLayer::Opaque])
+	{
+		if (ri->Visible == false) continue;
+
+		for (UINT instanceIndex = 0; instanceIndex < ri->Instances.size(); ++instanceIndex)
+		{
+			auto& instance = ri->Instances[instanceIndex];
+			if (instance.visible == false) continue;
+
+			XMMATRIX W = XMLoadFloat4x4(&instance.World);
+			auto detW = XMMatrixDeterminant(W);
+			float detValue = XMVectorGetX(detW);
+
+			if (!std::isfinite(detValue) || fabsf(detValue) < 1e-6f) continue;
+
+			XMMATRIX invWorld = XMMatrixInverse(&detW, W);
+
+			XMMATRIX toLocal = XMMatrixMultiply(invView, invWorld);
+			
+			//광선을 메시의 로컬 공간으로 변환
+			XMVECTOR localRayOrigin = XMVector3TransformCoord(viewRayOrigin, toLocal);
+			XMVECTOR localRayDir = XMVector3TransformNormal(viewRayDir, toLocal);
+			localRayDir = XMVector3Normalize(localRayDir);
+
+			float t = 0.0f;
+			// 광선이 메시의 바운딩 박스와 교차	하는지 확인
+			if (ri->Bounds.Intersects(localRayOrigin, localRayDir, t))
+			{
+				if (t < closestDist)
+				{
+					closestDist = t;
+					selectedRenderItem = ri;
+					selectedInstanceIndex = instanceIndex;
+				}
+			}
+		}
+	}
+
+	if (selectedRenderItem != nullptr)
+	{
+		SelectedInstance selected;
+		selected.renderItem = selectedRenderItem;
+		selected.instanceIndex = selectedInstanceIndex;
+
+		auto& selectedInstance = selectedRenderItem->Instances[selectedInstanceIndex];
+
+		mSelectedInstances.push_back(selected);
+	}
+}
+
+void RenderApp::ClearSelectedInstance()
+{
+	mSelectedInstances.clear();
+}
+
 DirectX::XMVECTOR RenderApp::GetMirrorPlane()
 {
 	XMMATRIX W = XMLoadFloat4x4(&mMirror->Instances[0].World);
@@ -578,11 +658,14 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 	mVisibleInstanceCount = 0;
 	for (auto& ri : mAllRenderItems)
 	{
+		if (!ri->Visible) continue;
+
 		UINT visibleInstanceCount = 0;
 
 		for (UINT i = 0; i < ri->Instances.size(); ++i)
 		{
 			InstanceData copyData = ri->Instances[i];
+			if (!copyData.visible) continue;
 
 			XMMATRIX world = XMLoadFloat4x4(&copyData.World);
 			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&copyData.WorldInvTranspose);
@@ -598,11 +681,16 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 			// 월드 공간에서 박스/프러스텀 교차 테스트를 수행한다.
 			if ((worldFrustum.Contains(worldBounds) != DirectX::DISJOINT) || !mFrustumCullingEnabled)
 			{
-				XMStoreFloat4x4(&copyData.World, XMMatrixTranspose(world));
-				XMStoreFloat4x4(&copyData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
-				XMStoreFloat4x4(&copyData.TexTransform, XMMatrixTranspose(texTransform));
+				InstanceData_GPU gpuData;
+				XMStoreFloat4x4(&gpuData.World, XMMatrixTranspose(world));
+				XMStoreFloat4x4(&gpuData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
+				XMStoreFloat4x4(&gpuData.TexTransform, XMMatrixTranspose(texTransform));
+				gpuData.MaterialIndex = copyData.MaterialIndex;
+				gpuData.DisplacementMapTexelSize = copyData.DisplacementMapTexelSize;
+				gpuData.GridSpatialStep = copyData.GridSpatialStep;
 
-				currInstanceBuffer->CopyData(ri->StartInstanceLocation + visibleInstanceCount, copyData);
+
+				currInstanceBuffer->CopyData(ri->StartInstanceLocation + visibleInstanceCount, gpuData);
 				visibleInstanceCount++;
 			}
 		}
@@ -661,6 +749,8 @@ void RenderApp::UpdateWavesGPU(const GameTimer& gt)
 
 void RenderApp::UpdateShadowTransform()
 {
+	if (mSkullShadow == nullptr) return;
+
 	//빛 전환에 따른 해골 그림자 변환.
 	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); //xz plane
 	XMVECTOR toMainLight = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
@@ -669,11 +759,15 @@ void RenderApp::UpdateShadowTransform()
 	XMMATRIX s2 = XMMatrixShadow(shadowPlane, toReflectedLight);
 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
 	XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->Instances[0].World);
-	XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->Instances[0].World);
 	XMStoreFloat4x4(&mSkullShadow->Instances[0].World, skullWorld * s * shadowOffsetY);
-	XMStoreFloat4x4(&mSkullShadowMirror->Instances[0].World, mirrorSkullWorld * s2 * shadowOffsetY);
 	mSkullShadow->NumFramesDirty = gNumFrameResources;
-	mSkullShadowMirror->NumFramesDirty = gNumFrameResources;
+
+	if (mSkullShadowMirror != nullptr)
+	{
+		XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->Instances[0].World);
+		XMStoreFloat4x4(&mSkullShadowMirror->Instances[0].World, mirrorSkullWorld * s2 * shadowOffsetY);
+		mSkullShadowMirror->NumFramesDirty = gNumFrameResources;
+	}
 }
 
 void RenderApp::AnimateMaterials(const GameTimer& gt)
@@ -754,36 +848,24 @@ MeshData RenderApp::LoadModelFromFile(const std::wstring& path)
 		throw DxException(1, path, wfn, __LINE__);
 	}
 
-	std::vector<std::string> lines;
-	std::string line;
-
-	while (std::getline(file, line))
-		lines.push_back(line);
-	file.close();
-
-	std::string label;
 	int vertexCount = 0;
 	int indexCount = 0;
+	std::string ignore;
 
-	std::istringstream iss(lines[0]);
-	iss >> label >> vertexCount;
-	iss.str(lines[1]); iss.clear();
-	iss >> label >> indexCount;
+	file >> ignore >> vertexCount;
+	file >> ignore >> indexCount;
+	file >> ignore >> ignore >> ignore >> ignore;
 
 	//메시 생성
 	MeshData md;
-	for (int i = 4; i < 4 + vertexCount; i++)
+	std::vector<Vertex> vertices(vertexCount);
+	for (int i = 0; i < vertexCount; i++)
 	{
-		iss.str(lines[i]); iss.clear();
-		float v1, v2, v3, n1, n2, n3;
-		iss >> v1 >> v2 >> v3 >> n1 >> n2 >> n3;
-		
-		Vertex vertex{};
-		vertex.Position = { v1, v2, v3 };
-		vertex.Normal = { n1, n2, n3 };
-		vertex.TangentU = { 1.0f, 0.0f, 0.0f };
+		file >> vertices[i].Position.x >> vertices[i].Position.y >> vertices[i].Position.z;
+		file >> vertices[i].Normal.x >> vertices[i].Normal.y >> vertices[i].Normal.z;
+		vertices[i].TangentU = {1.0f, 0.0f, 0.0f};
 
-		XMVECTOR P = XMLoadFloat3(&vertex.Position);
+		XMVECTOR P = XMLoadFloat3(&vertices[i].Position);
 		XMFLOAT3 spherePos;
 		XMStoreFloat3(&spherePos, XMVector3Normalize(P));
 
@@ -797,20 +879,20 @@ MeshData RenderApp::LoadModelFromFile(const std::wstring& path)
 
 		float u = theta / (2.0f * XM_PI);
 		float v = phi / XM_PI;
-		vertex.TexC = { u,v };
-
-		md.Vertices.push_back(vertex);
+		vertices[i].TexC = {u,v};
 	}
-	for (int i = 31083; i < 31083 + indexCount; i++)
+	md.Vertices = vertices;
+
+	file >> ignore >> ignore >> ignore;
+
+	std::vector<uint32_t> indices(indexCount * 3);
+	for (int i = 0; i < indexCount; i++)
 	{
-		iss.str(lines[i]); iss.clear();
-		int i1, i2, i3;
-		iss >> i1 >> i2 >> i3;
-
-		md.Indices32.push_back(i1);
-		md.Indices32.push_back(i2);
-		md.Indices32.push_back(i3);
+		file >> indices[i * 3 + 0] >> indices[i * 3 + 1] >> indices[i * 3 + 2];
 	}
+	md.Indices32 = indices;
+
+	file.close();
 
 	return md;
 }

@@ -537,6 +537,11 @@
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Outline.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
     <MakeDir Directories="$(ShaderDir)" />
     <Exec Command="&quot;$(DXCPath)&quot; $(ShaderCompileOptions) %(ShaderCompile.Defines) -T %(ShaderCompile.Profile) -E %(ShaderCompile.Entry) -Fo &quot;$(ShaderDir)%(ShaderCompile.OutputName)&quot; -Fc &quot;$(ShaderDir)%(ShaderCompile.AsmName)&quot; &quot;%(ShaderCompile.FullPath)&quot;" />
