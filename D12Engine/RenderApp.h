@@ -112,7 +112,6 @@ private:
 	void BuildRenderItems_Selected(UINT& InstanceBufferIndex);
 	void BuildFrameResources();
 	void BuildPSOs();
-	void SetDebugColorCB();
 
 	bool InitImGui();
 	void RenderImGui();
@@ -135,6 +134,7 @@ private:
 	void UpdateShadowTransform();
 	void AnimateMaterials(const GameTimer& gt);
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
+	void DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList);
 	void DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();

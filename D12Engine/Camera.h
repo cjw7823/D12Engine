@@ -9,6 +9,8 @@ public:
 	Camera();
 	~Camera();
 
+	bool IsReady();
+
 	DirectX::XMVECTOR GetPosition() const;
 	DirectX::XMFLOAT3 GetPosition3f() const;
 	void SetPosition(float x, float y, float z);

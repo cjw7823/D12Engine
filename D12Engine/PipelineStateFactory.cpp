@@ -641,6 +641,7 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateSelected
 		ps->GetBufferSize()
 	};
 	state.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	state.BlendState.RenderTarget[0] = selectedBlendDesc;
 
 	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));

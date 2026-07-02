@@ -88,7 +88,7 @@ struct VertexOut
     float2 TexC : TEXCOORD;
     
     nointerpolation uint MatIndex : MATINDEX;
-    nointerpolation uint InstanceID : INSTANCEID;
+    nointerpolation uint gInstanceID : INSTANCEID;
 };
 
 struct SubVertex
@@ -98,7 +98,7 @@ struct SubVertex
     float2 TexC;
     
     nointerpolation uint MatIndex : MATINDEX;
-    nointerpolation uint InstanceID : INSTANCEID;
+    nointerpolation uint gInstanceID : INSTANCEID;
 };
 
 struct GeoOut
@@ -123,7 +123,7 @@ SubVertex MakeMidVertex(SubVertex a, SubVertex b, float3 centerW, float radius)
     r.NormalW = normalize(r.PosW - centerW);
     r.TexC = 0.5f * (a.TexC + b.TexC);
     r.MatIndex = a.MatIndex;
-    r.InstanceID = a.InstanceID;
+    r.gInstanceID = a.gInstanceID;
     
     return r;
 }
@@ -196,7 +196,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     float4 texC = mul(float4(vin.TexC, 0.f, 1.f), texTransform);
     vout.TexC = mul(texC, matData.MatTransform).xy;
     vout.MatIndex = matIndex;
-    vout.InstanceID = globalInstanceID;
+    vout.gInstanceID = globalInstanceID;
 
     return vout;
 }
@@ -261,7 +261,7 @@ void GS_LOD(triangle VertexOut gin[3],
     float3 center = (gin[0].PosW + gin[1].PosW + gin[2].PosW) / 3.0f;
     float distToEye = distance(gEyePosW, center);
     
-    float3 centerW = mul(float4(0, 0, 0, 1), gInstanceData[gin[0].InstanceID].World).xyz; // 구 중심의 월드좌표
+    float3 centerW = mul(float4(0, 0, 0, 1), gInstanceData[gin[0].gInstanceID].World).xyz; // 구 중심의 월드좌표
     float radius = length(gin[0].PosW - centerW);
     
     SubVertex v0, v1, v2;
@@ -269,19 +269,19 @@ void GS_LOD(triangle VertexOut gin[3],
     v0.NormalW = gin[0].NormalW;
     v0.TexC = gin[0].TexC;
     v0.MatIndex = gin[0].MatIndex;
-    v0.InstanceID = gin[0].InstanceID;
+    v0.gInstanceID = gin[0].gInstanceID;
 
     v1.PosW = gin[1].PosW;
     v1.NormalW = gin[1].NormalW;
     v1.TexC = gin[1].TexC;
     v1.MatIndex = gin[1].MatIndex;
-    v1.InstanceID = gin[1].InstanceID;
+    v1.gInstanceID = gin[1].gInstanceID;
 
     v2.PosW = gin[2].PosW;
     v2.NormalW = gin[2].NormalW;
     v2.TexC = gin[2].TexC;
     v2.MatIndex = gin[2].MatIndex;
-    v2.InstanceID = gin[2].InstanceID;
+    v2.gInstanceID = gin[2].gInstanceID;
     
     if(distToEye < 15)
     {

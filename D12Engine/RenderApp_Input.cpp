@@ -25,7 +25,7 @@ void RenderApp::OnMouseUp(WPARAM btnState, int x, int y)
 
 void RenderApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
-	if ((btnState & MK_LBUTTON) || (btnState & MK_RBUTTON))
+	if ((btnState & MK_RBUTTON))
 	{
 		float dx = DirectX::XMConvertToRadians(0.5f * static_cast<float>(x - mLastMousePos.x));
 		float dy = DirectX::XMConvertToRadians(0.5f * static_cast<float>(y - mLastMousePos.y));

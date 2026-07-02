@@ -16,7 +16,6 @@ public:
 	//std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<MaterialData>> MaterialBuffer = nullptr;
-	std::unique_ptr<UploadBuffer<DebugColorConstants>> debugColorCB = nullptr;
 
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 
@@ -29,5 +28,4 @@ public:
 	std::unique_ptr<UploadBuffer<InstanceData_GPU>> InstanceBuffer = nullptr;
 
 	UINT64 Fence = 0;
-	inline static constexpr UINT debugColorNum = 10;
 };

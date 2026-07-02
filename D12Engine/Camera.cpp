@@ -11,6 +11,11 @@ Camera::Camera()
 Camera::~Camera()
 {}
 
+bool Camera::IsReady()
+{
+	return !mViewDirty;
+}
+
 DirectX::XMVECTOR Camera::GetPosition() const
 {
 	return XMLoadFloat3(&mPosition);

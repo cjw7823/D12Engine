@@ -531,6 +531,23 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(FogDefines)</Defines>
     </ShaderCompile>
+	  
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+		  <Entry>VS</Entry>
+		  <Profile>vs_6_0</Profile>
+		  <OutputName>highlightVS.cso</OutputName>
+		  <AsmName>highlightVS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
+	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+		  <Entry>PS</Entry>
+		  <Profile>ps_6_0</Profile>
+		  <OutputName>highlightPS.cso</OutputName>
+		  <AsmName>highlightPS.asm</AsmName>
+		  <DependsOn>@(ShaderInclude)</DependsOn>
+		  <Defines>$(NullDefines)</Defines>
+	  </ShaderCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Tessellation.hlsl">

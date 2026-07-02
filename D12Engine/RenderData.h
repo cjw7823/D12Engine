@@ -41,6 +41,8 @@ struct InstanceData
 	bool selected = false;
 
 	std::string name;
+
+	UINT GpuInstanceIndex = UINT_MAX; // CPU Àü¿ë
 };
 
 struct InstanceData_GPU

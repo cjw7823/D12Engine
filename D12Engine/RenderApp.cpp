@@ -64,7 +64,6 @@ bool RenderApp::Initialize()
 	BuildFrameResources();
 	BuildPSOs();
 
-	SetDebugColorCB();
 	InitImGui();
 
 	ThrowIfFailed(mCommandList->Close());
@@ -264,9 +263,6 @@ void RenderApp::Draw(const GameTimer& gt)
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["transparent"].Get());
 			break;
-		case (int)RenderLayer::Highlight:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["highlight"].Get());
-			break;
 		default:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
 			break;
@@ -309,10 +305,7 @@ void RenderApp::Draw(const GameTimer& gt)
 		}
 	}
 
-	mCommandList->EndQuery(
-		mTimestampQueryHeap.Get(),
-		queryType,
-		SceneEnd);
+	DrawSelectedInstance(mCommandList.Get());
 
 	if (mIsDepthComplexityDebug)
 	{
@@ -320,6 +313,11 @@ void RenderApp::Draw(const GameTimer& gt)
 		mCommandList->SetPipelineState(mPSOs["depthDebug"].Get());
 		DrawDebugColorTriangle(mCommandList.Get());
 	}
+
+	mCommandList->EndQuery(
+		mTimestampQueryHeap.Get(),
+		queryType,
+		SceneEnd);
 
 	if (mMsaaOption.IsEnable())
 		ResolveMsaaToBackBuffer();
@@ -396,29 +394,6 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
-void RenderApp::SetDebugColorCB()
-{
-	std::array<DebugColorConstants, FrameResource::debugColorNum> colors =
-	{
-		XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f},   // 1 »¡°­
-		XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f},   // 2 ÁÖÈ²
-		XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f},   // 3 ³ë¶û
-		XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f},   // 4 ÃÊ·Ï
-		XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f},   // 5 ÆÄ¶û
-		XMFLOAT4{0.0f, 1.0f, 1.0f, 1.0f},   // 6 Ã»·Ï
-		XMFLOAT4{1.0f, 0.0f, 1.0f, 1.0f},   // 7 ÀÚÈ«
-		XMFLOAT4{0.5f, 0.0f, 1.0f, 1.0f},   // 8 º¸¶ó
-		XMFLOAT4{1.0f, 1.0f, 1.0f, 1.0f},   // 9 Èò»ö
-		XMFLOAT4{0.4f, 0.4f, 0.4f, 1.0f}    // 10 È¸»ö
-	};
-
-	for (auto& f : mFrameResources)
-	{
-		for (UINT i = 0; i < FrameResource::debugColorNum; i++)
-			f->debugColorCB->CopyData(i, colors[i]);
-	}
-}
-
 void RenderApp::ResolveMsaaToBackBuffer()
 {
 	auto msaaBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -452,22 +427,35 @@ void RenderApp::ResolveMsaaToBackBuffer()
 
 void RenderApp::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 {
+	static constexpr std::array<DebugColorConstants, 10> colors =
+	{
+		XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f},   // 1 »¡°­
+		XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f},   // 2 ÁÖÈ²
+		XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f},   // 3 ³ë¶û
+		XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f},   // 4 ÃÊ·Ï
+		XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f},   // 5 ÆÄ¶û
+		XMFLOAT4{0.0f, 1.0f, 1.0f, 1.0f},   // 6 Ã»·Ï
+		XMFLOAT4{1.0f, 0.0f, 1.0f, 1.0f},   // 7 ÀÚÈ«
+		XMFLOAT4{0.5f, 0.0f, 1.0f, 1.0f},   // 8 º¸¶ó
+		XMFLOAT4{1.0f, 1.0f, 1.0f, 1.0f},   // 9 Èò»ö
+		XMFLOAT4{0.4f, 0.4f, 0.4f, 1.0f}    // 10 È¸»ö
+	};
+
 	UINT debugColorCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(DebugColorConstants));
 
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	for (UINT i = 0; i < mCurrFrameResource->debugColorNum; i++)
+	for (UINT i = 0; i < colors.size(); i++)
 	{
 		cmdList->OMSetStencilRef(i + 1);
-		cmdList->SetGraphicsRootConstantBufferView(
-			0,
-			mCurrFrameResource->debugColorCB->Resource()->GetGPUVirtualAddress() + i * debugColorCBByteSize);
+		cmdList->SetGraphicsRoot32BitConstants(0, 4, &colors[i], 0);
 		cmdList->DrawInstanced(3, 1, 0, 0);
 	}
 }
 
 void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
 {
+	if (!mCamera.IsReady()) return;
 	XMFLOAT4X4 P = mCamera.GetProj4x4f();
 
 	// ½ºÅ©¸° ÁÂÇ¥¸¦ ºä °ø°£ ÁÂÇ¥·Î º¯È¯
@@ -667,6 +655,8 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 			InstanceData copyData = ri->Instances[i];
 			if (!copyData.visible) continue;
 
+			ri->Instances[i].GpuInstanceIndex = UINT_MAX;
+
 			XMMATRIX world = XMLoadFloat4x4(&copyData.World);
 			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&copyData.WorldInvTranspose);
 			XMMATRIX texTransform = XMLoadFloat4x4(&copyData.TexTransform);
@@ -689,8 +679,9 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 				gpuData.DisplacementMapTexelSize = copyData.DisplacementMapTexelSize;
 				gpuData.GridSpatialStep = copyData.GridSpatialStep;
 
-
-				currInstanceBuffer->CopyData(ri->StartInstanceLocation + visibleInstanceCount, gpuData);
+				UINT gpuIndex = ri->StartInstanceLocation + visibleInstanceCount;
+				currInstanceBuffer->CopyData(gpuIndex, gpuData);
+				ri->Instances[i].GpuInstanceIndex = gpuIndex;
 				visibleInstanceCount++;
 			}
 		}
@@ -799,8 +790,6 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 
 void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
-	auto instanceBuffer = mCurrFrameResource->InstanceBuffer->Resource();
-
 	for (auto& ri : renderLayers)
 	{
 		if (ri->VisibleInstanceCount == 0) continue;
@@ -818,10 +807,38 @@ void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 	}
 }
 
+void RenderApp::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
+{
+	if (mSelectedInstances.empty()) return;
+
+	cmdList->SetPipelineState(mPSOs["highlight"].Get());
+
+	for (auto& selected : mSelectedInstances)
+	{
+		if (selected.renderItem == nullptr ||
+			selected.instanceIndex == UINT_MAX)
+		{
+			continue;
+		}
+
+		RenderItem* ri = selected.renderItem;
+		UINT instanceIndex = selected.instanceIndex;
+		if (ri->Instances[instanceIndex].GpuInstanceIndex == UINT_MAX) continue;
+
+		auto vbv = ri->Geo->VertexBufferView();
+		auto ibv = ri->Geo->IndexBufferView();
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
+		cmdList->IASetIndexBuffer(&ibv);
+		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+
+		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation + instanceIndex, 0);
+
+		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+	}
+}
+
 void RenderApp::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
-	auto instanceBuffer = mCurrFrameResource->InstanceBuffer->Resource();
-
 	for (auto& ri : renderLayers)
 	{
 		if (ri->VisibleInstanceCount == 0) continue;
