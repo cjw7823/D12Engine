@@ -10,28 +10,10 @@ struct InstanceData
     uint MaterialIndex;
 };
 
-struct MaterialData
-{
-    float4 DiffuseAlbedo;
-    float3 FresnelR0;
-    float Roughness;
-    float4x4 MatTransform;
-    uint DiffuseMapIndex;
-    uint3 MatPad;
-};
-
-Texture2D gDiffuseMap[] : register(t0);
-StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
-
-Texture2D gDisplacementMap : register(t0, space2);
+Texture2D selectionMask : register(t0, space4);
 
 SamplerState gsamPointWrap : register(s0);
-SamplerState gsamPointClamp : register(s1);
-SamplerState gsamLinearWrap : register(s2);
-SamplerState gsamLinearClamp : register(s3);
-SamplerState gsamAnisotropicWrap : register(s4);
-SamplerState gsamAnisotropicClamp : register(s5);
 
 cbuffer cbPass : register(b0)
 {
@@ -88,7 +70,22 @@ VertexOut VS(VertexIn vin)
     normalW = normalize(normalW);
     
     //외곽선을 위해 정점을 월드 공간 노멀 방향으로 확장
-    posW.xyz += normalW * 0.3f;
+    posW.xyz += normalW * 0.1f;
+    vout.PosH = mul(posW, gViewProj);
+    
+    return vout;
+}
+
+VertexOut VS_Mask(VertexIn vin)
+{
+    VertexOut vout;
+    
+    InstanceData inst = gInstanceData[gInstanceIndex];
+    
+    float4 posW = mul(float4(vin.PosL, 1.0f), inst.World);
+    float3 normalW = mul(vin.NormalL, (float3x3) inst.WorldInvTranspose);
+    normalW = normalize(normalW);
+    
     vout.PosH = mul(posW, gViewProj);
     
     return vout;

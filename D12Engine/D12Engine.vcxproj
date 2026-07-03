@@ -532,22 +532,30 @@
       <Defines>$(FogDefines)</Defines>
     </ShaderCompile>
 	  
-	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
-		  <Entry>VS</Entry>
-		  <Profile>vs_6_0</Profile>
-		  <OutputName>highlightVS.cso</OutputName>
-		  <AsmName>highlightVS.asm</AsmName>
-		  <DependsOn>@(ShaderInclude)</DependsOn>
-		  <Defines>$(NullDefines)</Defines>
-	  </ShaderCompile>
-	  <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
-		  <Entry>PS</Entry>
-		  <Profile>ps_6_0</Profile>
-		  <OutputName>highlightPS.cso</OutputName>
-		  <AsmName>highlightPS.asm</AsmName>
-		  <DependsOn>@(ShaderInclude)</DependsOn>
-		  <Defines>$(NullDefines)</Defines>
-	  </ShaderCompile>
+	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+		<Entry>VS</Entry>
+		<Profile>vs_6_0</Profile>
+		<OutputName>highlightVS.cso</OutputName>
+		<AsmName>highlightVS.asm</AsmName>
+		<DependsOn>@(ShaderInclude)</DependsOn>
+		<Defines>$(NullDefines)</Defines>
+	</ShaderCompile>
+	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+		<Entry>VS_Mask</Entry>
+		<Profile>vs_6_0</Profile>
+		<OutputName>highlightVS_Mask.cso</OutputName>
+		<AsmName>highlightVS_Mask.asm</AsmName>
+		<DependsOn>@(ShaderInclude)</DependsOn>
+		<Defines>$(NullDefines)</Defines>
+	</ShaderCompile>
+	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+		<Entry>PS</Entry>
+		<Profile>ps_6_0</Profile>
+		<OutputName>highlightPS.cso</OutputName>
+		<AsmName>highlightPS.asm</AsmName>
+		<DependsOn>@(ShaderInclude)</DependsOn>
+		<Defines>$(NullDefines)</Defines>
+	</ShaderCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Tessellation.hlsl">
@@ -563,4 +571,7 @@
     <MakeDir Directories="$(ShaderDir)" />
     <Exec Command="&quot;$(DXCPath)&quot; $(ShaderCompileOptions) %(ShaderCompile.Defines) -T %(ShaderCompile.Profile) -E %(ShaderCompile.Entry) -Fo &quot;$(ShaderDir)%(ShaderCompile.OutputName)&quot; -Fc &quot;$(ShaderDir)%(ShaderCompile.AsmName)&quot; &quot;%(ShaderCompile.FullPath)&quot;" />
   </Target>
+	<PropertyGroup>
+		<DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+	</PropertyGroup>
 </Project>

@@ -305,6 +305,14 @@ void RenderApp::Draw(const GameTimer& gt)
 		}
 	}
 
+	// 선택 원본 메시를 stencil에 기록
+	mCommandList->SetPipelineState(mPSOs["selectedMask"].Get());
+	mCommandList->OMSetStencilRef(0x80);
+	DrawSelectedInstance(mCommandList.Get());
+
+	// stencil != 1 인 부분에만 부풀린 외곽선 출력
+	mCommandList->SetPipelineState(mPSOs["selectedOutline"].Get());
+	mCommandList->OMSetStencilRef(0x80);
 	DrawSelectedInstance(mCommandList.Get());
 
 	if (mIsDepthComplexityDebug)
@@ -501,7 +509,7 @@ void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
 			localRayDir = XMVector3Normalize(localRayDir);
 
 			float t = 0.0f;
-			// 광선이 메시의 바운딩 박스와 교차	하는지 확인
+			// 광선이 메시의 바운딩 박스와 교차하는지 확인
 			if (ri->Bounds.Intersects(localRayOrigin, localRayDir, t))
 			{
 				if (t < closestDist)
@@ -520,7 +528,7 @@ void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
 		selected.renderItem = selectedRenderItem;
 		selected.instanceIndex = selectedInstanceIndex;
 
-		auto& selectedInstance = selectedRenderItem->Instances[selectedInstanceIndex];
+		//auto& selectedInstance = selectedRenderItem->Instances[selectedInstanceIndex];
 
 		mSelectedInstances.push_back(selected);
 	}
@@ -652,14 +660,13 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 
 		for (UINT i = 0; i < ri->Instances.size(); ++i)
 		{
-			InstanceData copyData = ri->Instances[i];
-			if (!copyData.visible) continue;
+			InstanceData& instance = ri->Instances[i];
+			if (instance.visible == false) continue;
+			instance.GpuInstanceIndex = UINT_MAX;
 
-			ri->Instances[i].GpuInstanceIndex = UINT_MAX;
-
-			XMMATRIX world = XMLoadFloat4x4(&copyData.World);
-			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&copyData.WorldInvTranspose);
-			XMMATRIX texTransform = XMLoadFloat4x4(&copyData.TexTransform);
+			XMMATRIX world = XMLoadFloat4x4(&instance.World);
+			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&instance.WorldInvTranspose);
+			XMMATRIX texTransform = XMLoadFloat4x4(&instance.TexTransform);
 
 			// 카메라 프러스텀을 뷰 공간에서 월드 공간으로 변환한다.
 			BoundingFrustum worldFrustum;
@@ -675,13 +682,13 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 				XMStoreFloat4x4(&gpuData.World, XMMatrixTranspose(world));
 				XMStoreFloat4x4(&gpuData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
 				XMStoreFloat4x4(&gpuData.TexTransform, XMMatrixTranspose(texTransform));
-				gpuData.MaterialIndex = copyData.MaterialIndex;
-				gpuData.DisplacementMapTexelSize = copyData.DisplacementMapTexelSize;
-				gpuData.GridSpatialStep = copyData.GridSpatialStep;
+				gpuData.MaterialIndex = instance.MaterialIndex;
+				gpuData.DisplacementMapTexelSize = instance.DisplacementMapTexelSize;
+				gpuData.GridSpatialStep = instance.GridSpatialStep;
 
 				UINT gpuIndex = ri->StartInstanceLocation + visibleInstanceCount;
 				currInstanceBuffer->CopyData(gpuIndex, gpuData);
-				ri->Instances[i].GpuInstanceIndex = gpuIndex;
+				instance.GpuInstanceIndex = gpuIndex;
 				visibleInstanceCount++;
 			}
 		}
@@ -811,8 +818,6 @@ void RenderApp::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
 {
 	if (mSelectedInstances.empty()) return;
 
-	cmdList->SetPipelineState(mPSOs["highlight"].Get());
-
 	for (auto& selected : mSelectedInstances)
 	{
 		if (selected.renderItem == nullptr ||
@@ -823,7 +828,8 @@ void RenderApp::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
 
 		RenderItem* ri = selected.renderItem;
 		UINT instanceIndex = selected.instanceIndex;
-		if (ri->Instances[instanceIndex].GpuInstanceIndex == UINT_MAX) continue;
+		UINT instanceIndexGPU = ri->Instances[instanceIndex].GpuInstanceIndex;
+		if (instanceIndexGPU == UINT_MAX) continue;
 
 		auto vbv = ri->Geo->VertexBufferView();
 		auto ibv = ri->Geo->IndexBufferView();
@@ -831,7 +837,7 @@ void RenderApp::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
-		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation + instanceIndex, 0);
+		cmdList->SetGraphicsRoot32BitConstant(1, instanceIndexGPU, 0);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}

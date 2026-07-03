@@ -56,6 +56,7 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateTessellateMirrorWallPSO(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps);
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateSelectedPSO(ID3DBlob* vs, ID3DBlob* ps);
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateSelectedStencilMaskPSO(ID3DBlob* vs, ID3DBlob* ps);
 
 private:
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildBaseGraphicsPsoDesc() const;

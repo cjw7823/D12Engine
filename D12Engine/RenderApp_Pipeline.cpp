@@ -13,6 +13,7 @@ void RenderApp::BuildRootSignature()
 	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
 	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
 
+
 	std::array<CD3DX12_ROOT_PARAMETER, 7> slotRootParameter{};
 	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
 	slotRootParameter[1].InitAsConstants(1, 1, 0 , D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location
@@ -234,6 +235,7 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["tessPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", fogDefines, "PS", "ps_5_1");
 
 	mShaders["highlightVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["highlightVS_Mask"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS_Mask", "vs_5_1");
 	mShaders["highlightPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "PS", "ps_5_1");
 
 #else
@@ -278,6 +280,7 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["tessPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessPS.cso");
 
 	mShaders["highlightVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS.cso");
+	mShaders["highlightVS_Mask"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS_Mask.cso");
 	mShaders["highlightPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightPS.cso");
 
 #endif
@@ -476,9 +479,9 @@ void RenderApp::BuildPSOs()
 
 	//selected PSO
 	PsoBuildContext selectedCtx = ctx;
-	selectedCtx.CullMode = D3D12_CULL_MODE_FRONT;
 	PipelineStateFactory selectedFactory(selectedCtx);
-	mPSOs["highlight"] = selectedFactory.CreateSelectedPSO(mShaders["highlightVS"].Get(), mShaders["highlightPS"].Get());
+	mPSOs["selectedMask"] = selectedFactory.CreateSelectedStencilMaskPSO(mShaders["highlightVS_Mask"].Get(), mShaders["highlightPS"].Get());
+	mPSOs["selectedOutline"] = selectedFactory.CreateSelectedPSO(mShaders["highlightVS"].Get(), mShaders["highlightPS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

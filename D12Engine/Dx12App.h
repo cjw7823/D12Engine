@@ -119,6 +119,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
+	//Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
 
 	//GPU Timestamp¸¦ À§ÇÑ qury heap
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> mTimestampQueryHeap = nullptr;
