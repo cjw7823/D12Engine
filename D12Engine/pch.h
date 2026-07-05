@@ -1,5 +1,11 @@
 #pragma once
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <Windows.h>
+
 #include "DirectX-Headers\d3dx12.h"
 #include <dxgi1_4.h>					//For DXGI Interfaces
 #include <WRL.h>						//For ComPtr
@@ -18,6 +24,9 @@
 #include <sstream>
 #include <fstream>
 #include <cassert>
+#include <cfloat>
+#include <cmath>
+#include <utility>
 
 #include "imgui.h"
 #include "imgui_impl_dx12.h"

@@ -91,11 +91,9 @@ bool RenderApp::IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTO
 bool RenderApp::BeginGizmoDrag(int sx, int sy)
 {
 	InstanceData* selectedInstance = GetPrimarySelectedInstance();
-
 	if (selectedInstance == nullptr) return false;
 
 	GizmoAxis pickedAxis = PickGizmoAxis(sx, sy);
-
 	if (pickedAxis == GizmoAxis::None) return false;
 
 	auto& instance = mSelectedInstances[0].renderItem->Instances[mSelectedInstances[0].instanceIndex];
@@ -118,70 +116,51 @@ bool RenderApp::BeginGizmoDrag(int sx, int sy)
 	BuildWorldRayFromScreen(sx, sy, rayOriginW, rayDirW);
 
 	XMVECTOR startHitW;
-
 	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, startHitW)) return false;
 
 	mGizmo.Dragging = true;
 	mGizmo.ActiveAxis = pickedAxis;
 
-	XMStoreFloat3(&mGizmo.StartObjectPosW, objectPosW);
-	XMStoreFloat3(&mGizmo.StartHitPosW, startHitW);
-	XMStoreFloat3(&mGizmo.DragAxisW, axisW);
-	XMStoreFloat4(&mGizmo.DragPlane, dragPlane);
+	DirectX::XMStoreFloat3(&mGizmo.StartObjectPosW, objectPosW);
+	DirectX::XMStoreFloat3(&mGizmo.StartHitPosW, startHitW);
+	DirectX::XMStoreFloat3(&mGizmo.DragAxisW, axisW);
+	DirectX::XMStoreFloat4(&mGizmo.DragPlane, dragPlane);
 
 	return true;
 }
 
 void RenderApp::UpdateGizmoDrag(int sx, int sy)
 {
-	if (!mGizmo.Dragging)
-		return;
-
-	if (mGizmo.ActiveAxis == GizmoAxis::None)
-		return;
+	if (!mGizmo.Dragging) return;
+	if (mGizmo.ActiveAxis == GizmoAxis::None) return;
 
 	InstanceData* selectedInstance = GetPrimarySelectedInstance();
-
 	if (selectedInstance == nullptr)
 	{
 		EndGizmoDrag();
 		return;
 	}
 
-	XMVECTOR rayOriginW;
-	XMVECTOR rayDirW;
-
+	XMVECTOR rayOriginW, rayDirW;
 	BuildWorldRayFromScreen(sx, sy, rayOriginW, rayDirW);
 
 	XMVECTOR dragPlane = XMLoadFloat4(&mGizmo.DragPlane);
-
 	XMVECTOR currentHitW;
-
-	if (!IntersectRayPlane(
-		rayOriginW,
-		rayDirW,
-		dragPlane,
-		currentHitW))
-	{
-		return;
-	}
+	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, currentHitW)) return;
 
 	XMVECTOR startHitW = XMLoadFloat3(&mGizmo.StartHitPosW);
 	XMVECTOR startObjectPosW = XMLoadFloat3(&mGizmo.StartObjectPosW);
 	XMVECTOR axisW = XMLoadFloat3(&mGizmo.DragAxisW);
-
 	axisW = XMVector3Normalize(axisW);
 
 	// 마우스가 drag plane 위에서 움직인 월드 이동량
 	XMVECTOR deltaW = currentHitW - startHitW;
 
 	// 이동량을 선택 축 방향으로 투영
-	float moveAmount =
-		XMVectorGetX(XMVector3Dot(deltaW, axisW));
+	float moveAmount = XMVectorGetX(XMVector3Dot(deltaW, axisW));
 
 	// 오브젝트 시작 위치 + 축 방향 이동량
-	XMVECTOR newObjectPosW =
-		startObjectPosW + axisW * moveAmount;
+	XMVECTOR newObjectPosW = startObjectPosW + axisW * moveAmount;
 
 	XMFLOAT3 newPosF;
 	XMStoreFloat3(&newPosF, newObjectPosW);

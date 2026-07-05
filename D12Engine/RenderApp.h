@@ -1,16 +1,27 @@
 #pragma once
 
+#include <array>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include <DirectXCollision.h>
+#include <DirectXMath.h>
+#include <d3d12.h>
+#include <d3dcommon.h>
+#include <wrl/client.h>
+
+#include "DirectX-Headers/d3dx12.h"
+
 #include "Dx12App.h"
-#include "GameTimer.h"
 #include "FrameResource.h"
 #include "TextureLoader_Blocking.h"
 #include "GpuWaves.h"
 #include "RenderData.h"
-#include <unordered_map>
 #include "BlurFilter.h"
 #include "SobelFilter.h"
 #include "Camera.h"
-#include <DirectXCollision.h>
 
 /*
 	1. Resource Heap / Resource Memory

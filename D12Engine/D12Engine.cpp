@@ -7,7 +7,7 @@
 
 #include "pch.h"
 #include "RenderApp.h"
-#include "d3dutil.h"
+#include "d3dUtil.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")

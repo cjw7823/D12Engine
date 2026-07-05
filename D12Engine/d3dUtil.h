@@ -1,9 +1,16 @@
 #pragma once
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <Windows.h>
+
+#include <d3d12.h>
+#include <d3dcompiler.h>
+#include <wrl/client.h>
+
 #include <string>
-#include <sstream>
-#include <wrl.h>
-#include "DirectX-Headers\d3dx12.h"
 
 class DxException
 {

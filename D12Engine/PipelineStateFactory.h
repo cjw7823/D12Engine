@@ -1,7 +1,17 @@
 #pragma once
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <Windows.h>
+
 #include <vector>
-#include "DirectX-Headers/d3dx12.h"
+
+#include <d3d12.h>
+#include <d3dcommon.h>
+#include <dxgiformat.h>
+#include <wrl/client.h>
 
 struct PsoBuildContext
 {

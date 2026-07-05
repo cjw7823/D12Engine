@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <DirectXMath.h>
 #include <cstdint>
+#include <vector>
+
+#include <DirectXMath.h>
+
 #include "RenderData.h"
 
 class GeometryGenerator

@@ -1,8 +1,22 @@
 #pragma once
 
-#include "GameTimer.h"
-#include "d3dutil.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <Windows.h>
+
+#include <array>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <d3d12.h>
+#include <dxgi1_4.h>
+#include <wrl/client.h>
+
+#include "GameTimer.h"
+#include "d3dUtil.h"
 
 struct MsaaOption
 {

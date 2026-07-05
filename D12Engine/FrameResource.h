@@ -1,5 +1,10 @@
 #pragma once
 
+#include <memory>
+
+#include <d3d12.h>
+#include <wrl/client.h>
+
 #include "UploadBuffer.h"
 #include "RenderData.h"
 

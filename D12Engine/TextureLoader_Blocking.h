@@ -1,7 +1,7 @@
 #pragma once
 
 #include <wrl.h>
-#include "d3dutil.h"
+#include "d3dUtil.h"
 
 struct Texture;
 
