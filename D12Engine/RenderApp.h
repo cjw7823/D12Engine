@@ -109,7 +109,7 @@ private:
 	void BuildRenderItems();
 	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
-	void BuildRenderItems_Selected(UINT& InstanceBufferIndex);
+	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
 	void BuildFrameResources();
 	void BuildPSOs();
 
@@ -118,8 +118,22 @@ private:
 	void ResolveMsaaToBackBuffer();
 
 	void DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList);
+
+	//for gizmo
 	void SelectRenderItemByMouseClick(int sx, int sy);
 	void ClearSelectedInstance();
+	void BuildWorldRayFromScreen(int sx, int sy, DirectX::XMVECTOR& rayOriginW, DirectX::XMVECTOR& rayDirW) const;
+	DirectX::XMVECTOR BuildDragPlaneNormal(DirectX::XMVECTOR axisW, DirectX::XMVECTOR cameraForwardW) const;
+	DirectX::XMVECTOR MakePlaneFromPointNormal(DirectX::XMVECTOR pointW, DirectX::XMVECTOR normalW) const;
+	bool IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTOR rayDirW, DirectX::XMVECTOR plane, DirectX::XMVECTOR& hitPointW) const;
+	bool BeginGizmoDrag(int sx, int sy);
+	void UpdateGizmoDrag(int sx, int sy);
+	void EndGizmoDrag();
+	DirectX::XMVECTOR GetGizmoAxisVector(GizmoAxis axis) const;
+	void SetSelectedObjectPositionW(const DirectX::XMFLOAT3& posW);
+	InstanceData* GetPrimarySelectedInstance();
+	float CalcGizmoAxisLength(const DirectX::XMFLOAT3& pivotW) const;
+	GizmoAxis PickGizmoAxis(int sx, int sy);	
 
 	DirectX::XMVECTOR GetMirrorPlane();
 
@@ -132,7 +146,9 @@ private:
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateWavesGPU(const GameTimer& gt);
 	void UpdateShadowTransform();
+	void UpdateGizmo();
 	void AnimateMaterials(const GameTimer& gt);
+
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
 	void DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList);
 	void DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
@@ -211,4 +227,7 @@ private:
 
 	double mFullGpuMs = 0.0;
 	double mSceneGpuMs = 0.0;
+
+	RenderItem* mGizmoRI = nullptr;
+	GizmoState mGizmo;
 };

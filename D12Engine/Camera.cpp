@@ -159,6 +159,13 @@ DirectX::XMMATRIX Camera::GetView() const
 	return XMLoadFloat4x4(&mView);
 }
 
+DirectX::XMMATRIX Camera::GetInvView() const
+{
+	assert(!mViewDirty);
+	XMVECTOR det = XMMatrixDeterminant(XMLoadFloat4x4(&mView));
+	return XMMatrixInverse(&det, XMLoadFloat4x4(&mView));
+}
+
 DirectX::XMMATRIX Camera::GetProj() const
 {
 	return XMLoadFloat4x4(&mProj);

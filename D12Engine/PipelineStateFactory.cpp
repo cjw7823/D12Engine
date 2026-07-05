@@ -687,6 +687,43 @@ Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateSelected
 	return PSO;
 }
 
+Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateGizmoPSO(ID3DBlob* vs, ID3DBlob* ps)
+{
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> PSO;
+
+	D3D12_RENDER_TARGET_BLEND_DESC transparentBlendDesc{};
+	transparentBlendDesc.BlendEnable = true;
+	transparentBlendDesc.LogicOpEnable = false;
+	transparentBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	transparentBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	transparentBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+	transparentBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+	transparentBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+	transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+	transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC state = BuildBaseGraphicsPsoDesc();
+	state.VS = 
+	{
+		reinterpret_cast<BYTE*>(vs->GetBufferPointer()),
+		vs->GetBufferSize()
+	};
+	state.PS =
+	{
+		reinterpret_cast<BYTE*>(ps->GetBufferPointer()),
+		ps->GetBufferSize()
+	};
+	state.DepthStencilState.DepthEnable = false;
+	state.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	state.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	state.BlendState.RenderTarget[0] = transparentBlendDesc;
+
+	ThrowIfFailed(mContext.Device->CreateGraphicsPipelineState(&state, IID_PPV_ARGS(PSO.GetAddressOf())));
+
+	return PSO;
+}
+
 D3D12_GRAPHICS_PIPELINE_STATE_DESC PipelineStateFactory::BuildBaseGraphicsPsoDesc() const
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC basePsoDesc{};

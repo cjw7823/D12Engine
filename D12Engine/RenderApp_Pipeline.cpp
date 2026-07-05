@@ -482,6 +482,11 @@ void RenderApp::BuildPSOs()
 	PipelineStateFactory selectedFactory(selectedCtx);
 	mPSOs["selectedMask"] = selectedFactory.CreateSelectedStencilMaskPSO(mShaders["highlightVS_Mask"].Get(), mShaders["highlightPS"].Get());
 	mPSOs["selectedOutline"] = selectedFactory.CreateSelectedPSO(mShaders["highlightVS"].Get(), mShaders["highlightPS"].Get());
+
+	//Gizmo PSO
+	PsoBuildContext gizmoCtx = ctx;
+	PipelineStateFactory gizmoFactory(gizmoCtx);
+	mPSOs["gizmo"] = gizmoFactory.CreateGizmoPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

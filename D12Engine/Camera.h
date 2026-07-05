@@ -40,6 +40,7 @@ public:
 	void LookAt(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& target, const DirectX::XMFLOAT3& up);
 
 	DirectX::XMMATRIX GetView() const;
+	DirectX::XMMATRIX GetInvView() const;
 	DirectX::XMMATRIX GetProj() const;
 
 	DirectX::XMFLOAT4X4 GetView4x4f() const;

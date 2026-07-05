@@ -58,6 +58,8 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateSelectedPSO(ID3DBlob* vs, ID3DBlob* ps);
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateSelectedStencilMaskPSO(ID3DBlob* vs, ID3DBlob* ps);
 
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGizmoPSO(ID3DBlob* vs, ID3DBlob* ps);
+
 private:
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildBaseGraphicsPsoDesc() const;
 

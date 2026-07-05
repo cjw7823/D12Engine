@@ -37,12 +37,11 @@ struct InstanceData
 	float GridSpatialStep = 1.0f;
 	UINT MaterialIndex = 0;
 
-	bool visible = true;
-	bool selected = false;
+	bool visible = true;			//사용자가 숨김.
+	bool FrustumVisible = true;		//프레임 컬링 결과
 
-	std::string name;
-
-	UINT GpuInstanceIndex = UINT_MAX; // CPU 전용
+	DirectX::BoundingBox Bounds;
+	UINT GpuInstanceIndex = UINT_MAX;
 };
 
 struct InstanceData_GPU
@@ -206,7 +205,9 @@ enum class RenderLayer : int
 	Reflected,
 	Shadow,
 	Transparent,
-	Highlight,
+	
+	Gizmo,
+
 	Count,
 };
 
@@ -215,7 +216,7 @@ struct RenderItem
 	RenderItem() = default;
 	RenderItem(const RenderItem& rhs) = delete;
 
-	bool Visible = true;
+	bool Visible = true;	//사용자가 숨김. 프레임 컬링과는 별도.
 	bool InMirror = false;
 
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -231,19 +232,16 @@ struct RenderItem
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
 
-	int NumFramesDirty = gNumFrameResources;
-
 	UINT StartInstanceLocation = 0;
 	UINT VisibleInstanceCount = 0;
 	std::vector<InstanceData> Instances;
-
-	DirectX::BoundingBox Bounds;
 };
 
 struct SelectedInstance
 {
 	RenderItem* renderItem = nullptr;
 	UINT instanceIndex = UINT_MAX;
+	float BoundHitDistW = FLT_MAX;
 };
 
 struct Vertex
@@ -291,4 +289,26 @@ struct MeshData
 
 private:
 	std::vector<uint16_t> mIndices16;
+};
+
+enum class GizmoAxis
+{
+	None,
+	X,
+	Y,
+	Z
+};
+
+struct GizmoState
+{
+	bool Dragging = false;
+
+	GizmoAxis ActiveAxis = GizmoAxis::None;
+
+	DirectX::XMFLOAT3 StartObjectPosW = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT3 StartHitPosW = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT3 DragAxisW = { 1.0f, 0.0f, 0.0f };
+
+	// plane: ax + by + cz + d = 0
+	DirectX::XMFLOAT4 DragPlane = { 0.0f, 1.0f, 0.0f, 0.0f };
 };

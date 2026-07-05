@@ -329,6 +329,30 @@ void RenderApp::BuildMaterials()
 	highlightMat->FresnelR0 = XMFLOAT3(0.06f, 0.06f, 0.06f);
 	highlightMat->Roughness = 0.0f;
 
+	auto gizmoX = std::make_unique<Material>();
+	gizmoX->Name = "gizmoX";
+	gizmoX->MatBufferIndex = index++;
+	gizmoX->DiffuseSrvHeapIndex = mTextures["defaultTex"]->SrvHeapIndex;
+	gizmoX->DiffuseAlbedo = XMFLOAT4(1.0f, 0.05f, 0.05f, 0.5f);
+	gizmoX->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	gizmoX->Roughness = 0.4f;
+
+	auto gizmoY = std::make_unique<Material>();
+	gizmoY->Name = "gizmoY";
+	gizmoY->MatBufferIndex = index++;
+	gizmoY->DiffuseSrvHeapIndex = mTextures["defaultTex"]->SrvHeapIndex;
+	gizmoY->DiffuseAlbedo = XMFLOAT4(0.05f, 1.0f, 0.05f, 0.5f);
+	gizmoY->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	gizmoY->Roughness = 0.4f;
+
+	auto gizmoZ = std::make_unique<Material>();
+	gizmoZ->Name = "gizmoZ";
+	gizmoZ->MatBufferIndex = index++;
+	gizmoZ->DiffuseSrvHeapIndex = mTextures["defaultTex"]->SrvHeapIndex;
+	gizmoZ->DiffuseAlbedo = XMFLOAT4(0.05f, 0.25f, 1.0f, 0.5f);
+	gizmoZ->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	gizmoZ->Roughness = 0.4f;
+
 	mMaterials[defaultMat->Name] = std::move(defaultMat);
 	mMaterials[tileMat->Name] = std::move(tileMat);
 	mMaterials[bricksMat0->Name] = std::move(bricksMat0);
@@ -346,6 +370,9 @@ void RenderApp::BuildMaterials()
 	mMaterials[treeBillboardMat->Name] = std::move(treeBillboardMat);
 	mMaterials[mirrorBaseMat->Name] = std::move(mirrorBaseMat);
 	mMaterials[highlightMat->Name] = std::move(highlightMat);
+	mMaterials[gizmoX->Name] = std::move(gizmoX);
+	mMaterials[gizmoY->Name] = std::move(gizmoY);
+	mMaterials[gizmoZ->Name] = std::move(gizmoZ);
 }
 
 void RenderApp::BuildRenderItems()
@@ -353,7 +380,7 @@ void RenderApp::BuildRenderItems()
 	UINT StartInstanceLocation = 0;
 	BuildRenderItems_Common(StartInstanceLocation);
 	BuildRenderItems_InMirror(StartInstanceLocation);
-	//BuildRenderItems_Selected(StartInstanceLocation);
+	BuildRenderItems_Gizmo(StartInstanceLocation);
 
 	for (const auto& ri : mAllRenderItems)
 		mInstanceCount += (UINT)ri->Instances.size();
@@ -367,7 +394,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		boxRI->IndexCount = boxRI->Geo->DrawArgs["box"].IndexCount;
 		boxRI->StartIndexLocation = boxRI->Geo->DrawArgs["box"].StartIndexLocation;
 		boxRI->BaseVertexLocation = boxRI->Geo->DrawArgs["box"].BaseVertexLocation;
-		boxRI->Bounds = boxRI->Geo->DrawArgs["box"].Bounds;
 		boxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		boxRI->InMirror = true;
 		{
@@ -377,6 +403,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			instance.MaterialIndex = mMaterials["woodCrate"]->MatBufferIndex;
+			instance.Bounds = boxRI->Geo->DrawArgs["box"].Bounds;
 			boxRI->Instances.push_back(instance);
 		}
 		boxRI->StartInstanceLocation = InstanceBufferIndex;
@@ -389,7 +416,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		blendBoxRI->IndexCount = blendBoxRI->Geo->DrawArgs["box"].IndexCount;
 		blendBoxRI->StartIndexLocation = blendBoxRI->Geo->DrawArgs["box"].StartIndexLocation;
 		blendBoxRI->BaseVertexLocation = blendBoxRI->Geo->DrawArgs["box"].BaseVertexLocation;
-		blendBoxRI->Bounds = blendBoxRI->Geo->DrawArgs["box"].Bounds;
 		blendBoxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		blendBoxRI->InMirror = true;
 		{
@@ -399,6 +425,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			instance.MaterialIndex = mMaterials["swirling"]->MatBufferIndex;
+			instance.Bounds = blendBoxRI->Geo->DrawArgs["box"].Bounds;
 			blendBoxRI->Instances.push_back(instance);
 		}
 		blendBoxRI->StartInstanceLocation = InstanceBufferIndex;
@@ -411,7 +438,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		netBoxRI->IndexCount = netBoxRI->Geo->DrawArgs["box"].IndexCount;
 		netBoxRI->StartIndexLocation = netBoxRI->Geo->DrawArgs["box"].StartIndexLocation;
 		netBoxRI->BaseVertexLocation = netBoxRI->Geo->DrawArgs["box"].BaseVertexLocation;
-		netBoxRI->Bounds = netBoxRI->Geo->DrawArgs["box"].Bounds;
 		netBoxRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		netBoxRI->InMirror = true;
 		{
@@ -421,6 +447,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			instance.MaterialIndex = mMaterials["wireFence"]->MatBufferIndex;
+			instance.Bounds = netBoxRI->Geo->DrawArgs["box"].Bounds;
 			netBoxRI->Instances.push_back(instance);
 		}
 		netBoxRI->StartInstanceLocation = InstanceBufferIndex;
@@ -433,13 +460,13 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		gridRI->IndexCount = gridRI->Geo->DrawArgs["grid"].IndexCount;
 		gridRI->StartIndexLocation = gridRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		gridRI->BaseVertexLocation = gridRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-		gridRI->Bounds = gridRI->Geo->DrawArgs["grid"].Bounds;
 		gridRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		gridRI->InMirror = true;
 		{
 			InstanceData instance;
 			instance.MaterialIndex = mMaterials["tile0"]->MatBufferIndex;
 			XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
+			instance.Bounds = gridRI->Geo->DrawArgs["grid"].Bounds;
 			gridRI->Instances.push_back(instance);
 		}
 		gridRI->StartInstanceLocation = InstanceBufferIndex;
@@ -452,7 +479,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		CylinderRI->IndexCount = CylinderRI->Geo->DrawArgs["cylinder"].IndexCount;
 		CylinderRI->StartIndexLocation = CylinderRI->Geo->DrawArgs["cylinder"].StartIndexLocation;
 		CylinderRI->BaseVertexLocation = CylinderRI->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-		CylinderRI->Bounds = CylinderRI->Geo->DrawArgs["cylinder"].Bounds;
 		CylinderRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		CylinderRI->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(CylinderRI.get());
@@ -462,7 +488,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		SphereRitem->IndexCount = SphereRitem->Geo->DrawArgs["sphere"].IndexCount;
 		SphereRitem->StartIndexLocation = SphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
 		SphereRitem->BaseVertexLocation = SphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-		SphereRitem->Bounds = SphereRitem->Geo->DrawArgs["sphere"].Bounds;
 		SphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		SphereRitem->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::Opaque].push_back(SphereRitem.get());
@@ -472,7 +497,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		GeoSphereRitem->IndexCount = GeoSphereRitem->Geo->DrawArgs["geoSphere"].IndexCount;
 		GeoSphereRitem->StartIndexLocation = GeoSphereRitem->Geo->DrawArgs["geoSphere"].StartIndexLocation;
 		GeoSphereRitem->BaseVertexLocation = GeoSphereRitem->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
-		GeoSphereRitem->Bounds = GeoSphereRitem->Geo->DrawArgs["geoSphere"].Bounds;
 		GeoSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		GeoSphereRitem->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::GeoSphereLOD].push_back(GeoSphereRitem.get());
@@ -493,15 +517,18 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.World, leftCylWorld);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, leftCylWorld_invT);
 			instance.MaterialIndex = mMaterials["bricks0"]->MatBufferIndex;
+			instance.Bounds = CylinderRI->Geo->DrawArgs["cylinder"].Bounds;
 			CylinderRI->Instances.push_back(instance);
 
 			XMStoreFloat4x4(&instance.World, rightCylWorld);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, rightCylWorld_invT);
+			instance.Bounds = SphereRitem->Geo->DrawArgs["sphere"].Bounds;
 			CylinderRI->Instances.push_back(instance);
 
 			XMStoreFloat4x4(&instance.World, leftSphereWorld);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, leftSphereWorld_invT);
 			instance.MaterialIndex = mMaterials["stone0"]->MatBufferIndex;
+			instance.Bounds = GeoSphereRitem->Geo->DrawArgs["geoSphere"].Bounds;
 			SphereRitem->Instances.push_back(instance);
 
 			XMStoreFloat4x4(&instance.World, rightSphereWorld);
@@ -529,7 +556,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	skullRI->IndexCount = skullRI->Geo->DrawArgs["skull"].IndexCount;
 	skullRI->StartIndexLocation = skullRI->Geo->DrawArgs["skull"].StartIndexLocation;
 	skullRI->BaseVertexLocation = skullRI->Geo->DrawArgs["skull"].BaseVertexLocation;
-	skullRI->Bounds = skullRI->Geo->DrawArgs["skull"].Bounds;
 	skullRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	skullRI->InMirror = true;
 	{
@@ -539,6 +565,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		instance.MaterialIndex = mMaterials["defaultMat"]->MatBufferIndex;
+		instance.Bounds = skullRI->Geo->DrawArgs["skull"].Bounds;
 		skullRI->Instances.push_back(instance);
 	}
 	skullRI->StartInstanceLocation = InstanceBufferIndex;
@@ -553,7 +580,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	landRI->IndexCount = landRI->Geo->DrawArgs["grid"].IndexCount;
 	landRI->StartIndexLocation = landRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	landRI->BaseVertexLocation = landRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	landRI->Bounds = landRI->Geo->DrawArgs["grid"].Bounds;
 	landRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
 	{
 		InstanceData instance;
@@ -563,6 +589,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 		instance.MaterialIndex = mMaterials["grass0"]->MatBufferIndex;
+		instance.Bounds = landRI->Geo->DrawArgs["grid"].Bounds;
 		landRI->Instances.push_back(instance);
 	}
 	landRI->StartInstanceLocation = InstanceBufferIndex;
@@ -577,7 +604,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	waveRI->IndexCount = waveRI->Geo->DrawArgs["grid"].IndexCount;
 	waveRI->StartIndexLocation = waveRI->Geo->DrawArgs["grid"].StartIndexLocation;
 	waveRI->BaseVertexLocation = waveRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-	waveRI->Bounds = waveRI->Geo->DrawArgs["grid"].Bounds;
 	waveRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	{
 		InstanceData instance;
@@ -588,6 +614,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
 		instance.MaterialIndex = mMaterials["water0"]->MatBufferIndex;
 		instance.DisplacementMapTexelSize = { 1.0f / mWaves->ColumnCount(), 1.0f / mWaves->RowCount() };
+		instance.Bounds = waveRI->Geo->DrawArgs["grid"].Bounds;
 		waveRI->Instances.push_back(instance);
 	}
 	waveRI->StartInstanceLocation = InstanceBufferIndex;
@@ -603,7 +630,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorRI->IndexCount = mirrorRI->Geo->DrawArgs["grid"].IndexCount;
 		mirrorRI->StartIndexLocation = mirrorRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorRI->BaseVertexLocation = mirrorRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-		mirrorRI->Bounds = mirrorRI->Geo->DrawArgs["grid"].Bounds;
 		mirrorRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		{
 			InstanceData instance;
@@ -613,6 +639,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(1.0f, 2.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
 			instance.MaterialIndex = mMaterials["iceMirrorMat"]->MatBufferIndex;
+			instance.Bounds = mirrorRI->Geo->DrawArgs["grid"].Bounds;
 			mirrorRI->Instances.push_back(instance);
 		}
 		mirrorRI->StartInstanceLocation = InstanceBufferIndex;
@@ -628,7 +655,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorWallTessRI->IndexCount = mirrorWallTessRI->Geo->DrawArgs["brickWall"].IndexCount;
 		mirrorWallTessRI->StartIndexLocation = mirrorWallTessRI->Geo->DrawArgs["brickWall"].StartIndexLocation;
 		mirrorWallTessRI->BaseVertexLocation = mirrorWallTessRI->Geo->DrawArgs["brickWall"].BaseVertexLocation;
-		mirrorWallTessRI->Bounds = mirrorWallTessRI->Geo->DrawArgs["brickWall"].Bounds;
 		mirrorWallTessRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
 		{
 			InstanceData instance;
@@ -638,6 +664,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(2.5f, 11.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
 			instance.MaterialIndex = mMaterials["bricks1"]->MatBufferIndex;
+			instance.Bounds = mirrorWallTessRI->Geo->DrawArgs["brickWall"].Bounds;
 			mirrorWallTessRI->Instances.push_back(instance);
 		}
 		mirrorWallTessRI->StartInstanceLocation = InstanceBufferIndex;
@@ -652,7 +679,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorBackRI->IndexCount = mirrorBackRI->Geo->DrawArgs["grid"].IndexCount;
 		mirrorBackRI->StartIndexLocation = mirrorBackRI->Geo->DrawArgs["grid"].StartIndexLocation;
 		mirrorBackRI->BaseVertexLocation = mirrorBackRI->Geo->DrawArgs["grid"].BaseVertexLocation;
-		mirrorBackRI->Bounds = mirrorBackRI->Geo->DrawArgs["grid"].Bounds;
 		mirrorBackRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		{
 			InstanceData instance;
@@ -661,6 +687,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 			instance.MaterialIndex = mMaterials["mirrorBaseMat"]->MatBufferIndex;
+			instance.Bounds = mirrorBackRI->Geo->DrawArgs["grid"].Bounds;
 			mirrorBackRI->Instances.push_back(instance);
 		}
 		mirrorBackRI->StartInstanceLocation = InstanceBufferIndex;
@@ -681,6 +708,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		instance.MaterialIndex = mMaterials["shadowMat_skull"]->MatBufferIndex;
+		instance.Bounds = skullShadowRI->Geo->DrawArgs["skull"].Bounds;
 		skullShadowRI->Instances.push_back(instance);
 	}
 	skullShadowRI->StartInstanceLocation = InstanceBufferIndex;
@@ -695,11 +723,11 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	treeBillboardRI->IndexCount = treeBillboardRI->Geo->DrawArgs["tree"].IndexCount;
 	treeBillboardRI->StartIndexLocation = treeBillboardRI->Geo->DrawArgs["tree"].StartIndexLocation;
 	treeBillboardRI->BaseVertexLocation = treeBillboardRI->Geo->DrawArgs["tree"].BaseVertexLocation;
-	treeBillboardRI->Bounds = treeBillboardRI->Geo->DrawArgs["tree"].Bounds;
 	treeBillboardRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 	{
 		InstanceData instance;
 		instance.MaterialIndex = mMaterials["treeBillboardMat"]->MatBufferIndex;
+		instance.Bounds = treeBillboardRI->Geo->DrawArgs["tree"].Bounds;
 		treeBillboardRI->Instances.push_back(instance);
 	}
 	treeBillboardRI->StartInstanceLocation = InstanceBufferIndex;
@@ -713,7 +741,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	cylRI->IndexCount = cylRI->Geo->DrawArgs["cylinderWithoutTop"].IndexCount;
 	cylRI->StartIndexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].StartIndexLocation;
 	cylRI->BaseVertexLocation = cylRI->Geo->DrawArgs["cylinderWithoutTop"].BaseVertexLocation;
-	cylRI->Bounds = cylRI->Geo->DrawArgs["cylinderWithoutTop"].Bounds;
 	cylRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
 	{
 		InstanceData instance;
@@ -722,6 +749,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		instance.MaterialIndex = mMaterials["bricks0"]->MatBufferIndex;
+		instance.Bounds = cylRI->Geo->DrawArgs["cylinderWithoutTop"].Bounds;
 		cylRI->Instances.push_back(instance);
 	}
 	cylRI->StartInstanceLocation = InstanceBufferIndex;
@@ -735,7 +763,6 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	explodeRI->IndexCount = explodeRI->Geo->DrawArgs["geoSphere"].IndexCount;
 	explodeRI->StartIndexLocation = explodeRI->Geo->DrawArgs["geoSphere"].StartIndexLocation;
 	explodeRI->BaseVertexLocation = explodeRI->Geo->DrawArgs["geoSphere"].BaseVertexLocation;
-	explodeRI->Bounds = explodeRI->Geo->DrawArgs["geoSphere"].Bounds;
 	explodeRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	{
 		InstanceData instance;
@@ -744,6 +771,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
 		instance.MaterialIndex = mMaterials["bricks0"]->MatBufferIndex;
+		instance.Bounds = explodeRI->Geo->DrawArgs["geoSphere"].Bounds;
 		explodeRI->Instances.push_back(instance);
 	}
 	explodeRI->StartInstanceLocation = InstanceBufferIndex;
@@ -799,16 +827,48 @@ void RenderApp::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
 		std::make_move_iterator(renderItems.end()));
 }
 
-void RenderApp::BuildRenderItems_Selected(UINT& InstanceBufferIndex)
+void RenderApp::BuildRenderItems_Gizmo(UINT& InstanceBufferIndex)
 {
-	//미완성된 객체. 클릭시 완성
-	auto selectedRI = std::make_unique<RenderItem>();
-	selectedRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	selectedRI->StartInstanceLocation = InstanceBufferIndex;
-	selectedRI->Visible = false;
-	InstanceBufferIndex += (UINT)selectedRI->Instances.size();
-	mRenderItemLayer[(int)RenderLayer::Highlight].push_back(selectedRI.get());
-	mAllRenderItems.push_back(std::move(selectedRI));
+	auto gizmoRI = std::make_unique<RenderItem>();
+
+	gizmoRI->Geo = mGeometries["shapeGeo"].get();
+	gizmoRI->IndexCount = gizmoRI->Geo->DrawArgs["box"].IndexCount;
+	gizmoRI->StartIndexLocation = gizmoRI->Geo->DrawArgs["box"].StartIndexLocation;
+	gizmoRI->BaseVertexLocation = gizmoRI->Geo->DrawArgs["box"].BaseVertexLocation;
+	gizmoRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	gizmoRI->Visible = false;
+
+	// X axis
+	{
+		InstanceData instance;
+		instance.MaterialIndex = mMaterials["gizmoX"]->MatBufferIndex;
+		instance.Bounds = gizmoRI->Geo->DrawArgs["box"].Bounds;
+		gizmoRI->Instances.push_back(instance);
+	}
+
+	// Y axis
+	{
+		InstanceData instance;
+		instance.MaterialIndex = mMaterials["gizmoY"]->MatBufferIndex;
+		instance.Bounds = gizmoRI->Geo->DrawArgs["box"].Bounds;
+		gizmoRI->Instances.push_back(instance);
+	}
+
+	// Z axis
+	{
+		InstanceData instance;
+		instance.MaterialIndex = mMaterials["gizmoZ"]->MatBufferIndex;
+		instance.Bounds = gizmoRI->Geo->DrawArgs["box"].Bounds;
+		gizmoRI->Instances.push_back(instance);
+	}
+
+	gizmoRI->StartInstanceLocation = InstanceBufferIndex;
+	InstanceBufferIndex += static_cast<UINT>(gizmoRI->Instances.size());
+
+	mGizmoRI = gizmoRI.get();
+
+	mRenderItemLayer[(int)RenderLayer::Gizmo].push_back(gizmoRI.get());
+	mAllRenderItems.push_back(std::move(gizmoRI));
 }
 
 void RenderApp::BuildFrameResources()

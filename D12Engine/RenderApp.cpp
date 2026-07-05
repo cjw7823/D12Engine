@@ -133,6 +133,7 @@ void RenderApp::Update(const GameTimer& gt)
 	UpdateShadowTransform();
 	UpdateMainPassCB(gt);
 	UpdateReflectedPassCB(gt);
+	UpdateGizmo();
 	UpdateInstanceBuffer(gt);
 	UpdateMaterialBuffer(gt);
 }
@@ -262,6 +263,9 @@ void RenderApp::Draw(const GameTimer& gt)
 			break;
 		case (int)RenderLayer::Transparent:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["transparent"].Get());
+			break;
+		case (int)RenderLayer::Gizmo:
+			mCommandList->SetPipelineState(mPSOs["gizmo"].Get());
 			break;
 		default:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
@@ -461,84 +465,6 @@ void RenderApp::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 	}
 }
 
-void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
-{
-	if (!mCamera.IsReady()) return;
-	XMFLOAT4X4 P = mCamera.GetProj4x4f();
-
-	// 스크린 좌표를 뷰 공간 좌표로 변환
-	float vx = (+2.0f * sx / mClientWidth - 1.0f) / P(0, 0);
-	float vy = (-2.0f * sy / mClientHeight + 1.0f) / P(1, 1);
-
-	// 뷰 공간에서 Ray 생성.
-	XMVECTOR viewRayOrigin = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
-	XMVECTOR viewRayDir = XMVectorSet(vx, vy, 1.0f, 0.0f);
-
-	XMMATRIX V = mCamera.GetView();
-	auto det = XMMatrixDeterminant(V);
-	XMMATRIX invView = XMMatrixInverse(&det, V);
-
-	RenderItem* selectedRenderItem = nullptr;
-	UINT selectedInstanceIndex = UINT_MAX;
-	float closestDist = FLT_MAX;
-
-	float tmin = 0.0f;
-	//for (auto& ri : mAllRenderItems)
-	for (auto ri : mRenderItemLayer[(int)RenderLayer::Opaque])
-	{
-		if (ri->Visible == false) continue;
-
-		for (UINT instanceIndex = 0; instanceIndex < ri->Instances.size(); ++instanceIndex)
-		{
-			auto& instance = ri->Instances[instanceIndex];
-			if (instance.visible == false) continue;
-
-			XMMATRIX W = XMLoadFloat4x4(&instance.World);
-			auto detW = XMMatrixDeterminant(W);
-			float detValue = XMVectorGetX(detW);
-
-			if (!std::isfinite(detValue) || fabsf(detValue) < 1e-6f) continue;
-
-			XMMATRIX invWorld = XMMatrixInverse(&detW, W);
-
-			XMMATRIX toLocal = XMMatrixMultiply(invView, invWorld);
-			
-			//광선을 메시의 로컬 공간으로 변환
-			XMVECTOR localRayOrigin = XMVector3TransformCoord(viewRayOrigin, toLocal);
-			XMVECTOR localRayDir = XMVector3TransformNormal(viewRayDir, toLocal);
-			localRayDir = XMVector3Normalize(localRayDir);
-
-			float t = 0.0f;
-			// 광선이 메시의 바운딩 박스와 교차하는지 확인
-			if (ri->Bounds.Intersects(localRayOrigin, localRayDir, t))
-			{
-				if (t < closestDist)
-				{
-					closestDist = t;
-					selectedRenderItem = ri;
-					selectedInstanceIndex = instanceIndex;
-				}
-			}
-		}
-	}
-
-	if (selectedRenderItem != nullptr)
-	{
-		SelectedInstance selected;
-		selected.renderItem = selectedRenderItem;
-		selected.instanceIndex = selectedInstanceIndex;
-
-		//auto& selectedInstance = selectedRenderItem->Instances[selectedInstanceIndex];
-
-		mSelectedInstances.push_back(selected);
-	}
-}
-
-void RenderApp::ClearSelectedInstance()
-{
-	mSelectedInstances.clear();
-}
-
 DirectX::XMVECTOR RenderApp::GetMirrorPlane()
 {
 	XMMATRIX W = XMLoadFloat4x4(&mMirror->Instances[0].World);
@@ -562,7 +488,7 @@ void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 	//auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for (auto& e : mAllRenderItems)
 	{
-		if (e->NumFramesDirty > 0)
+		//if (e->NumFramesDirty > 0)
 		{
 			//XMMATRIX world = XMLoadFloat4x4(&e->World);
 			//XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
@@ -575,7 +501,7 @@ void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 			//objConstants.MaterialIndex = e->Mat->MatBufferIndex;
 
 			//currObjectCB->CopyData(e->ObjCBIndex, objConstants);
-			e->NumFramesDirty--;
+			//e->NumFramesDirty--;
 		}
 	}
 }
@@ -645,15 +571,22 @@ void RenderApp::UpdateReflectedPassCB(const GameTimer& gt)
 
 void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 {
-	XMMATRIX view = mCamera.GetView();
-	XMVECTOR det = XMMatrixDeterminant(view);
-	XMMATRIX invView = XMMatrixInverse(&det, view);
+	XMMATRIX invView = mCamera.GetInvView();
+
+	// 카메라 프러스텀을 뷰 공간에서 월드 공간으로 변환한다.
+	BoundingFrustum worldFrustum;
+	mCamFrustum.Transform(worldFrustum, invView);
 
 	auto currInstanceBuffer = mCurrFrameResource->InstanceBuffer.get();
 
 	mVisibleInstanceCount = 0;
 	for (auto& ri : mAllRenderItems)
 	{
+		ri->VisibleInstanceCount = 0;
+
+		for (auto& instance : ri->Instances)
+			instance.GpuInstanceIndex = UINT_MAX;
+
 		if (!ri->Visible) continue;
 
 		UINT visibleInstanceCount = 0;
@@ -661,23 +594,23 @@ void RenderApp::UpdateInstanceBuffer(const GameTimer& gt)
 		for (UINT i = 0; i < ri->Instances.size(); ++i)
 		{
 			InstanceData& instance = ri->Instances[i];
-			if (instance.visible == false) continue;
+
 			instance.GpuInstanceIndex = UINT_MAX;
+			if (instance.visible == false) continue;
+			instance.FrustumVisible = false;
 
 			XMMATRIX world = XMLoadFloat4x4(&instance.World);
 			XMMATRIX worldInvTranspose = XMLoadFloat4x4(&instance.WorldInvTranspose);
 			XMMATRIX texTransform = XMLoadFloat4x4(&instance.TexTransform);
 
-			// 카메라 프러스텀을 뷰 공간에서 월드 공간으로 변환한다.
-			BoundingFrustum worldFrustum;
-			mCamFrustum.Transform(worldFrustum, invView);
-
 			BoundingBox worldBounds;
-			ri->Bounds.Transform(worldBounds, world);
+			instance.Bounds.Transform(worldBounds, world);
 
 			// 월드 공간에서 박스/프러스텀 교차 테스트를 수행한다.
 			if ((worldFrustum.Contains(worldBounds) != DirectX::DISJOINT) || !mFrustumCullingEnabled)
 			{
+				instance.FrustumVisible = true;
+
 				InstanceData_GPU gpuData;
 				XMStoreFloat4x4(&gpuData.World, XMMatrixTranspose(world));
 				XMStoreFloat4x4(&gpuData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
@@ -758,13 +691,11 @@ void RenderApp::UpdateShadowTransform()
 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
 	XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->Instances[0].World);
 	XMStoreFloat4x4(&mSkullShadow->Instances[0].World, skullWorld * s * shadowOffsetY);
-	mSkullShadow->NumFramesDirty = gNumFrameResources;
 
 	if (mSkullShadowMirror != nullptr)
 	{
 		XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->Instances[0].World);
 		XMStoreFloat4x4(&mSkullShadowMirror->Instances[0].World, mirrorSkullWorld * s2 * shadowOffsetY);
-		mSkullShadowMirror->NumFramesDirty = gNumFrameResources;
 	}
 }
 

@@ -6,25 +6,37 @@ using namespace DirectX;
 
 void RenderApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
-	if (btnState & MK_RBUTTON)
+	if (btnState & MK_LBUTTON)
 	{
-		mLastMousePos = { x,y };
-		SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
+		if (!BeginGizmoDrag(x, y)) //내부에서 기즈모 클릭 검사.
+		{
+			ClearSelectedInstance();
+			SelectRenderItemByMouseClick(x, y);
+		}
+
+		mLastMousePos = { x, y };
+		SetCapture(mhMainWnd);
 	}
-	else if (btnState & MK_LBUTTON)
-	{
-		ClearSelectedInstance();
-		SelectRenderItemByMouseClick(x, y);
-	}
+
+	mLastMousePos = { x,y };
+	SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
 }
 
 void RenderApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
+	if (mGizmo.Dragging) EndGizmoDrag();
 	ReleaseCapture();
 }
 
 void RenderApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
+	if (mGizmo.Dragging)
+	{
+		UpdateGizmoDrag(x, y);
+		mLastMousePos = { x, y };
+		return;
+	}
+
 	if ((btnState & MK_RBUTTON))
 	{
 		float dx = DirectX::XMConvertToRadians(0.5f * static_cast<float>(x - mLastMousePos.x));
