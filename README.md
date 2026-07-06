@@ -10,6 +10,28 @@
 - Blur 적용. Blur Count 2, 4, 8
 - Sobel Filter 적용
 
+### ▢ Tessellation Stages
+- 지형 LOD 표현 구현
+- 거울 벽 요철 표현 추가
+
+### ▢ Camera and Dynamic Indexing
+- Camera 클래스를 추가하여 View / Projection 제어 분리
+- 텍스처 디스크립터 테이블 기반 Dynamic Indexing 적용
+
+### ▢ Instancing and Frustum Culling
+- Hardware Instancing 적용
+- Bounding Box 기반 Frustum Culling 적용
+- 전체 Instance 수와 실제 렌더링 Instance 수 디버깅 UI 추가
+
+### ▢ Picking
+- 화면 좌표 기반 World Ray 생성
+- Bounding Box 1차 필터링 후 Triangle 교차 테스트 수행
+- Gizmo 축 선택 및 Drag Plane 기반 이동 처리 구현
+
+### ▢ Character Animation
+- .m3d 모델 로딩 구조 추가
+- Bone Transform 보간 및 최종 Skinning Matrix 계산
+
 ---
 
 ## ✂️ 수정 사항
@@ -77,6 +99,10 @@ Stencil 기반 직접 반사 렌더링은 메인 Depth Buffer를 공유하기 �
 
 따라서 현재 방식은 단순한 거울 반사 표현에는 사용할 수 있지만,  
 완전한 반사 렌더링 구조로 보기에는 한계가 있습니다.
+
+### ▢ Picking / Gizmo 개선 여지
+현재 Picking은 CPU 측 Ray 교차 테스트를 기준으로 선택 대상을 계산합니다.
+Skinned Mesh의 최종 Skinning 결과 기준 Picking, 다중 선택 편집, 회전 / 스케일 Gizmo는 별도 개선 대상으로 남아 있습니다.
 
 ---
 
