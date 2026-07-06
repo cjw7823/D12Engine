@@ -43,6 +43,9 @@
     <Filter Include="Rendering\GPGPU">
       <UniqueIdentifier>{88c78b53-2e5f-4f35-8837-5981cede80b5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Animation">
+      <UniqueIdentifier>{5c8b0eca-cd57-4336-b86d-46e6085c2d78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D12Engine.cpp">
@@ -129,6 +132,10 @@
     <ClCompile Include="RenderApp_Gizmo.cpp">
       <Filter>App</Filter>
     </ClCompile>
+    <ClCompile Include="SkinnedData.cpp">
+      <Filter>Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadM3d.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -205,6 +212,12 @@
     </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadM3d.h">
+      <Filter>Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="SkinnedData.h">
+      <Filter>Animation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -14,14 +14,15 @@ void RenderApp::BuildRootSignature()
 	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
 
 
-	std::array<CD3DX12_ROOT_PARAMETER, 7> slotRootParameter{};
+	std::array<CD3DX12_ROOT_PARAMETER, 8> slotRootParameter{};
 	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
-	slotRootParameter[1].InitAsConstants(1, 1, 0 , D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location
-	slotRootParameter[2].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
-	slotRootParameter[3].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
-	slotRootParameter[4].InitAsShaderResourceView(1, 1);							// (t1, space1) instances + mat index
-	slotRootParameter[5].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
-	slotRootParameter[6].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
+	slotRootParameter[1].InitAsConstants(1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location
+	slotRootParameter[2].InitAsConstantBufferView(2);										// (b2) skinned CB
+	slotRootParameter[3].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
+	slotRootParameter[4].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
+	slotRootParameter[5].InitAsShaderResourceView(1, 1);							// (t1, space1) instances + mat index
+	slotRootParameter[6].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
+	slotRootParameter[7].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
 
 	auto staticSamplers = GetStaticSamplers();
 
@@ -158,6 +159,12 @@ void RenderApp::BuildWavesRootSignature()
 
 void RenderApp::BuildShadersAndInputLayout()
 {
+	const D3D_SHADER_MACRO fogDefines[] =
+	{
+		"FOG", "1",
+		NULL, NULL
+	};
+
 	const D3D_SHADER_MACRO wavesDefines[] =
 	{
 		"DISPLACEMENT_MAP", "1",
@@ -166,27 +173,27 @@ void RenderApp::BuildShadersAndInputLayout()
 
 	const D3D_SHADER_MACRO textureBlendDefines[] =
 	{
-		"FOG", "1",
+		fogDefines[0],
 		"TEXTURE_BLEND", "1",
 		NULL, NULL
 	};
 
 	const D3D_SHADER_MACRO alphaTestDefines[] =
 	{
-		"FOG", "1",
+		fogDefines[0],
 		"ALPHA_TEST", "1",
-		NULL, NULL
-	};
-
-	const D3D_SHADER_MACRO fogDefines[] =
-	{
-		"FOG", "1",
 		NULL, NULL
 	};
 
 	const D3D_SHADER_MACRO tessWallDefines[] =
 	{
 		"WALL", "1",
+		NULL, NULL
+	};
+
+	const D3D_SHADER_MACRO skinnedDefines[] =
+	{
+		"SKINNED", "1",
 		NULL, NULL
 	};
 
@@ -238,6 +245,8 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["highlightVS_Mask"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS_Mask", "vs_5_1");
 	mShaders["highlightPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "PS", "ps_5_1");
 
+	mShaders["skinnedVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", skinnedDefines, "VS", "vs_5_1");
+
 #else
 	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
 	mShaders["opaquePS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps.cso");
@@ -283,6 +292,8 @@ void RenderApp::BuildShadersAndInputLayout()
 	mShaders["highlightVS_Mask"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS_Mask.cso");
 	mShaders["highlightPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightPS.cso");
 
+	mShaders["skinnedVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\skinnedVS.cso");
+
 #endif
 
 	double elapsedMs = (mTimer.TotalTime() - start) * 1000.0;
@@ -308,6 +319,33 @@ void RenderApp::BuildShadersAndInputLayout()
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{"SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
+
+	mSkinnedInputLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, Pos),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, Normal),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, TexC),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, TangentU),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "WEIGHTS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, BoneWeights),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0,
+			offsetof(M3DLoader::SkinnedVertex, BoneIndices),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 }
 
@@ -487,6 +525,15 @@ void RenderApp::BuildPSOs()
 	PsoBuildContext gizmoCtx = ctx;
 	PipelineStateFactory gizmoFactory(gizmoCtx);
 	mPSOs["gizmo"] = gizmoFactory.CreateGizmoPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+
+	//Skinned Model
+	PsoBuildContext skinnedCtx = ctx;
+	skinnedCtx.InputLayout = &mSkinnedInputLayout;
+	PipelineStateFactory skinnedFactory(skinnedCtx);
+	mPSOs["skinnedOpaque"] = skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
+	skinnedCtx.IsWireframe = true;
+	skinnedFactory(skinnedCtx);
+	mPSOs["skinnedOpaque_wireframe"] = skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> RenderApp::GetStaticSamplers()

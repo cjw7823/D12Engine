@@ -2,6 +2,7 @@
 
 #include "MathHelper.h"
 #include <stdint.h>
+#include "SkinnedData.h"
 
 inline constexpr int MaxLights = 16;
 inline constexpr int gNumFrameResources = 3;
@@ -26,6 +27,11 @@ ObjectConstants
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
 	UINT MaterialIndex = 0;
+};
+
+struct SkinnedConstants
+{
+	DirectX::XMFLOAT4X4 BoneTransforms[96];
 };
 
 struct InstanceData
@@ -110,7 +116,7 @@ struct SubmeshGeometry
 	INT BaseVertexLocation = 0;
 	UINT VertexCount = 0;
 
-	//이 서브메시로 정의된 기하 도형의 경계 상자. 추후 공부 예정...
+	//이 서브메시로 정의된 기하 도형의 경계 상자.
 	DirectX::BoundingBox Bounds;
 };
 
@@ -179,7 +185,7 @@ struct Material
 struct Texture
 {
 	std::string Name;
-	std::wstring Filename;
+	std::wstring FilePath;
 	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr; //Default Heap 용도
 	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
 
@@ -190,6 +196,7 @@ struct Texture
 enum class RenderLayer : int
 {
 	Opaque = 0,
+	SkinnedOpaque,
 	TessLand,
 	MultiTextureBlend,
 	AlphaTestOpaque,
@@ -211,6 +218,7 @@ enum class RenderLayer : int
 	Count,
 };
 
+struct SkinnedModelInstance;
 struct RenderItem
 {
 	RenderItem() = default;
@@ -235,6 +243,12 @@ struct RenderItem
 	UINT StartInstanceLocation = 0;
 	UINT VisibleInstanceCount = 0;
 	std::vector<InstanceData> Instances;
+
+	//스킨이 있는 경우만 유효
+	UINT SkinnedCBIndex = -1;
+
+	//애니메이션이 없는 RI는 nullptr로 둔다.
+	SkinnedModelInstance* SkinnedModelInstance = nullptr;
 };
 
 struct SelectedInstance
@@ -311,4 +325,24 @@ struct GizmoState
 
 	// plane: ax + by + cz + d = 0
 	DirectX::XMFLOAT4 DragPlane = { 0.0f, 1.0f, 0.0f, 0.0f };
+};
+
+struct SkinnedModelInstance
+{
+	SkinnedData* skinnedInfo = nullptr;
+	std::vector<DirectX::XMFLOAT4X4> finalTransforms;
+	std::string clipName;
+	float timePos = 0.0f;
+
+	// 매 프레임 애니메이션 시간을 증가시키고, 현재 애니메이션 클립에 따라 각 본의 보간된 변환을 계산
+	// 이후 최종 본 행렬 배열을 SkinnedCB에 복사하고, vertex shader에서 이 행렬들을 사용해 스키닝
+	void UpdateSkinnedAnimation(float dt)
+	{
+		timePos += dt;
+
+		if (timePos > skinnedInfo->GetClipEndTime(clipName))
+			timePos = 0.0f;
+
+		skinnedInfo->GetFinalTransforms(clipName, timePos, finalTransforms);
+	}
 };

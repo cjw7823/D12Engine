@@ -216,7 +216,7 @@ void RenderApp::SelectRenderItemByMouseClick(int sx, int sy)
 
 	std::vector<SelectedInstance> candidates;
 
-	auto checkLayers = { RenderLayer::Opaque, RenderLayer::TessLand, RenderLayer::MultiTextureBlend, RenderLayer::AlphaTestOpaque, RenderLayer::GeoSphereLOD, RenderLayer::GeoExplode, RenderLayer::LineToCylinder, RenderLayer::Waves};
+	auto checkLayers = { RenderLayer::Opaque, RenderLayer::SkinnedOpaque, RenderLayer::TessLand, RenderLayer::MultiTextureBlend, RenderLayer::AlphaTestOpaque, RenderLayer::GeoSphereLOD, RenderLayer::GeoExplode, RenderLayer::LineToCylinder, RenderLayer::Waves};
 	for (auto Layer : checkLayers)
 	{
 		for (auto ri : mRenderItemLayer[(int)Layer])

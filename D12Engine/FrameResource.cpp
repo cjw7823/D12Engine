@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FrameResource.h"
 
-FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT waveVertexCount, UINT materialCount)
+FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT waveVertexCount, UINT materialCount, UINT skinnedObjectCount)
 {
 	ThrowIfFailed(device->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -14,4 +14,6 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInsta
 	WavesVB = std::make_unique<UploadBuffer<Vertex>>(device, waveVertexCount, false);
 
 	InstanceBuffer = std::make_unique<UploadBuffer<InstanceData_GPU>>(device, maxInstanceCount, false);
+
+	SkinnedCB = std::make_unique<UploadBuffer<SkinnedConstants>>(device, skinnedObjectCount, true);
 }

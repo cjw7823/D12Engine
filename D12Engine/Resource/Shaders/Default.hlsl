@@ -82,12 +82,21 @@ cbuffer cbInstanceIndex : register(b1)
     uint gInstanceIndex;
 };
 
+cbuffer cbSkinned : register(b2)
+{
+    float4x4 gBoneTransforms[96];
+};
+
 struct VertexIn
 {
     float3 PosL : POSITION;
     float3 NormalL : NORMAL;
     float3 Tangent : TANGENT;
     float2 TexC : TEXCOORD;
+#ifdef SKINNED
+    float3 BoneWeights : WEIGHTS;
+    uint4 BoneIndices : BONEINDICES;
+#endif
 };
 
 struct VertexOut
@@ -128,6 +137,31 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     float t = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(0.0f, dv), 0.0f).r;
     float b = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(0.0f, dv), 0.0f).r;
     vin.NormalL = normalize(float3(-r + l, 2.0f * gridSpatialStep, b - t));
+#endif
+    
+#ifdef SKINNED
+    float weights[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    weights[0] = vin.BoneWeights.x;
+    weights[1] = vin.BoneWeights.y;
+    weights[2] = vin.BoneWeights.z;
+    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
+
+    float3 posL = float3(0.0f, 0.0f, 0.0f);
+    float3 normalL = float3(0.0f, 0.0f, 0.0f);
+    float3 tangentL = float3(0.0f, 0.0f, 0.0f);
+    for(int i = 0; i < 4; ++i)
+    {
+        // Assume no nonuniform scaling when transforming normals, so 
+        // that we do not have to use the inverse-transpose.
+
+        posL += weights[i] * mul(float4(vin.PosL, 1.0f), gBoneTransforms[vin.BoneIndices[i]]).xyz;
+        normalL += weights[i] * mul(vin.NormalL, (float3x3)gBoneTransforms[vin.BoneIndices[i]]);
+        tangentL += weights[i] * mul(vin.Tangent.xyz, (float3x3)gBoneTransforms[vin.BoneIndices[i]]);
+    }
+
+    vin.PosL = posL;
+    vin.NormalL = normalL;
+    vin.Tangent.xyz = tangentL;
 #endif
     
     float4 posW = mul(float4(vin.PosL, 1.0f), world);

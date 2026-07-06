@@ -186,6 +186,7 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="GpuWaves.cpp" />
+    <ClCompile Include="LoadM3d.cpp" />
     <ClCompile Include="MathHelper.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
@@ -201,6 +202,7 @@
     <ClCompile Include="RenderApp_Input.cpp" />
     <ClCompile Include="RenderApp_Pipeline.cpp" />
     <ClCompile Include="RenderApp_Resources.cpp" />
+    <ClCompile Include="SkinnedData.cpp" />
     <ClCompile Include="SobelFilter.cpp" />
     <ClCompile Include="TextureLoader_Blocking.cpp" />
   </ItemGroup>
@@ -222,11 +224,13 @@
     <ClInclude Include="GameTimer.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="GpuWaves.h" />
+    <ClInclude Include="LoadM3d.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PipelineStateFactory.h" />
     <ClInclude Include="RenderApp.h" />
     <ClInclude Include="RenderData.h" />
+    <ClInclude Include="SkinnedData.h" />
     <ClInclude Include="SobelFilter.h" />
     <ClInclude Include="TextureLoader_Blocking.h" />
     <ClInclude Include="UploadBuffer.h" />
@@ -287,6 +291,7 @@
     <AlphaTestDefines>$(FogDefines) -D ALPHA_TEST=1</AlphaTestDefines>
     <WavesDefines>-D DISPLACEMENT_MAP=1</WavesDefines>
     <tessWallDefines>-D WALL=1</tessWallDefines>
+    <SkinnedDefines>-D SKINNED=1</SkinnedDefines>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <ShaderCompileOptions>-Zi -Qembed_debug -Od</ShaderCompileOptions>
@@ -556,6 +561,15 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
+
+	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+		<Entry>VS</Entry>
+		<Profile>vs_6_0</Profile>
+		<OutputName>skinnedVS.cso</OutputName>
+		<AsmName>skinnedVS.asm</AsmName>
+		<DependsOn>@(ShaderInclude)</DependsOn>
+		<Defines>$(SkinnedDefines)</Defines>
+	</ShaderCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Tessellation.hlsl">

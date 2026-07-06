@@ -23,6 +23,8 @@
 #include "SobelFilter.h"
 #include "Camera.h"
 
+#include "LoadM3d.h"
+
 /*
 	1. Resource Heap / Resource Memory
 	├─ Default Heap
@@ -102,6 +104,7 @@ private:
 	virtual void OnKeyDown(WPARAM key) override;
 	virtual void ReadbackTimestampData(int frameResourceIndex) override;
 
+	void LoadSkinnedModel();
 	void LoadTextures();
 	void BuildDescriptorHeaps();
 	void BuildMaterials();
@@ -121,6 +124,7 @@ private:
 	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
+	void BuildRenderItems_SkinnedModel(UINT& IinstanceBufferIndex);
 	void BuildFrameResources();
 	void BuildPSOs();
 
@@ -151,6 +155,7 @@ private:
 	void OnKeyboardInput(const GameTimer& gt);
 	[[deprecated("ObjectCB is Closed.")]]
 	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateSkinnedCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
 	void UpdateReflectedPassCB(const GameTimer& gt);
 	void UpdateInstanceBuffer(const GameTimer& gt);
@@ -187,6 +192,7 @@ private:
 	std::vector<RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeBillboardInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mSkinnedInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.
 	std::unique_ptr<GpuWaves> mWaves;
@@ -241,4 +247,12 @@ private:
 
 	RenderItem* mGizmoRI = nullptr;
 	GizmoState mGizmo;
+
+	UINT mSkinnedSrvHeapStart = 0;
+	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
+	SkinnedData mSkinnedInfo;
+	std::vector<M3DLoader::Subset> mSkinnedSubsets;
+	std::vector<M3DLoader::M3dMaterial> mSkinnedMats;
+	std::vector<std::string> mSkinnedTextureNames;
+	std::vector<std::string> mSkinnedNormalTextureNames;
 };

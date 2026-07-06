@@ -20,6 +20,9 @@
 
 struct MsaaOption
 {
+	MsaaOption() = default;
+	MsaaOption(UINT i) { index = i; }
+
 	static constexpr std::array<UINT, 4> kMsaaSampleCandidates = { 2, 4, 8, 16 };
 	inline static std::vector<std::pair<UINT, UINT>> UsableSamples{ {1,1} }; //sample count, num quality levels
 	
@@ -117,7 +120,7 @@ protected:
 	bool mResizing = false;
 	GameTimer mTimer;
 
-	MsaaOption mMsaaOption{};
+	MsaaOption mMsaaOption{ 2 };
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;

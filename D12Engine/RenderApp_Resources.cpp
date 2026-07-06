@@ -1,8 +1,63 @@
 #include "pch.h"
 #include "RenderApp.h"
 #include "RenderData.h"
+#include "LoadM3d.h"
 
 using namespace DirectX;
+
+void RenderApp::LoadSkinnedModel()
+{
+	std::vector<M3DLoader::SkinnedVertex> vertices;
+	std::vector<std::uint16_t> indices;
+
+	M3DLoader m3dLoader;
+	m3dLoader.LoadM3d("Resource\\Models\\soldier.m3d", vertices, indices,
+		mSkinnedSubsets, mSkinnedMats, mSkinnedInfo);
+
+	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
+	mSkinnedModelInstance->skinnedInfo = &mSkinnedInfo;
+	mSkinnedModelInstance->finalTransforms.resize(mSkinnedInfo.BoneCount());
+	mSkinnedModelInstance->clipName = "Take1";
+	mSkinnedModelInstance->timePos = 0.0f;
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(M3DLoader::SkinnedVertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "soldier";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+	geo->VertexByteStride = sizeof(M3DLoader::SkinnedVertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize = ibByteSize;
+
+	for (UINT i = 0; i < (UINT)mSkinnedSubsets.size(); ++i)
+	{
+		SubmeshGeometry submesh;
+		std::string name = "sm_" + std::to_string(i);
+
+		submesh.IndexCount = (UINT)mSkinnedSubsets[i].FaceCount * 3;
+		submesh.StartIndexLocation = mSkinnedSubsets[i].FaceStart * 3;
+		submesh.BaseVertexLocation = 0;
+		BoundingBox::CreateFromPoints(submesh.Bounds, vertices.size(), &vertices[0].Pos, sizeof(M3DLoader::SkinnedVertex));
+
+		geo->DrawArgs[name] = submesh;
+	}
+
+	mGeometries[geo->Name] = std::move(geo);
+}
 
 void RenderApp::LoadTextures()
 {
@@ -11,81 +66,52 @@ void RenderApp::LoadTextures()
 	if (!mTexLoader)
 		mTexLoader = std::make_unique<TextureLoader_Blocking>(md3dDevice.Get(), mCommandQueue.Get());
 
-	auto defaultTex = std::make_unique<Texture>();
-	defaultTex->Name = "defaultTex";
-	defaultTex->Filename = L"Resource/Textures/white1x1.dds";
+	std::map<std::string, std::wstring> textures =
+	{
+		{"defaultTex", L"Resource/Textures/white1x1.dds"},
+		{"woodCrateTex", L"Resource/Textures/MipmapTest.dds"},
+		{"bricksTex0", L"Resource/Textures/bricks.dds"},
+		{"stoneTex", L"Resource/Textures/stone.dds"},
+		{"tileTex", L"Resource/Textures/tile.dds"},
+		{"grassTex", L"Resource/Textures/grass.dds"},
+		{"waterTex", L"Resource/Textures/water1.dds"},
+		{"swirlingTex", L"Resource/Textures/swirling.dds"},
+		{"swirlingMaskTex", L"Resource/Textures/swirling_Mask.dds"},
+		{"fenceTex", L"Resource/Textures/WireFence.dds"},
+		{"bricksTex1", L"Resource/Textures/bricks2.dds"},
+		{"checkboardTex", L"Resource/Textures/checkboard.dds"},
+		{"iceTex", L"Resource/Textures/ice.dds"},
+		{"helpTex", L"Resource/Textures/help.dds"},
+		{"treeArrayTex", L"Resource/Textures/treearray2.dds"}
+	};
 
-	auto woodCrateTex = std::make_unique<Texture>();
-	woodCrateTex->Name = "woodCrateTex";
-	woodCrateTex->Filename = L"Resource/Textures/MipmapTest.dds";
+	mSkinnedSrvHeapStart = (UINT)textures.size();
 
-	auto bricksTex0 = std::make_unique<Texture>();
-	bricksTex0->Name = "bricksTex0";
-	bricksTex0->Filename = L"Resource/Textures/bricks.dds";
+	for (UINT i = 0; i < mSkinnedMats.size(); i++)
+	{
+		std::string diffuseName = mSkinnedMats[i].DiffuseMapName;
+		std::string normalName = mSkinnedMats[i].NormalMapName;
 
-	auto stoneTex = std::make_unique<Texture>();
-	stoneTex->Name = "stoneTex";
-	stoneTex->Filename = L"Resource/Textures/stone.dds";
+		std::wstring diffuseFilename = L"Resource/Textures/" + AnsiToWString(diffuseName);
+		std::wstring normalFilename = L"Resource/Textures/" + AnsiToWString(normalName);
 
-	auto tileTex = std::make_unique<Texture>();
-	tileTex->Name = "tileTex";
-	tileTex->Filename = L"Resource/Textures/tile.dds";
+		//확장자 제거.
+		diffuseName = diffuseName.substr(0, diffuseName.find_last_of("."));
+		normalName = normalName.substr(0, normalName.find_last_of("."));
 
-	auto grassTex = std::make_unique<Texture>();
-	grassTex->Name = "grassTex";
-	grassTex->Filename = L"Resource/Textures/grass.dds";
+		mSkinnedTextureNames.push_back(diffuseName);
+		mSkinnedNormalTextureNames.push_back(normalName);
+		textures[diffuseName] = diffuseFilename;
+	}
 
-	auto waterTex = std::make_unique<Texture>();
-	waterTex->Name = "waterTex";
-	waterTex->Filename = L"Resource/Textures/water1.dds";
+	for (auto p : textures)
+	{
+		auto tex = std::make_unique<Texture>();
+		tex->Name = p.first;
+		tex->FilePath = p.second;
 
-	auto swirlingTex = std::make_unique<Texture>();
-	swirlingTex->Name = "swirlingTex";
-	swirlingTex->Filename = L"Resource/Textures/swirling.dds";
-
-	auto swirlingMaskTex = std::make_unique<Texture>();
-	swirlingMaskTex->Name = "swirlingMaskTex";
-	swirlingMaskTex->Filename = L"Resource/Textures/swirling_Mask.dds";
-
-	auto fenceTex = std::make_unique<Texture>();
-	fenceTex->Name = "fenceTex";
-	fenceTex->Filename = L"Resource/Textures/WireFence.dds";
-
-	auto bricksTex1 = std::make_unique<Texture>();
-	bricksTex1->Name = "bricksTex1";
-	bricksTex1->Filename = L"Resource/Textures/bricks2.dds";
-
-	auto checkboardTex = std::make_unique<Texture>();
-	checkboardTex->Name = "checkboardTex";
-	checkboardTex->Filename = L"Resource/Textures/checkboard.dds";
-
-	auto iceTex = std::make_unique<Texture>();
-	iceTex->Name = "iceTex";
-	iceTex->Filename = L"Resource/Textures/ice.dds";
-
-	auto helpTex = std::make_unique<Texture>();
-	helpTex->Name = "helpTex";
-	helpTex->Filename = L"Resource/Textures/help.dds";
-
-	auto treeArrayTex = std::make_unique<Texture>();
-	treeArrayTex->Name = "treeArrayTex";
-	treeArrayTex->Filename = L"Resource/Textures/treearray2.dds";
-
-	mTextures[defaultTex->Name] = std::move(defaultTex);
-	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
-	mTextures[bricksTex0->Name] = std::move(bricksTex0);
-	mTextures[stoneTex->Name] = std::move(stoneTex);
-	mTextures[tileTex->Name] = std::move(tileTex);
-	mTextures[grassTex->Name] = std::move(grassTex);
-	mTextures[waterTex->Name] = std::move(waterTex);
-	mTextures[swirlingTex->Name] = std::move(swirlingTex);
-	mTextures[swirlingMaskTex->Name] = std::move(swirlingMaskTex);
-	mTextures[fenceTex->Name] = std::move(fenceTex);
-	mTextures[bricksTex1->Name] = std::move(bricksTex1);
-	mTextures[checkboardTex->Name] = std::move(checkboardTex);
-	mTextures[iceTex->Name] = std::move(iceTex);
-	mTextures[helpTex->Name] = std::move(helpTex);
-	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
+		mTextures[tex->Name] = std::move(tex);
+	}
 
 	//텍스처 15개 기준 3ms 단축.
 	std::vector<Texture*> texturesToLoad;
@@ -373,6 +399,21 @@ void RenderApp::BuildMaterials()
 	mMaterials[gizmoX->Name] = std::move(gizmoX);
 	mMaterials[gizmoY->Name] = std::move(gizmoY);
 	mMaterials[gizmoZ->Name] = std::move(gizmoZ);
+
+	UINT srvHeapIndex = mSkinnedSrvHeapStart;
+	for (UINT i = 0; i < mSkinnedMats.size(); ++i)
+	{
+		auto mat = std::make_unique<Material>();
+		mat->Name = mSkinnedMats[i].Name;
+		mat->MatBufferIndex = index++;
+		mat->DiffuseSrvHeapIndex = mTextures[mSkinnedTextureNames[i]]->SrvHeapIndex;
+		mat->NormalSrvHeapIndex = srvHeapIndex++;
+		mat->DiffuseAlbedo = mSkinnedMats[i].DiffuseAlbedo;
+		mat->FresnelR0 = mSkinnedMats[i].FresnelR0;
+		mat->Roughness = mSkinnedMats[i].Roughness;
+
+		mMaterials[mat->Name] = std::move(mat);
+	}
 }
 
 void RenderApp::BuildRenderItems()
@@ -381,6 +422,7 @@ void RenderApp::BuildRenderItems()
 	BuildRenderItems_Common(StartInstanceLocation);
 	BuildRenderItems_InMirror(StartInstanceLocation);
 	BuildRenderItems_Gizmo(StartInstanceLocation);
+	BuildRenderItems_SkinnedModel(StartInstanceLocation);
 
 	for (const auto& ri : mAllRenderItems)
 		mInstanceCount += (UINT)ri->Instances.size();
@@ -398,7 +440,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		boxRI->InMirror = true;
 		{
 			InstanceData instance;
-			auto world = XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(0.f, 0.5f, -5.f);
+			auto world = XMMatrixScaling(2.f, 2.f / 3.f, 2.f) * XMMatrixTranslation(-7.f, 0.5f, 2.f);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -420,7 +462,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		blendBoxRI->InMirror = true;
 		{
 			InstanceData instance;
-			auto world = XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(0.f, 2.f, 8.f);
+			auto world = XMMatrixScaling(2.f, 2.f, 2.f) * XMMatrixTranslation(-7.f, 2.f, 15.f);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -442,7 +484,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		netBoxRI->InMirror = true;
 		{
 			InstanceData instance;
-			auto world = XMMatrixTranslation(0.f, 1.f, -10.f);
+			auto world = XMMatrixTranslation(-7.f, 1.f, -3.f);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -464,7 +506,11 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		gridRI->InMirror = true;
 		{
 			InstanceData instance;
-			instance.MaterialIndex = mMaterials["tile0"]->MatBufferIndex;
+			auto world = XMMatrixScaling(1.5f, 1.0f, 1.4f) * XMMatrixTranslation(-3.0f, 0.0f, 7.0f);
+			auto invTransposeWorld = MathHelper::InverseTranspose(world);
+			XMStoreFloat4x4(&instance.World, world);
+			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
+			instance.MaterialIndex = mMaterials["checkerTileMat"]->MatBufferIndex;
 			XMStoreFloat4x4(&instance.TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
 			instance.Bounds = gridRI->Geo->DrawArgs["grid"].Bounds;
 			gridRI->Instances.push_back(instance);
@@ -501,16 +547,16 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		GeoSphereRitem->InMirror = true;
 		mRenderItemLayer[(int)RenderLayer::GeoSphereLOD].push_back(GeoSphereRitem.get());
 
-		for (int i = 0; i < 5; ++i)
+		for (int i = 0; i < 8; ++i)
 		{
-			XMMATRIX leftCylWorld = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
+			XMMATRIX leftCylWorld = XMMatrixTranslation(-12.0f, 1.5f, -10.0f + i * 5.0f);
 			XMMATRIX leftCylWorld_invT = MathHelper::InverseTranspose(leftCylWorld);
-			XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
+			XMMATRIX rightCylWorld = XMMatrixTranslation(-2.0f, 1.5f, -10.0f + i * 5.0f);
 			XMMATRIX rightCylWorld_invT = MathHelper::InverseTranspose(rightCylWorld);
 
-			XMMATRIX leftSphereWorld = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
+			XMMATRIX leftSphereWorld = XMMatrixTranslation(-12.0f, 3.5f, -10.0f + i * 5.0f);
 			XMMATRIX leftSphereWorld_invT = MathHelper::InverseTranspose(leftSphereWorld);
-			XMMATRIX rightSphereWorld = XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
+			XMMATRIX rightSphereWorld = XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(-2.0f, 3.5f, -10.0f + i * 5.0f);
 			XMMATRIX rightSphereWorld_invT = MathHelper::InverseTranspose(rightSphereWorld);
 
 			InstanceData instance;
@@ -560,7 +606,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	skullRI->InMirror = true;
 	{
 		InstanceData instance;
-		auto world = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(0.f, 1.f, 0.f);
+		auto world = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(-7.f, 1.f, 7.f);
 		auto invTransposeWorld = MathHelper::InverseTranspose(world);
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -633,7 +679,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		{
 			InstanceData instance;
-			auto world = XMMatrixScaling(0.2f, 1.0f, 0.5f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10, 2, 0);
+			auto world = XMMatrixScaling(0.2f, 1.0f, 0.5f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-18, 2, 7);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -658,7 +704,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorWallTessRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
 		{
 			InstanceData instance;
-			auto world = XMMatrixScaling(0.3f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10.001f, 3.0f, 0.0f);
+			auto world = XMMatrixScaling(0.3f, 1.0f, 1.4f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-18.001f, 3.0f, 7.0f);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -682,7 +728,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 		mirrorBackRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		{
 			InstanceData instance;
-			auto world = XMMatrixScaling(0.2f, 1.0f, 0.5f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-10, 2, 0);
+			auto world = XMMatrixScaling(0.2f, 1.0f, 0.5f) * XMMatrixRotationRollPitchYaw(0, 0, -XM_PIDIV2) * XMMatrixTranslation(-18, 2, 7);
 			auto invTransposeWorld = MathHelper::InverseTranspose(world);
 			XMStoreFloat4x4(&instance.World, world);
 			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -744,7 +790,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	cylRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
 	{
 		InstanceData instance;
-		auto world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(0.f, 0.f, 13.f);
+		auto world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(-7.f, 0.f, 20.f);
 		auto invTransposeWorld = MathHelper::InverseTranspose(world);
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -766,7 +812,7 @@ void RenderApp::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 	explodeRI->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	{
 		InstanceData instance;
-		auto world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(0.f, 6.0f, 0.0f);
+		auto world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixTranslation(-7.f, 6.0f, 7.0f);
 		auto invTransposeWorld = MathHelper::InverseTranspose(world);
 		XMStoreFloat4x4(&instance.World, world);
 		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
@@ -871,6 +917,46 @@ void RenderApp::BuildRenderItems_Gizmo(UINT& InstanceBufferIndex)
 	mAllRenderItems.push_back(std::move(gizmoRI));
 }
 
+void RenderApp::BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex)
+{
+	for (UINT i = 0; i < mSkinnedMats.size(); ++i)
+	{
+		std::string submeshName = "sm_" + std::to_string(i);
+
+		auto ri = std::make_unique<RenderItem>();
+
+		// 데이터가 내보내진 좌표계(RHS)를 변경하기 위해 반전(reflect)을 수행합니다.
+		XMMATRIX modelScale = XMMatrixScaling(0.05f, 0.05f, -0.05f);
+		XMMATRIX modelRot = XMMatrixRotationY(XM_PI);
+		XMMATRIX modelOffset = XMMatrixTranslation(8.0f, 0.0f, -2.0f);
+		XMMATRIX world = modelScale * modelRot * modelOffset;
+		XMMATRIX invTransposeWorld = MathHelper::InverseTranspose(world);
+
+		ri->Geo = mGeometries["soldier"].get();
+		ri->IndexCount = ri->Geo->DrawArgs[submeshName].IndexCount;
+		ri->StartIndexLocation = ri->Geo->DrawArgs[submeshName].StartIndexLocation;
+		ri->BaseVertexLocation = ri->Geo->DrawArgs[submeshName].BaseVertexLocation;
+		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		{
+			InstanceData instance;
+			XMStoreFloat4x4(&instance.World, world);
+			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
+			instance.MaterialIndex = mMaterials[mSkinnedMats[i].Name]->MatBufferIndex;
+			instance.Bounds = ri->Geo->DrawArgs[submeshName].Bounds;
+			ri->Instances.push_back(instance);
+		}
+
+		// 이 soldier.m3d 인스턴스의 모든 렌더링 항목은 동일한 스킨드 모델 인스턴스를 공유합니다.
+		ri->SkinnedCBIndex = 0;
+		ri->SkinnedModelInstance = mSkinnedModelInstance.get();
+
+		ri->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)ri->Instances.size();
+		mRenderItemLayer[(int)RenderLayer::SkinnedOpaque].push_back(ri.get());
+		mAllRenderItems.push_back(std::move(ri));
+	}
+}
+
 void RenderApp::BuildFrameResources()
 {
 	for (int i = 0; i < gNumFrameResources; i++)
@@ -881,6 +967,7 @@ void RenderApp::BuildFrameResources()
 				2,
 				mInstanceCount,
 				(UINT)mWaves->VertexCount(),
-				(UINT)mMaterials.size()));
+				(UINT)mMaterials.size(),
+				1));
 	}
 }

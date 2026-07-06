@@ -43,8 +43,11 @@ bool RenderApp::Initialize()
 		mClientWidth, mClientHeight,
 		mBackBufferFormat);
 
-	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
+	mCamera.SetPosition(15.0f, 20.0f, -30.0f);
+	mCamera.Pitch(0.5f);
+	mCamera.RotateY(-0.5f);
 
+	LoadSkinnedModel();
     LoadTextures();
     BuildDescriptorHeaps();
     BuildRootSignature();
@@ -131,6 +134,7 @@ void RenderApp::Update(const GameTimer& gt)
 
 	AnimateMaterials(gt);
 	UpdateShadowTransform();
+	UpdateSkinnedCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateReflectedPassCB(gt);
 	UpdateGizmo();
@@ -182,21 +186,21 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	UpdateWavesGPU(gt);
-	mCommandList->SetGraphicsRootDescriptorTable(5, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
+	mCommandList->SetGraphicsRootDescriptorTable(6, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootDescriptorTable(2, hTable);
+	mCommandList->SetGraphicsRootDescriptorTable(3, hTable);
 	hTable.Offset(mTextures["treeArrayTex"]->SrvHeapIndex, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(6, hTable);
+	mCommandList->SetGraphicsRootDescriptorTable(7, hTable);
 
 	auto instanceBufferAddress = mCurrFrameResource->InstanceBuffer->Resource()->GetGPUVirtualAddress();
-	mCommandList->SetGraphicsRootShaderResourceView(4, instanceBufferAddress);
+	mCommandList->SetGraphicsRootShaderResourceView(5, instanceBufferAddress);
 
 	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
-	mCommandList->SetGraphicsRootShaderResourceView(3, matBuffer->GetGPUVirtualAddress());
+	mCommandList->SetGraphicsRootShaderResourceView(4, matBuffer->GetGPUVirtualAddress());
 
 	mCommandList->EndQuery(
 		mTimestampQueryHeap.Get(),
@@ -211,6 +215,9 @@ void RenderApp::Draw(const GameTimer& gt)
 		{
 		case (int)RenderLayer::Opaque:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
+			break;
+		case (int)RenderLayer::SkinnedOpaque:
+			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["skinnedOpaque_wireframe"].Get() : mPSOs["skinnedOpaque"].Get());
 			break;
 		case (int)RenderLayer::TessLand:
 			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["tessLand_wireframe"].Get() : mPSOs["tessLand"].Get());
@@ -506,6 +513,20 @@ void RenderApp::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
+void RenderApp::UpdateSkinnedCBs(const GameTimer& gt)
+{
+	auto currSkinnedCB = mCurrFrameResource->SkinnedCB.get();
+
+	mSkinnedModelInstance->UpdateSkinnedAnimation(gt.DeltaTime());
+
+	SkinnedConstants skinnedConstant;
+	std::copy(std::begin(mSkinnedModelInstance->finalTransforms),
+		std::end(mSkinnedModelInstance->finalTransforms),
+		&skinnedConstant.BoneTransforms[0]);
+
+	currSkinnedCB->CopyData(0, skinnedConstant);
+}
+
 void RenderApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = mCamera.GetView();
@@ -728,6 +749,9 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 
 void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
+	UINT skinnedCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
+	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
+
 	for (auto& ri : renderLayers)
 	{
 		if (ri->VisibleInstanceCount == 0) continue;
@@ -740,6 +764,16 @@ void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
 		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation, 0);
+
+		if (ri->SkinnedModelInstance != nullptr)
+		{
+			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + ri->SkinnedCBIndex * skinnedCBByteSize;
+			cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
+		}
+		else
+		{
+			cmdList->SetGraphicsRootConstantBufferView(2, 0);
+		}
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}

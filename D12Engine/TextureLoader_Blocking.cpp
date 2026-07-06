@@ -27,7 +27,7 @@ HRESULT TextureLoader_Blocking::LoadDDS(Texture& outTex)
 	assert(mDevice);
 	assert(mQueue);
 	assert(mFence);
-	if (outTex.Filename.empty()) return E_INVALIDARG;
+	if (outTex.FilePath.empty()) return E_INVALIDARG;
 	outTex.Resource.Reset();
 
 	ThrowIfFailed(mCmdAlloc->Reset());
@@ -41,7 +41,7 @@ HRESULT TextureLoader_Blocking::LoadDDS(Texture& outTex)
 	//만들어진 텍스처는 D3D12_RESOURCE_STATE_COMMON 상태.
 	HRESULT hr = DirectX::LoadDDSTextureFromFile(
 		mDevice.Get(),
-		outTex.Filename.c_str(),
+		outTex.FilePath.c_str(),
 		outTex.Resource.GetAddressOf(),
 		ddsData,
 		subresources);
@@ -106,7 +106,7 @@ HRESULT TextureLoader_Blocking::LoadDDS(UINT NumTextures, Texture* const* ppText
 	for (UINT i = 0; i < NumTextures; i++)
 	{
 		Texture& tex = *ppTextures[i];
-		if (tex.Filename.empty()) return E_INVALIDARG;
+		if (tex.FilePath.empty()) return E_INVALIDARG;
 		tex.Resource.Reset();
 
 		std::unique_ptr<uint8_t[]> ddsData;
@@ -114,7 +114,7 @@ HRESULT TextureLoader_Blocking::LoadDDS(UINT NumTextures, Texture* const* ppText
 
 		HRESULT hr = DirectX::LoadDDSTextureFromFile(
 			mDevice.Get(),
-			tex.Filename.c_str(),
+			tex.FilePath.c_str(),
 			tex.Resource.GetAddressOf(),
 			ddsData,
 			subresources);

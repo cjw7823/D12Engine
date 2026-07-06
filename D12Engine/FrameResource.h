@@ -11,7 +11,7 @@
 struct FrameResource
 {
 public:
-	FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT waveVertexCount, UINT materialCount);
+	FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT waveVertexCount, UINT materialCount, UINT skinnedObjectCount);
 	FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource() {};
@@ -19,6 +19,7 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdListAlloc;
 
 	//std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+	std::unique_ptr<UploadBuffer<SkinnedConstants>> SkinnedCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<MaterialData>> MaterialBuffer = nullptr;
 
