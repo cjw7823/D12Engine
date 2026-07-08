@@ -1,6 +1,8 @@
-# DirectX 12 Practice – Chapter 13 ~
+# DirectX 12 Practice – Chapter 13 ~ 16, 23
 
-프로젝트 진행중...
+이 프로젝트는 DirectX 12 학습 과정 중 Chapter 13 ~ 16, 23 내용을 실습하며 정리한 저장소입니다.
+
+본 저장소는 참고·보존 목적으로 유지되며, 이후 구조 개선 및 추가 개발은 별도 브랜치에서 진행합니다.
 
 ---
 
@@ -97,15 +99,6 @@ Stencil 기반 직접 반사 렌더링은 메인 Depth Buffer를 공유하기 �
 - 투명 오브젝트
 - 특수 셰이더를 사용하는 오브젝트
 
-따라서 현재 방식은 단순한 거울 반사 표현에는 사용할 수 있지만,  
-완전한 반사 렌더링 구조로 보기에는 한계가 있습니다.
-
 ### ▢ Picking / Gizmo 개선 여지
 현재 Picking은 CPU 측 Ray 교차 테스트를 기준으로 선택 대상을 계산합니다.
-Skinned Mesh의 최종 Skinning 결과 기준 Picking, 다중 선택 편집, 회전 / 스케일 Gizmo는 별도 개선 대상으로 남아 있습니다.
-
----
-
-## 📎 참고 자료
-
-작성 예정
+Skinned Mesh의 최종 Skinning 결과 기준 Picking, 다중 선택 편집, 회전 / 스케일 Gizmo는 개선 사항입니다.
