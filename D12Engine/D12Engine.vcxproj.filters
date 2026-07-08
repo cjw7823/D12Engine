@@ -1,0 +1,255 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="EntryPoint">
+      <UniqueIdentifier>{97773b53-1ed6-461d-bdc5-d18df1dbc9a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PCH">
+      <UniqueIdentifier>{a7182016-9710-4b1c-a56c-fb028896ebd1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util">
+      <UniqueIdentifier>{fc2a11d6-5840-40aa-bdb0-018f7f1e479c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App">
+      <UniqueIdentifier>{820d1915-4c7a-49b1-a6b8-1639e006fb01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{a529fe07-133c-4ba0-994f-9db1fb87a627}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{e5684643-d082-405c-a931-67868dba2cd6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI">
+      <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI\backends">
+      <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI\core">
+      <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\TextureLoader">
+      <UniqueIdentifier>{fa2ec8f0-9c0b-414c-9e57-fc018cfca0a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\DDSTextureLoader">
+      <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{948ab57d-363f-4d14-ba88-936a43859abd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\PostProcess">
+      <UniqueIdentifier>{50039c30-1030-4417-90f6-bc36884e6f49}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\GPGPU">
+      <UniqueIdentifier>{88c78b53-2e5f-4f35-8837-5981cede80b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Animation">
+      <UniqueIdentifier>{5c8b0eca-cd57-4336-b86d-46e6085c2d78}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D12Engine.cpp">
+      <Filter>EntryPoint</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>PCH</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui.cpp">
+      <Filter>External\IMGUI\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_demo.cpp">
+      <Filter>External\IMGUI\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_draw.cpp">
+      <Filter>External\IMGUI\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_tables.cpp">
+      <Filter>External\IMGUI\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_widgets.cpp">
+      <Filter>External\IMGUI\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\backends\imgui_impl_dx12.cpp">
+      <Filter>External\IMGUI\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\backends\imgui_impl_win32.cpp">
+      <Filter>External\IMGUI\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dUtil.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="MathHelper.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Dx12App.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameResource.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureLoader_Blocking.cpp">
+      <Filter>Util\TextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>External\DDSTextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenerator.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_ImGui.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_Input.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_Geometry.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="PipelineStateFactory.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_Pipeline.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_Resources.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="GpuWaves.cpp">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClCompile>
+    <ClCompile Include="BlurFilter.cpp">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClCompile>
+    <ClCompile Include="SobelFilter.cpp">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderApp_Gizmo.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="SkinnedData.cpp">
+      <Filter>Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadM3d.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>PCH</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imconfig.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imgui.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imgui_internal.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imstb_rectpack.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imstb_textedit.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\core\imstb_truetype.h">
+      <Filter>External\IMGUI\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\backends\imgui_impl_dx12.h">
+      <Filter>External\IMGUI\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IMGUI\backends\imgui_impl_win32.h">
+      <Filter>External\IMGUI\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dUtil.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelper.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTimer.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Dx12App.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderApp.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameResource.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderData.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureLoader_Blocking.h">
+      <Filter>Util\TextureLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h">
+      <Filter>External\DDSTextureLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryGenerator.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineStateFactory.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="GpuWaves.h">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="BlurFilter.h">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="SobelFilter.h">
+      <Filter>Rendering\GPGPU</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadM3d.h">
+      <Filter>Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="SkinnedData.h">
+      <Filter>Animation</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Default.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\DepthComplexity.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\LightingUtil.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\WaveSim.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\Task_GS.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\TreeBillboard.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\Blur.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Resource\Shaders\Sobel.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Resource\Shaders\Tessellation.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Resource\Shaders\Outline.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>

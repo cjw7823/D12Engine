@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{ffbcdf45-3887-4eaf-b948-8dec2b0a6cdd}</ProjectGuid>
+    <RootNamespace>D12Engine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(solutiondir)IMGUI\core;$(solutiondir);$(solutiondir)IMGUI\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)Resource" "$(TargetDir)Resource\" /E /I /Y /D</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(solutiondir)IMGUI\core;$(solutiondir);$(solutiondir)IMGUI\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(ProjectDir)Resource" "$(TargetDir)Resource\" /E /I /Y /D</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\backends\imgui_impl_dx12.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\backends\imgui_impl_win32.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_tables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\IMGUI\core\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="BlurFilter.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="D12Engine.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="d3dUtil.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Dx12App.cpp" />
+    <ClCompile Include="FrameResource.cpp" />
+    <ClCompile Include="GeometryGenerator.cpp" />
+    <ClCompile Include="GpuWaves.cpp" />
+    <ClCompile Include="LoadM3d.cpp" />
+    <ClCompile Include="MathHelper.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="PipelineStateFactory.cpp" />
+    <ClCompile Include="RenderApp.cpp" />
+    <ClCompile Include="RenderApp_Geometry.cpp" />
+    <ClCompile Include="RenderApp_Gizmo.cpp" />
+    <ClCompile Include="RenderApp_ImGui.cpp" />
+    <ClCompile Include="RenderApp_Input.cpp" />
+    <ClCompile Include="RenderApp_Pipeline.cpp" />
+    <ClCompile Include="RenderApp_Resources.cpp" />
+    <ClCompile Include="SkinnedData.cpp" />
+    <ClCompile Include="SobelFilter.cpp" />
+    <ClCompile Include="TextureLoader_Blocking.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="..\IMGUI\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="..\IMGUI\backends\imgui_impl_win32.h" />
+    <ClInclude Include="..\IMGUI\core\imconfig.h" />
+    <ClInclude Include="..\IMGUI\core\imgui.h" />
+    <ClInclude Include="..\IMGUI\core\imgui_internal.h" />
+    <ClInclude Include="..\IMGUI\core\imstb_rectpack.h" />
+    <ClInclude Include="..\IMGUI\core\imstb_textedit.h" />
+    <ClInclude Include="..\IMGUI\core\imstb_truetype.h" />
+    <ClInclude Include="BlurFilter.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="d3dUtil.h" />
+    <ClInclude Include="Dx12App.h" />
+    <ClInclude Include="FrameResource.h" />
+    <ClInclude Include="GameTimer.h" />
+    <ClInclude Include="GeometryGenerator.h" />
+    <ClInclude Include="GpuWaves.h" />
+    <ClInclude Include="LoadM3d.h" />
+    <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="PipelineStateFactory.h" />
+    <ClInclude Include="RenderApp.h" />
+    <ClInclude Include="RenderData.h" />
+    <ClInclude Include="SkinnedData.h" />
+    <ClInclude Include="SobelFilter.h" />
+    <ClInclude Include="TextureLoader_Blocking.h" />
+    <ClInclude Include="UploadBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\LightingUtil.hlsli">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Default.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\WaveSim.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\DepthComplexity.hlsl">
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Blur.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resource\Shaders\Task_GS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resource\Shaders\TreeBillboard.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Sobel.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <!--========================-->
+  <!--Custom Shader Build Item-->
+  <!--========================-->
+  <PropertyGroup>
+    <ShaderDir>$(ProjectDir)Resource\Shaders\Compiled\</ShaderDir>
+    <DXCPath>dxc.exe</DXCPath>
+    <NullDefines>
+    </NullDefines>
+    <FogDefines>-D FOG=1</FogDefines>
+    <TextureBlendDefines>$(FogDefines) -D TEXTURE_BLEND=1</TextureBlendDefines>
+    <AlphaTestDefines>$(FogDefines) -D ALPHA_TEST=1</AlphaTestDefines>
+    <WavesDefines>-D DISPLACEMENT_MAP=1</WavesDefines>
+    <tessWallDefines>-D WALL=1</tessWallDefines>
+    <SkinnedDefines>-D SKINNED=1</SkinnedDefines>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <ShaderCompileOptions>-Zi -Qembed_debug -Od</ShaderCompileOptions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <ShaderCompileOptions>-O3</ShaderCompileOptions>
+  </PropertyGroup>
+  <ItemGroup>
+    <ShaderInclude Include="$(ProjectDir)Resource\Shaders\LightingUtil.hlsli" />
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>Default_vs.cso</OutputName>
+      <AsmName>Default_vs.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>Default_ps.cso</OutputName>
+      <AsmName>Default_ps.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(FogDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>Default_ps_TextureBlend.cso</OutputName>
+      <AsmName>Default_ps_TextureBlend.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(TextureBlendDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>Default_ps_AlphaTest.cso</OutputName>
+      <AsmName>Default_ps_AlphaTest.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>Default_vs_Waves.cso</OutputName>
+      <AsmName>Default_vs_Waves.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(WavesDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\WaveSim.hlsl">
+      <Entry>UpdateWavesCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>WaveSim_cs_Update.cso</OutputName>
+      <AsmName>WaveSim_cs_Update.asm</AsmName>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\WaveSim.hlsl">
+      <Entry>DisturbWavesCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>WaveSim_cs_Disturb.cso</OutputName>
+      <AsmName>WaveSim_cs_Disturb.asm</AsmName>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\DepthComplexity.hlsl">
+      <Entry>FullscreenVS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>DepthComplexity_vs.cso</OutputName>
+      <AsmName>DepthComplexity_vs.asm</AsmName>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\DepthComplexity.hlsl">
+      <Entry>FullscreenPS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>DepthComplexity_ps.cso</OutputName>
+      <AsmName>DepthComplexity_ps.asm</AsmName>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>PS_MirrorBaseFill</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>MirrorBaseFill.cso</OutputName>
+      <AsmName>MirrorBaseFill.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>TreeBillboardVS.cso</OutputName>
+      <AsmName>TreeBillboardVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>GS</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>TreeBillboardGS.cso</OutputName>
+      <AsmName>TreeBillboardGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>TreeBillboardPS.cso</OutputName>
+      <AsmName>TreeBillboardPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
+      <Entry>PS_Wireframe</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>TreeBillboardPS_Wireframe.cso</OutputName>
+      <AsmName>TreeBillboardPS_Wireframe.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>LineToCylinderVS.cso</OutputName>
+      <AsmName>LineToCylinderVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>LineToCylinderGS.cso</OutputName>
+      <AsmName>LineToCylinderGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>LineToCylinderPS.cso</OutputName>
+      <AsmName>LineToCylinderPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_Explode</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>ExplodeGS.cso</OutputName>
+      <AsmName>ExplodeGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(AlphaTestDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_LOD</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>LOD_GS.cso</OutputName>
+      <AsmName>LOD_GS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>GS_Debugging</Entry>
+      <Profile>gs_6_0</Profile>
+      <OutputName>VertexDebugGS.cso</OutputName>
+      <AsmName>VertexDebugGS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
+      <Entry>PS_VertexNormal</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>VertexDebugPS.cso</OutputName>
+      <AsmName>VertexDebugPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Blur.hlsl">
+      <Entry>HorzBlurCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>HorzBlurCS.cso</OutputName>
+      <AsmName>HorzBlurCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Blur.hlsl">
+      <Entry>VertBlurCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>VertBlurCS.cso</OutputName>
+      <AsmName>VertBlurCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+      <Entry>SobelCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>SobelCS.cso</OutputName>
+      <AsmName>SobelCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Sobel.hlsl">
+      <Entry>CompositeCS</Entry>
+      <Profile>cs_6_0</Profile>
+      <OutputName>CompositeCS.cso</OutputName>
+      <AsmName>CompositeCS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>tessVS.cso</OutputName>
+      <AsmName>tessVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+      <Entry>HS</Entry>
+      <Profile>hs_6_0</Profile>
+      <OutputName>tessHS.cso</OutputName>
+      <AsmName>tessHS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+      <Entry>DS</Entry>
+      <Profile>ds_6_0</Profile>
+      <OutputName>tessDS.cso</OutputName>
+      <AsmName>tessDS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+      <Entry>DS</Entry>
+      <Profile>ds_6_0</Profile>
+      <OutputName>tessDS_Wall.cso</OutputName>
+      <AsmName>tessDS_Wall.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(tessWallDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>tessPS.cso</OutputName>
+      <AsmName>tessPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(FogDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>highlightVS.cso</OutputName>
+      <AsmName>highlightVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+      <Entry>VS_Mask</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>highlightVS_Mask.cso</OutputName>
+      <AsmName>highlightVS_Mask.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
+      <Entry>PS</Entry>
+      <Profile>ps_6_0</Profile>
+      <OutputName>highlightPS.cso</OutputName>
+      <AsmName>highlightPS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(NullDefines)</Defines>
+    </ShaderCompile>
+
+	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+		<Entry>VS</Entry>
+		<Profile>vs_6_0</Profile>
+		<OutputName>skinnedVS.cso</OutputName>
+		<AsmName>skinnedVS.asm</AsmName>
+		<DependsOn>@(ShaderInclude)</DependsOn>
+		<Defines>$(SkinnedDefines)</Defines>
+	</ShaderCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Tessellation.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource\Shaders\Outline.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
+    <MakeDir Directories="$(ShaderDir)" />
+    <Exec Command="&quot;$(DXCPath)&quot; $(ShaderCompileOptions) %(ShaderCompile.Defines) -T %(ShaderCompile.Profile) -E %(ShaderCompile.Entry) -Fo &quot;$(ShaderDir)%(ShaderCompile.OutputName)&quot; -Fc &quot;$(ShaderDir)%(ShaderCompile.AsmName)&quot; &quot;%(ShaderCompile.FullPath)&quot;" />
+  </Target>
+  <PropertyGroup>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
+</Project>
