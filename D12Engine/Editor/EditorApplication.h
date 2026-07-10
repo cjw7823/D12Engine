@@ -7,9 +7,23 @@
 #include <Windows.h>
 #include <filesystem>
 
-#include "Renderer/DirectX12/D3D12Context.h"
 #include "EditorLayer.h"
+#include "ImGuiLayer.h"
 
+#include "Renderer/DirectX12/D3D12Context.h"
+#include "Renderer/DirectX12/SceneRenderer.h"
+#include "Renderer/DirectX12/D3D12RenderTarget.h"
+
+#include "EngineCore/Scene.h"
+
+/*
+	EditorApplication
+	 ├─ D3D12Context        // DX12 실행 환경 1개
+	 ├─ ImGuiLayer          // UI 렌더링
+	 ├─ EditorLayer         // 에디터 패널
+	 ├─ SceneRenderer       // 3D 씬 렌더링
+	 └─ D3D12RenderTarget   // SceneView 출력 대상
+*/
 class EditorApplication
 {
 public:
@@ -28,8 +42,6 @@ protected:
 	bool InitMainWindow();
 	void Tick();
 
-	bool InitImGui();
-
 private:
 	inline static EditorApplication* mApp = nullptr;
 
@@ -43,5 +55,11 @@ private:
 	bool mResizing = false;
 
 	D3D12Context mD3D12Context;
+	ImGuiLayer mImGuiLayer;
 	EditorLayer mEditorLayer;
+
+	Scene mActiveScene;
+	SceneRenderer mSceneRenderer;
+
+	D3D12RenderTarget mSceneRenderTarget;
 };

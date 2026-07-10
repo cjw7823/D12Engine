@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderApp.h"
-#include "GeometryGenerator.h"
+#include "Renderer/DirectX12/GeometryGenerator.h"
 #include "Renderer/DirectX12/RenderData.h"
 
 using namespace DirectX;

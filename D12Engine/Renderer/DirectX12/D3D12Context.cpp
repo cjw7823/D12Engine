@@ -2,9 +2,6 @@
 #include "D3D12Context.h"
 #include "MACRO.h"
 
-#include "imgui.h"
-#include "imgui_impl_dx12.h"
-
 using namespace Microsoft::WRL;
 
 D3D12Context::D3D12Context()
@@ -19,7 +16,7 @@ D3D12Context::~D3D12Context()
 	Shutdown();
 }
 
-bool D3D12Context::Initialize(HWND hwnd, int width, int height, const D3D12ContextDesc& desc)
+bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc desc)
 {
 	mhWnd = hwnd;
 	mClientWidth = std::max(1, width);
@@ -153,28 +150,6 @@ void D3D12Context::BeginFrame()
 	mCurrentBackBufferIndex = mSwapChain->GetCurrentBackBufferIndex();
 	mFrameStarted = true;
 	mBackBufferInRenderTargetState = false;
-}
-
-void D3D12Context::RenderImGuiDrawData(ImDrawData* drawData)
-{
-	assert(mFrameStarted);
-
-	BeginBackBufferRenderPass(mDesc.BackBufferClearColor.data());
-
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
-
-	if (drawData != nullptr)
-		ImGui_ImplDX12_RenderDrawData(drawData, mCommandList.Get());
-
-	ImGuiIO& io = ImGui::GetIO();
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
-	}
 }
 
 void D3D12Context::EndFrame()

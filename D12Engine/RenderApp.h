@@ -15,15 +15,16 @@
 #include "DirectX-Headers/d3dx12.h"
 
 #include "Dx12App.h"
-#include "FrameResource.h"
-#include "EngineCore/TextureLoader_Blocking.h"
-#include "GpuWaves.h"
+#include "Renderer/DirectX12/FrameResource.h"
+#include "Renderer/DirectX12/GpuWaves.h"
 #include "Renderer/DirectX12/RenderData.h"
-#include "BlurFilter.h"
-#include "SobelFilter.h"
+#include "Renderer/DirectX12/BlurFilter.h"
+#include "Renderer/DirectX12/SobelFilter.h"
 #include "Renderer/DirectX12/Camera.h"
+
 #include "EngineCore/LoadM3d.h"
 #include "EngineCore/GameTimer.h"
+#include "EngineCore/TextureLoader_Blocking.h"
 
 /*
 	1. Resource Heap / Resource Memory
@@ -83,7 +84,7 @@ public:
 	RenderApp(HINSTANCE hInstance) : Dx12App(hInstance) {}
 	RenderApp(const RenderApp& rhs) = delete;
 	RenderApp& operator=(const RenderApp& rhs) = delete;
-	~RenderApp() override;
+	virtual ~RenderApp() override;
 
 	virtual bool Initialize() override;
 	virtual void NextMsaaOoption() override;

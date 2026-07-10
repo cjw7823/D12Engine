@@ -15,11 +15,9 @@
 #include "EngineCore/WinHandle.h"
 #include "EngineCore/MsaaOption.h"
 
-struct ImDrawData;
-
 struct D3D12FrameContext
 {
-   Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator;
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator;
     UINT64 FenceValue = 0;
 };
 
@@ -34,8 +32,7 @@ struct D3D12DescriptorHandle
 
 struct D3D12ContextDesc
 {
-    // RTV 0 ~ SwapChainBufferCount - 1 are reserved for swap-chain back buffers.
-    // Scene View render targets, picking buffers, debug render targets, etc. use the remaining RTV slots.
+    // RTV 0 ~ SwapChainBufferCount - 1은 스왑 체인 백 버퍼용으로 예약.
     UINT RtvDescriptorCount = RenderConfig::SwapChainBufferCount + 32;
     UINT DsvDescriptorCount = 16;
     UINT CbvSrvUavDescriptorMaxCount = 256;
@@ -57,13 +54,12 @@ public:
     D3D12Context(const D3D12Context&) = delete;
     D3D12Context& operator=(const D3D12Context&) = delete;
 
-    bool Initialize(HWND hwnd, int width, int height, const D3D12ContextDesc& desc = {});
+    bool Initialize(HWND hwnd, int width, int height, D3D12ContextDesc desc = {});
     void Shutdown();
 
     void ResizeSwapChain(int width, int height);
 
     void BeginFrame();
-    void RenderImGuiDrawData(ImDrawData* drawData);
     void EndFrame();
 
     void FlushCommandQueue();
@@ -76,7 +72,9 @@ public:
     void FreeDsvDescriptor(D3D12DescriptorHandle handle);
     void FreeSrvDescriptor(D3D12DescriptorHandle handle);
 
-    // For ImGui_ImplDX12_InitInfo callback form.
+    // 콜백 호환 디스크립터 할당 헬퍼.
+    // raw CPU/GPU 디스크립터 핸들이 필요한 외부 시스템에서 사용됨.
+    // 현재는 ImGui에서 사용.
     void AllocateSrvDescriptor(
         D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle);
@@ -105,14 +103,14 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferRTV() const;
     UINT GetCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
 
+    void BeginBackBufferRenderPass(const float clearColor[4]);
+
 private:
     void CreateDevice();
     void CreateDescriptorHeaps();
     void CreateCommandObjects();
     void CreateSwapChain();
     void CreateBackBufferRTVs();
-
-    void BeginBackBufferRenderPass(const float clearColor[4]);
 
     D3D12FrameContext* WaitForNextFrameContext();
 

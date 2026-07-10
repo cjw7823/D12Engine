@@ -33,5 +33,5 @@ public:
 	// 인스턴싱을 사용할 때도 마찬가지로, 1,000개 인스턴스의 데이터를 저장할 수 있을 만큼 충분히 큰 구조화된 버퍼를 생성하기만 하면 됩니다.
 	std::unique_ptr<UploadBuffer<InstanceData_GPU>> InstanceBuffer = nullptr;
 
-	UINT64 Fence = 0;
+	UINT64 FenceValue = 0;
 };

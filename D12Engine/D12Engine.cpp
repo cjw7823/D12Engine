@@ -4,7 +4,6 @@
 	#define DX12_ENABLE_DEBUG_LAYER
 #endif
 
-#include "pch.h"
 #include "Editor/EditorApplication.h"
 #include "EngineCore/DxException.h"
 

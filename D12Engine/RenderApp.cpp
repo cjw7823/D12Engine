@@ -3,6 +3,8 @@
 #include "EngineCore/MathHelper.h"
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/DirectX12/D3D12Util.h"
+#include "Renderer/DirectX12/MACRO.h"
+#include "Renderer/DirectX12/FrameResource.h"
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -124,9 +126,9 @@ void RenderApp::Update(const GameTimer& gt)
 	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % RenderConfig::NumFrameResources;
 	mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
 
-	if (mCurrFrameResource->Fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->Fence)
+	if (mCurrFrameResource->FenceValue != 0 && mFence->GetCompletedValue() < mCurrFrameResource->FenceValue)
 	{
-		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->Fence, mFenceEvent.Get()));
+		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->FenceValue, mFenceEvent.Get()));
 		WaitForSingleObject(mFenceEvent.Get(), INFINITE);
 	}
 
@@ -410,8 +412,17 @@ void RenderApp::Draw(const GameTimer& gt)
 	ThrowIfFailed(mSwapChain->Present(0, 0));
 	mCurrBackBuffer = (mCurrBackBuffer + 1) % RenderConfig::SwapChainBufferCount;
 
-	mCurrFrameResource->Fence = ++mCurrentFence;
+	mCurrFrameResource->FenceValue = ++mCurrentFence;
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
+}
+
+bool RenderApp::InitImGui()
+{
+	return false;
+}
+
+void RenderApp::RenderImGui()
+{
 }
 
 void RenderApp::ResolveMsaaToBackBuffer()
@@ -922,7 +933,7 @@ void RenderApp::ReadbackTimestampData(int frameResourceIndex)
 		return;
 
 	// 아직 이 frame resource slot으로 한 번도 Draw/Resolve가 끝난 적 없으면 읽을 값 없음.
-	if (mCurrFrameResource->Fence == 0)
+	if (mCurrFrameResource->FenceValue == 0)
 		return;
 
 	const UINT queryCountPerFrame = 4;

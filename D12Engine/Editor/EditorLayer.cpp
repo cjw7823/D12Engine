@@ -17,7 +17,7 @@ void EditorLayer::DrawEditorUI()
 	DrawMainDockSpace();
 
 	if (mShowSceneView)
-		DrawSceneView();
+		mSceneViewPanel.OnImGuiRender();
 
 	if (mShowContentBrowser)
 		DrawContentBrowser();
