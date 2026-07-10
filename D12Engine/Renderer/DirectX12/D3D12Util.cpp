@@ -1,37 +1,29 @@
 #include "pch.h"
-#include "d3dUtil.h"
-#include <comdef.h>
-#include <fstream>
+#include "D3D12Util.h"
+#include "EngineCore/DxException.h"
+#include "EngineCore/StringUtil.h"
+#include "MACRO.h"
 
 using namespace Microsoft::WRL;
 
-std::wstring DxException::ToString() const
-{
-	_com_error err(ErrorCode);
-	std::wstring msg = err.ErrorMessage();
-	return FunctionName + L" failed in " + FileName + L";\nline " + std::to_wstring(LineNumber) + L";\nerror: " + msg;
-}
-
 /// <summary>
-/// ÃÖ»óÀ§ ºñÆ® 15¹ø bit = ÇöÀç Å°°¡ ´­·Á ÀÖÀ¸¸é 1
-//  ÃÖÇÏÀ§ ºñÆ® 0¹ø bit = ÀÌÀü È£Ãâ ÀÌÈÄ Å°°¡ ´­¸° Àû ÀÖÀ¸¸é 1
+/// ìµœìƒìœ„ ë¹„íŠ¸ 15ë²ˆ bit = í˜„ì¬ í‚¤ê°€ ëˆŒë ¤ ìˆìœ¼ë©´ 1
+//  ìµœí•˜ìœ„ ë¹„íŠ¸ 0ë²ˆ bit = ì´ì „ í˜¸ì¶œ ì´í›„ í‚¤ê°€ ëˆŒë¦° ì  ìˆìœ¼ë©´ 1
 /// </summary>
 /// <param name="vkeyCode"></param>
 /// <returns></returns>
-bool d3dUtil::IsKeyDown(int vkeyCode)
+bool D3D12Util::IsKeyDown(int vkeyCode)
 {
 	return (GetAsyncKeyState(vkeyCode) & 0x8000) != 0;
 }
 
-UINT d3dUtil::CalcConstantBufferByteSize(UINT byteSize)
+UINT D3D12Util::CalcConstantBufferByteSize(UINT byteSize)
 {
-	//»ó¼ö ¹öÆÛ´Â ÃÖ¼Ò ÇÏµå¿ş¾î ÇÒ´ç Å©±â(256¹ÙÀÌÆ®)ÀÇ ¹è¼ö¿©¾ß ÇÔ.
+	//ìƒìˆ˜ ë²„í¼ëŠ” ìµœì†Œ í•˜ë“œì›¨ì–´ í• ë‹¹ í¬ê¸°(256ë°”ì´íŠ¸)ì˜ ë°°ìˆ˜ì—¬ì•¼ í•¨.
 	return (byteSize + 255) & ~255;
 }
 
-
-//target : ¼ÎÀÌ´õ ´Ü°è + ¸ğµ¨ ¹öÀü °áÁ¤
-Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(const std::wstring& filename, const D3D_SHADER_MACRO* defines, const std::string& entryPoint, const std::string& target)
+Microsoft::WRL::ComPtr<ID3DBlob> D3D12Util::CompileShader(const std::wstring& filename, const D3D_SHADER_MACRO* defines, const std::string& entryPoint, const std::string& target)
 {
 	UINT compileFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)
@@ -58,7 +50,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::CompileShader(const std::wstring& file
 	return byteCode;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer)
+Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Util::CreateDefaultBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
@@ -93,8 +85,8 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 		D3D12_RESOURCE_STATE_COPY_DEST);
 	cmdList->ResourceBarrier(1, &barrier1);
 
-	//CPU¸Ş¸ğ¸® -> Upload Heap º¹»ç ½ÇÇà
-	//Upload Heap -> Default Heap Copy ¸í·É ±â·Ï.
+	//CPUë©”ëª¨ë¦¬ -> Upload Heap ë³µì‚¬ ì‹¤í–‰
+	//Upload Heap -> Default Heap Copy ëª…ë ¹ ê¸°ë¡.
 	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 	CD3DX12_RESOURCE_BARRIER barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -103,14 +95,14 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 		D3D12_RESOURCE_STATE_GENERIC_READ);
 	cmdList->ResourceBarrier(1, &barrier2);
 
-	//Âü°í: À§ ÇÔ¼ö È£Ãâ ÈÄ¿¡µµ uploadBuffer´Â °è¼Ó À¯ÁöµÇ¾î¾ß ÇÔ.
-	//cmdList¿¡ ¸í·ÉÀ» ±â·ÏÇßÀ» »Ó ¾ÆÁ÷ ½ÇÇàµÇÁö ¾ÊÀ½.
-	//È£ÃâÀÚ´Â º¹»ç°¡ ½ÇÇàµÇ¾úÀ½À» È®ÀÎÇÑ ÈÄ¿¡ uploadBuffer¸¦ ÇØÁ¦ °¡´É.
+	//ì°¸ê³ : ìœ„ í•¨ìˆ˜ í˜¸ì¶œ í›„ì—ë„ uploadBufferëŠ” ê³„ì† ìœ ì§€ë˜ì–´ì•¼ í•¨.
+	//cmdListì— ëª…ë ¹ì„ ê¸°ë¡í–ˆì„ ë¿ ì•„ì§ ì‹¤í–‰ë˜ì§€ ì•ŠìŒ.
+	//í˜¸ì¶œìëŠ” ë³µì‚¬ê°€ ì‹¤í–‰ë˜ì—ˆìŒì„ í™•ì¸í•œ í›„ì— uploadBufferë¥¼ í•´ì œ ê°€ëŠ¥.
 
 	return defaultBuffer;
 }
 
-Microsoft::WRL::ComPtr<ID3DBlob> d3dUtil::LoadBinary(const std::wstring& path)
+Microsoft::WRL::ComPtr<ID3DBlob> D3D12Util::LoadBinary(const std::wstring& path)
 {
 	std::ifstream fin(path, std::ios::binary);
 

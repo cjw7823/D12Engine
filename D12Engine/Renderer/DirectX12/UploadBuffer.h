@@ -1,6 +1,8 @@
 #pragma once
 
-#include "d3dUtil.h"
+#include <d3d12.h>
+#include "Renderer/DirectX12/MACRO.h"
+#include "Renderer/DirectX12/D3D12Util.h"
 
 template<typename T>
 class UploadBuffer
@@ -10,7 +12,7 @@ public:
 	{
 		mElementByteSize = sizeof(T);
 		if (isConstantBuffer)
-			mElementByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(T));
+			mElementByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(T));
 
 		CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
 		CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Buffer(mElementByteSize * elementCount);

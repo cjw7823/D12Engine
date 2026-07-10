@@ -105,7 +105,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(solutiondir)IMGUI\core;$(solutiondir);$(solutiondir)IMGUI\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)IMGUI\core;$(solutiondir)IMGUI\backends;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,7 +130,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(solutiondir)IMGUI\core;$(solutiondir);$(solutiondir)IMGUI\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)IMGUI\core;$(solutiondir)IMGUI\backends;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -174,22 +174,20 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="BlurFilter.cpp" />
-    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="D12Engine.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="d3dUtil.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Dx12App.cpp" />
+    <ClCompile Include="Editor\EditorApplication.cpp" />
+    <ClCompile Include="Editor\EditorLayer.cpp" />
+    <ClCompile Include="EngineCore\LoadM3d.cpp" />
+    <ClCompile Include="EngineCore\MathHelper.cpp" />
+    <ClCompile Include="EngineCore\SkinnedData.cpp" />
+    <ClCompile Include="EngineCore\TextureLoader_Blocking.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="GpuWaves.cpp" />
-    <ClCompile Include="LoadM3d.cpp" />
-    <ClCompile Include="MathHelper.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -202,9 +200,10 @@
     <ClCompile Include="RenderApp_Input.cpp" />
     <ClCompile Include="RenderApp_Pipeline.cpp" />
     <ClCompile Include="RenderApp_Resources.cpp" />
-    <ClCompile Include="SkinnedData.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Camera.cpp" />
+    <ClCompile Include="Renderer\DirectX12\D3D12Context.cpp" />
+    <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp" />
     <ClCompile Include="SobelFilter.cpp" />
-    <ClCompile Include="TextureLoader_Blocking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h" />
@@ -217,23 +216,32 @@
     <ClInclude Include="..\IMGUI\core\imstb_textedit.h" />
     <ClInclude Include="..\IMGUI\core\imstb_truetype.h" />
     <ClInclude Include="BlurFilter.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="d3dUtil.h" />
     <ClInclude Include="Dx12App.h" />
+    <ClInclude Include="Editor\EditorApplication.h" />
+    <ClInclude Include="Editor\EditorLayer.h" />
+    <ClInclude Include="EngineCore\DxException.h" />
+    <ClInclude Include="EngineCore\GameTimer.h" />
+    <ClInclude Include="EngineCore\LoadM3d.h" />
+    <ClInclude Include="EngineCore\MathHelper.h" />
+    <ClInclude Include="EngineCore\MsaaOption.h" />
+    <ClInclude Include="EngineCore\RenderConfig.h" />
+    <ClInclude Include="EngineCore\SkinnedData.h" />
+    <ClInclude Include="EngineCore\StringUtil.h" />
+    <ClInclude Include="EngineCore\TextureLoader_Blocking.h" />
+    <ClInclude Include="EngineCore\WinHandle.h" />
     <ClInclude Include="FrameResource.h" />
-    <ClInclude Include="GameTimer.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="GpuWaves.h" />
-    <ClInclude Include="LoadM3d.h" />
-    <ClInclude Include="MathHelper.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PipelineStateFactory.h" />
     <ClInclude Include="RenderApp.h" />
-    <ClInclude Include="RenderData.h" />
-    <ClInclude Include="SkinnedData.h" />
+    <ClInclude Include="Renderer\DirectX12\Camera.h" />
+    <ClInclude Include="Renderer\DirectX12\D3D12Context.h" />
+    <ClInclude Include="Renderer\DirectX12\D3D12Util.h" />
+    <ClInclude Include="Renderer\DirectX12\MACRO.h" />
+    <ClInclude Include="Renderer\DirectX12\RenderData.h" />
+    <ClInclude Include="Renderer\DirectX12\UploadBuffer.h" />
     <ClInclude Include="SobelFilter.h" />
-    <ClInclude Include="TextureLoader_Blocking.h" />
-    <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\LightingUtil.hlsli">
@@ -561,15 +569,14 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
-
-	<ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
-		<Entry>VS</Entry>
-		<Profile>vs_6_0</Profile>
-		<OutputName>skinnedVS.cso</OutputName>
-		<AsmName>skinnedVS.asm</AsmName>
-		<DependsOn>@(ShaderInclude)</DependsOn>
-		<Defines>$(SkinnedDefines)</Defines>
-	</ShaderCompile>
+    <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
+      <Entry>VS</Entry>
+      <Profile>vs_6_0</Profile>
+      <OutputName>skinnedVS.cso</OutputName>
+      <AsmName>skinnedVS.asm</AsmName>
+      <DependsOn>@(ShaderInclude)</DependsOn>
+      <Defines>$(SkinnedDefines)</Defines>
+    </ShaderCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Tessellation.hlsl">

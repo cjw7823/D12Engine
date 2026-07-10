@@ -7,8 +7,9 @@
 #include <Windows.h>
 
 #include "DirectX-Headers\d3dx12.h"
-#include <dxgi1_4.h>					//For DXGI Interfaces
-#include <WRL.h>						//For ComPtr
+#include <dxgi1_5.h>				//For DXGI Interfaces
+#include <WRL.h>					//For ComPtr
+#include <windowsX.h>				// GET_X_LPARAM(), GET_Y_LPARAM()
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>

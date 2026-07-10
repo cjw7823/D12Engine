@@ -1,8 +1,7 @@
 #include "pch.h"
 #include "Dx12App.h"
-#include <windowsX.h> // GET_X_LPARAM(), GET_Y_LPARAM()
-#include "d3dUtil.h"
-#include "RenderData.h"
+#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 using namespace Microsoft::WRL;
 
@@ -140,6 +139,7 @@ LRESULT Dx12App::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		mAppPaused = false;
 		mResizing = false;
 		mTimer.Start();
+		OnResize();
 		return 0;
 
 	case WM_DESTROY:
@@ -240,7 +240,7 @@ void Dx12App::OnResize()
 	mDepthStencilBuffer.Reset();
 	mMsaaRenderTarget.Reset();
 
-	ThrowIfFailed(mSwapChain->ResizeBuffers(SwapChainBufferCount,
+	ThrowIfFailed(mSwapChain->ResizeBuffers(RenderConfig::SwapChainBufferCount,
 		mClientWidth, mClientHeight,
 		mBackBufferFormat,
 		0));
@@ -248,7 +248,7 @@ void Dx12App::OnResize()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	for (int i = 0; i < SwapChainBufferCount; i++)
+	for (int i = 0; i < RenderConfig::SwapChainBufferCount; i++)
 	{
 		// 스왑체인의 i번째 백버퍼를 ID3D12Resource로 가져온다.
 		// 백버퍼도 결국 렌더 타겟으로 사용할 Texture2D 리소스다.
@@ -381,7 +381,7 @@ void Dx12App::OnResize()
 void Dx12App::CreateRtvDsvDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 1; //백버퍼 + MSAA 렌더 타겟
+	rtvHeapDesc.NumDescriptors = RenderConfig::SwapChainBufferCount + 1; //백버퍼 + MSAA 렌더 타겟
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
@@ -437,7 +437,7 @@ bool Dx12App::InitMainWindow()
 		return false;
 	}
 
-	ShowWindow(mhMainWnd, SW_SHOW);
+	ShowWindow(mhMainWnd, SW_SHOWDEFAULT);
 	UpdateWindow(mhMainWnd);
 
 	return true;
@@ -574,7 +574,7 @@ void Dx12App::CreateSwapChain()
 	sd.SampleDesc.Quality = 0;
 
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.BufferCount = SwapChainBufferCount;
+	sd.BufferCount = RenderConfig::SwapChainBufferCount;
 	sd.OutputWindow = mhMainWnd;
 	sd.Windowed = true;
 
@@ -612,14 +612,14 @@ void Dx12App::FlushCommandQueue()
 void Dx12App::CreateQueryHeap()
 {
 	D3D12_QUERY_HEAP_DESC queryHeapDesc = {};
-	queryHeapDesc.Count = 4 * gNumFrameResources;
+	queryHeapDesc.Count = 4 * RenderConfig::NumFrameResources;
 	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
 
 	ThrowIfFailed(md3dDevice->CreateQueryHeap(
 		&queryHeapDesc,
 		IID_PPV_ARGS(&mTimestampQueryHeap)));
 
-	const UINT64 bufferSize = sizeof(UINT64) * 4 * gNumFrameResources;
+	const UINT64 bufferSize = sizeof(UINT64) * 4 * RenderConfig::NumFrameResources;
 
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
 	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
@@ -749,5 +749,5 @@ D3D12_CPU_DESCRIPTOR_HANDLE Dx12App::DepthStencilView() const
 
 D3D12_CPU_DESCRIPTOR_HANDLE Dx12App::MsaaRenderTargetView() const
 {
-	return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), SwapChainBufferCount, mRtvDescriptorSize);
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), RenderConfig::SwapChainBufferCount, mRtvDescriptorSize);
 }

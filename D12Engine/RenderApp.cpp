@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "RenderApp.h"
-#include "MathHelper.h"
-#include "RenderData.h"
+#include "EngineCore/MathHelper.h"
+#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/DirectX12/D3D12Util.h"
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -106,7 +107,7 @@ void RenderApp::OnResize()
 {
 	Dx12App::OnResize();
 
-	mCamera.SetLens(DirectX::XM_PIDIV4, AspectRatio(), 1.0f, 200.0f);
+	mCamera.SetLens(DirectX::XM_PIDIV4, AspectRatio(), 1.0f, 1000.0f);
 
 	BoundingFrustum::CreateFromMatrix(mCamFrustum, mCamera.GetProj());
 
@@ -120,7 +121,7 @@ void RenderApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 
-	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
+	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % RenderConfig::NumFrameResources;
 	mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
 
 	if (mCurrFrameResource->Fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->Fence)
@@ -144,9 +145,9 @@ void RenderApp::Update(const GameTimer& gt)
 
 void RenderApp::Draw(const GameTimer& gt)
 {
-	auto& cmdListAlloc = mCurrFrameResource->cmdListAlloc;
-	ThrowIfFailed(cmdListAlloc->Reset());
-	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), nullptr));
+	auto& cmdAlloc = mCurrFrameResource->cmdAlloc;
+	ThrowIfFailed(cmdAlloc->Reset());
+	ThrowIfFailed(mCommandList->Reset(cmdAlloc.Get(), nullptr));
 
 	//Timestamp start
 	UINT baseQuery = mCurrFrameResourceIndex * 4;
@@ -189,7 +190,7 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootDescriptorTable(6, mWaves->DisplacementMap());	//시뮬한 높이 값 바인딩
 
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+	UINT passCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(PassConstants));
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetGraphicsRootDescriptorTable(3, hTable);
@@ -407,7 +408,7 @@ void RenderApp::Draw(const GameTimer& gt)
 	mCommandQueue->ExecuteCommandLists(static_cast<UINT>(cmdLists.size()), cmdLists.data());
 
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % RenderConfig::SwapChainBufferCount;
 
 	mCurrFrameResource->Fence = ++mCurrentFence;
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
@@ -460,7 +461,7 @@ void RenderApp::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 		XMFLOAT4{0.4f, 0.4f, 0.4f, 1.0f}    // 10 회색
 	};
 
-	UINT debugColorCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(DebugColorConstants));
+	UINT debugColorCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(DebugColorConstants));
 
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -733,7 +734,7 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 	if (tu >= 1.0f) tu -= 1.0f;
 	if (tv >= 1.0f) tv -= 1.0f;
 
-	waterMat->NumFramesDirty = gNumFrameResources;
+	waterMat->NumFramesDirty = RenderConfig::NumFrameResources;
 
 
 	//Blend Texture Box Animation
@@ -744,12 +745,12 @@ void RenderApp::AnimateMaterials(const GameTimer& gt)
 	XMMATRIX T1 = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
 	XMMATRIX M = T0 * R * T1;
 	XMStoreFloat4x4(&swirlingMat->MatTransform, M);
-	swirlingMat->NumFramesDirty = gNumFrameResources;
+	swirlingMat->NumFramesDirty = RenderConfig::NumFrameResources;
 }
 
 void RenderApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
-	UINT skinnedCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
+	UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
 	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
 
 	for (auto& ri : renderLayers)

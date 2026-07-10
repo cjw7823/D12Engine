@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderApp.h"
-#include "MathHelper.h"
+#include "EngineCore/MathHelper.h"
 
 using namespace DirectX;
 
@@ -81,9 +81,9 @@ void RenderApp::OnKeyboardInput(const GameTimer& gt)
 	static bool prevKeyDown2 = false;
 	static bool prevKeyDown3 = false;
 
-	bool KeyDown1 = d3dUtil::IsKeyDown('1');
-	bool KeyDown2 = d3dUtil::IsKeyDown('2');
-	bool KeyDown3 = d3dUtil::IsKeyDown('3');
+	bool KeyDown1 = D3D12Util::IsKeyDown('1');
+	bool KeyDown2 = D3D12Util::IsKeyDown('2');
+	bool KeyDown3 = D3D12Util::IsKeyDown('3');
 
 	if (KeyDown1 && !prevKeyDown1)
 	{
@@ -110,28 +110,28 @@ void RenderApp::OnKeyboardInput(const GameTimer& gt)
 
 	const float dt = gt.DeltaTime();
 
-	if (d3dUtil::IsKeyDown(VK_LEFT))
+	if (D3D12Util::IsKeyDown(VK_LEFT))
 		mSunTheta -= 1.0f * dt;
 
-	if (d3dUtil::IsKeyDown(VK_RIGHT))
+	if (D3D12Util::IsKeyDown(VK_RIGHT))
 		mSunTheta += 1.0f * dt;
 
-	if (d3dUtil::IsKeyDown(VK_UP))
+	if (D3D12Util::IsKeyDown(VK_UP))
 		mSunPhi -= 1.0f * dt;
 
-	if (d3dUtil::IsKeyDown(VK_DOWN))
+	if (D3D12Util::IsKeyDown(VK_DOWN))
 		mSunPhi += 1.0f * dt;
 
 	mSunPhi = MathHelper::Clamp(mSunPhi, 1.0f, XM_PIDIV2);
 
 	//camera move
 	const float speed = 10.0f;
-	if (d3dUtil::IsKeyDown('W')) mCamera.MoveForward(speed * dt);
-	if (d3dUtil::IsKeyDown('S')) mCamera.MoveForward(-speed * dt);
-	if (d3dUtil::IsKeyDown('A')) mCamera.MoveRight(-speed * dt);
-	if (d3dUtil::IsKeyDown('D')) mCamera.MoveRight(speed * dt);
-	if (d3dUtil::IsKeyDown('Q')) mCamera.MoveUp(-speed * dt);
-	if (d3dUtil::IsKeyDown('E')) mCamera.MoveUp(speed * dt);
+	if (D3D12Util::IsKeyDown('W')) mCamera.MoveForward(speed * dt);
+	if (D3D12Util::IsKeyDown('S')) mCamera.MoveForward(-speed * dt);
+	if (D3D12Util::IsKeyDown('A')) mCamera.MoveRight(-speed * dt);
+	if (D3D12Util::IsKeyDown('D')) mCamera.MoveRight(speed * dt);
+	if (D3D12Util::IsKeyDown('Q')) mCamera.MoveUp(-speed * dt);
+	if (D3D12Util::IsKeyDown('E')) mCamera.MoveUp(speed * dt);
 
 	mCamera.UpdateViewMatrix();
 }

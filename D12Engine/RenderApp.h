@@ -16,14 +16,14 @@
 
 #include "Dx12App.h"
 #include "FrameResource.h"
-#include "TextureLoader_Blocking.h"
+#include "EngineCore/TextureLoader_Blocking.h"
 #include "GpuWaves.h"
-#include "RenderData.h"
+#include "Renderer/DirectX12/RenderData.h"
 #include "BlurFilter.h"
 #include "SobelFilter.h"
-#include "Camera.h"
-
-#include "LoadM3d.h"
+#include "Renderer/DirectX12/Camera.h"
+#include "EngineCore/LoadM3d.h"
+#include "EngineCore/GameTimer.h"
 
 /*
 	1. Resource Heap / Resource Memory

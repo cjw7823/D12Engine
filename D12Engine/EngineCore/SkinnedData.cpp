@@ -91,7 +91,7 @@ void AnimationClip::Interpolate(float t, std::vector<DirectX::XMFLOAT4X4>& boneT
 
 UINT SkinnedData::BoneCount() const
 {
-    return mBoneHierachy.size();
+    return (UINT)mBoneHierachy.size();
 }
 
 float SkinnedData::GetClipStartTime(const std::string& clipName) const
@@ -115,15 +115,15 @@ void SkinnedData::Set(std::vector<int>& boneHierachy, std::vector<DirectX::XMFLO
 
 void SkinnedData::GetFinalTransforms(const std::string & clipName, float timePos, std::vector<DirectX::XMFLOAT4X4>&finalTransforms) const
 {
-    UINT numBones = mBoneOffsets.size();
+    UINT numBones = (UINT)mBoneOffsets.size();
     std::vector<XMFLOAT4X4> toParentTransforms(numBones);
 
     auto clip = mAnimations.find(clipName);
     clip->second.Interpolate(timePos, toParentTransforms);
 
-    //ëª¨ë“  ë³¸ì„ ë£¨íŠ¸ ê³µê°„ìœ¼ë¡œ ë³€í™˜.
+    //¸ğµç º»À» ·çÆ® °ø°£À¸·Î º¯È¯.
     std::vector<XMFLOAT4X4> toRootTransforms(numBones);
-    //Root Bone ì˜ ì¸ë±ìŠ¤ëŠ” 0, Root Boneì€ ë¶€ëª¨ê°€ ì—†ìœ¼ë¯€ë¡œ ë¶€ëª¨ë³€í™˜ì´ ìì‹ ì˜ ì¢Œí‘œë³€í™˜ì´ë‹¤.
+    //Root Bone ÀÇ ÀÎµ¦½º´Â 0, Root BoneÀº ºÎ¸ğ°¡ ¾øÀ¸¹Ç·Î ºÎ¸ğº¯È¯ÀÌ ÀÚ½ÅÀÇ ÁÂÇ¥º¯È¯ÀÌ´Ù.
     toRootTransforms[0] = toParentTransforms[0];
 
     for (UINT i = 1; i < numBones; i++)
@@ -137,7 +137,7 @@ void SkinnedData::GetFinalTransforms(const std::string & clipName, float timePos
         XMStoreFloat4x4(&toRootTransforms[i], toRoot);
     }
 
-    //ìµœì¢… ë³€í™˜ì„ ìœ„í•´ ì˜¤í”„ì…‹ ë³€í™˜ì„ ê³±í•œë‹¤.
+    //ÃÖÁ¾ º¯È¯À» À§ÇØ ¿ÀÇÁ¼Â º¯È¯À» °öÇÑ´Ù.
     for (UINT i = 0; i < numBones; i++)
     {
         XMMATRIX offset = XMLoadFloat4x4(&mBoneOffsets[i]);

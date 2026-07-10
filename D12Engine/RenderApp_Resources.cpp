@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "RenderApp.h"
-#include "RenderData.h"
-#include "LoadM3d.h"
+#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/DirectX12/D3D12Util.h"
+#include "EngineCore/LoadM3d.h"
 
 using namespace DirectX;
 
@@ -32,10 +33,10 @@ void RenderApp::LoadSkinnedModel()
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+	geo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(md3dDevice.Get(),
 		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 
-	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+	geo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(md3dDevice.Get(),
 		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
 	geo->VertexByteStride = sizeof(M3DLoader::SkinnedVertex);
@@ -140,7 +141,7 @@ void RenderApp::BuildDescriptorHeaps()
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	const UINT textureCount = (UINT)mTextures.size();
 	const UINT imguiReservedCount = 1; //ÆùÆ®¸¸
-	srvHeapDesc.NumDescriptors = SwapChainBufferCount
+	srvHeapDesc.NumDescriptors = RenderConfig::SwapChainBufferCount
 		+ textureCount + imguiReservedCount
 		+ mWaves->DescriptorCount()
 		+ mBlurFilter->DescriptorCount()
@@ -152,9 +153,9 @@ void RenderApp::BuildDescriptorHeaps()
 	BuildBackbufferSRV();
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
-	hDescriptor.Offset(SwapChainBufferCount, mCbvSrvUavDescriptorSize);
+	hDescriptor.Offset(RenderConfig::SwapChainBufferCount, mCbvSrvUavDescriptorSize);
 
-	int i = SwapChainBufferCount;
+	int i = RenderConfig::SwapChainBufferCount;
 	for (auto& tex : mTextures)
 	{
 		auto resource = tex.second->Resource;
@@ -174,7 +175,7 @@ void RenderApp::BuildDescriptorHeaps()
 		i++;
 	}
 
-	const UINT wavesBaseIndex = SwapChainBufferCount + textureCount + imguiReservedCount;
+	const UINT wavesBaseIndex = RenderConfig::SwapChainBufferCount + textureCount + imguiReservedCount;
 
 	mWaves->BuildDescriptors(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(
@@ -959,7 +960,7 @@ void RenderApp::BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex)
 
 void RenderApp::BuildFrameResources()
 {
-	for (int i = 0; i < gNumFrameResources; i++)
+	for (int i = 0; i < RenderConfig::NumFrameResources; i++)
 	{
 		mFrameResources.push_back(
 			std::make_unique<FrameResource>(

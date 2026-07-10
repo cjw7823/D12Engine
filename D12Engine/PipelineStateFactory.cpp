@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "PipelineStateFactory.h"
-#include "d3dUtil.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 Microsoft::WRL::ComPtr<ID3D12PipelineState> PipelineStateFactory::CreateOpaquePSO(ID3DBlob* vs, ID3DBlob* ps)
 {

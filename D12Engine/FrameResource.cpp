@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "FrameResource.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT waveVertexCount, UINT materialCount, UINT skinnedObjectCount)
 {
 	ThrowIfFailed(device->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(cmdListAlloc.GetAddressOf())));
+		IID_PPV_ARGS(cmdAlloc.GetAddressOf())));
 
 	//ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, objectCount, true);
 	PassCB = std::make_unique<UploadBuffer<PassConstants>>(device, passCount, true);

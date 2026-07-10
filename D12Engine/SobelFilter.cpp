@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SobelFilter.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 SobelFilter::SobelFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format)
 {

@@ -7,7 +7,7 @@ bool RenderApp::InitImGui()
 	ImGui_ImplWin32_Init(mhMainWnd);
 
 	UINT textureCount = (UINT)mTextures.size();
-	UINT imguiFontIndex = SwapChainBufferCount + textureCount;
+	UINT imguiFontIndex = RenderConfig::SwapChainBufferCount + textureCount;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
 	cpuHandle.Offset(imguiFontIndex, mCbvSrvUavDescriptorSize);
@@ -18,7 +18,7 @@ bool RenderApp::InitImGui()
 	ImGui_ImplDX12_InitInfo init_info = {};
 	init_info.Device = md3dDevice.Get();
 	init_info.CommandQueue = mCommandQueue.Get();
-	init_info.NumFramesInFlight = gNumFrameResources;
+	init_info.NumFramesInFlight = RenderConfig::NumFrameResources;
 	init_info.RTVFormat = mBackBufferFormat;
 	init_info.DSVFormat = mDepthStencilFormat;
 	init_info.SrvDescriptorHeap = mSrvHeap.Get();

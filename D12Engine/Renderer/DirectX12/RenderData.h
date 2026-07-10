@@ -1,11 +1,15 @@
 #pragma once
 
-#include "MathHelper.h"
+#include "EngineCore/MathHelper.h"
 #include <stdint.h>
-#include "SkinnedData.h"
+#include "EngineCore/SkinnedData.h"
+#include "EngineCore/RenderConfig.h"
+#include <DirectXCollision.h>
+#include <string>
+#include <wrl.h>
+#include <d3d12.h>
 
 inline constexpr int MaxLights = 16;
-inline constexpr int gNumFrameResources = 3;
 
 //HLSL cbuffer는 16바이트(float4) 슬롯 단위로 패킹되므로,
 //C++ 구조체도 멤버 배치가 어긋나지 않도록 padding을 둔다.
@@ -174,7 +178,7 @@ struct Material
 	int DiffuseSrvHeapIndex = -1;
 	int NormalSrvHeapIndex = -1;
 
-	int NumFramesDirty = gNumFrameResources;
+	int NumFramesDirty = RenderConfig::NumFrameResources;
 
 	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };

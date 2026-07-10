@@ -7,7 +7,7 @@ using namespace Microsoft::WRL;
 void RenderApp::BuildRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable;
-	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, (UINT)mTextures.size() + SwapChainBufferCount, 0); //t0
+	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, (UINT)mTextures.size() + RenderConfig::SwapChainBufferCount, 0); //t0
 	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
 	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2); //t0, space2
 	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
@@ -201,98 +201,98 @@ void RenderApp::BuildShadersAndInputLayout()
 
 #define USE_COMPILED_SHADER
 #ifndef USE_COMPILED_SHADER
-	mShaders["standardVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", fogDefines, "PS", "ps_5_1");
-	mShaders["mirrorBaseFillPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "PS_MirrorBaseFill", "ps_5_1");
-	mShaders["multiTextureBlendPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", textureBlendDefines, "PS", "ps_5_1");
-	mShaders["alphaTestPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
-	mShaders["wavesVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", wavesDefines, "VS", "vs_5_1");
-	mShaders["wavesSimUpdate"] = d3dUtil::CompileShader(L"Resource\\Shaders\\WaveSim.hlsl", nullptr, "UpdateWavesCS", "cs_5_1");
-	mShaders["wavesSimDisturb"] = d3dUtil::CompileShader(L"Resource\\Shaders\\WaveSim.hlsl", nullptr, "DisturbWavesCS", "cs_5_1");
+	mShaders["standardVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["opaquePS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", fogDefines, "PS", "ps_5_1");
+	mShaders["mirrorBaseFillPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", nullptr, "PS_MirrorBaseFill", "ps_5_1");
+	mShaders["multiTextureBlendPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", textureBlendDefines, "PS", "ps_5_1");
+	mShaders["alphaTestPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
+	mShaders["wavesVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", wavesDefines, "VS", "vs_5_1");
+	mShaders["wavesSimUpdate"] = D3D12Util::CompileShader(L"Resource\\Shaders\\WaveSim.hlsl", nullptr, "UpdateWavesCS", "cs_5_1");
+	mShaders["wavesSimDisturb"] = D3D12Util::CompileShader(L"Resource\\Shaders\\WaveSim.hlsl", nullptr, "DisturbWavesCS", "cs_5_1");
 
-	mShaders["depthDebugVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenVS", "vs_5_1");
-	mShaders["depthDebugPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenPS", "ps_5_1");
+	mShaders["depthDebugVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenVS", "vs_5_1");
+	mShaders["depthDebugPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\DepthComplexity.hlsl", nullptr, "FullscreenPS", "ps_5_1");
 
-	mShaders["treeBillboardVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["treeBillboardGS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "GS", "gs_5_1");
-	mShaders["treeBillboardPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", alphaTestDefines, "PS", "ps_5_1");
-	mShaders["treeBillboardPS_Wireframe"] = d3dUtil::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "PS_Wireframe", "ps_5_1");
+	mShaders["treeBillboardVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["treeBillboardGS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "GS", "gs_5_1");
+	mShaders["treeBillboardPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", alphaTestDefines, "PS", "ps_5_1");
+	mShaders["treeBillboardPS_Wireframe"] = D3D12Util::CompileShader(L"Resource\\Shaders\\TreeBillboard.hlsl", nullptr, "PS_Wireframe", "ps_5_1");
 
-	mShaders["lineToCylinderVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["lineToCylinderGS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS", "gs_5_1");
-	mShaders["lineToCylinderPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", alphaTestDefines, "PS", "ps_5_1");
+	mShaders["lineToCylinderVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["lineToCylinderGS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS", "gs_5_1");
+	mShaders["lineToCylinderPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", alphaTestDefines, "PS", "ps_5_1");
 
-	mShaders["explodeGS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", alphaTestDefines, "GS_Explode", "gs_5_1");
+	mShaders["explodeGS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", alphaTestDefines, "GS_Explode", "gs_5_1");
 
-	mShaders["LOD_GS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS_LOD", "gs_5_1");
+	mShaders["LOD_GS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS_LOD", "gs_5_1");
 
-	mShaders["vertexDebugGS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS_Debugging", "gs_5_1");
-	mShaders["vertexDebugPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "PS_VertexNormal", "ps_5_1");
+	mShaders["vertexDebugGS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "GS_Debugging", "gs_5_1");
+	mShaders["vertexDebugPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Task_GS.hlsl", nullptr, "PS_VertexNormal", "ps_5_1");
 
-	mShaders["blurH"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_1");
-	mShaders["blurV"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_1");
+	mShaders["blurH"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_1");
+	mShaders["blurV"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_1");
 
-	mShaders["sobelCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_1");
-	mShaders["CompositeCS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
+	mShaders["sobelCS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_1");
+	mShaders["CompositeCS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
 
-	mShaders["tessVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["tessHS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "HS", "hs_5_1");
-	mShaders["tessDS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "DS", "ds_5_1");
-	mShaders["tessDS_Wall"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", tessWallDefines, "DS", "ds_5_1");
-	mShaders["tessPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", fogDefines, "PS", "ps_5_1");
+	mShaders["tessVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["tessHS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "HS", "hs_5_1");
+	mShaders["tessDS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "DS", "ds_5_1");
+	mShaders["tessDS_Wall"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", tessWallDefines, "DS", "ds_5_1");
+	mShaders["tessPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", fogDefines, "PS", "ps_5_1");
 
-	mShaders["highlightVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["highlightVS_Mask"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS_Mask", "vs_5_1");
-	mShaders["highlightPS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "PS", "ps_5_1");
+	mShaders["highlightVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["highlightVS_Mask"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "VS_Mask", "vs_5_1");
+	mShaders["highlightPS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Outline.hlsl", nullptr, "PS", "ps_5_1");
 
-	mShaders["skinnedVS"] = d3dUtil::CompileShader(L"Resource\\Shaders\\Default.hlsl", skinnedDefines, "VS", "vs_5_1");
+	mShaders["skinnedVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Default.hlsl", skinnedDefines, "VS", "vs_5_1");
 
 #else
-	mShaders["standardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
-	mShaders["opaquePS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps.cso");
-	mShaders["mirrorBaseFillPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\MirrorBaseFill.cso");
-	mShaders["multiTextureBlendPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps_TextureBlend.cso");
-	mShaders["alphaTestPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps_AlphaTest.cso");
-	mShaders["wavesVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs_Waves.cso");
-	mShaders["wavesSimUpdate"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\WaveSim_cs_Update.cso");
-	mShaders["wavesSimDisturb"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\WaveSim_cs_Disturb.cso");
+	mShaders["standardVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs.cso");
+	mShaders["opaquePS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps.cso");
+	mShaders["mirrorBaseFillPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\MirrorBaseFill.cso");
+	mShaders["multiTextureBlendPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps_TextureBlend.cso");
+	mShaders["alphaTestPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_ps_AlphaTest.cso");
+	mShaders["wavesVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\Default_vs_Waves.cso");
+	mShaders["wavesSimUpdate"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\WaveSim_cs_Update.cso");
+	mShaders["wavesSimDisturb"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\WaveSim_cs_Disturb.cso");
 
-	mShaders["depthDebugVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\DepthComplexity_vs.cso");
-	mShaders["depthDebugPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\DepthComplexity_ps.cso");
+	mShaders["depthDebugVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\DepthComplexity_vs.cso");
+	mShaders["depthDebugPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\DepthComplexity_ps.cso");
 
-	mShaders["treeBillboardVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardVS.cso");
-	mShaders["treeBillboardGS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardGS.cso");
-	mShaders["treeBillboardPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardPS.cso");
-	mShaders["treeBillboardPS_Wireframe"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardPS_Wireframe.cso");
+	mShaders["treeBillboardVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardVS.cso");
+	mShaders["treeBillboardGS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardGS.cso");
+	mShaders["treeBillboardPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardPS.cso");
+	mShaders["treeBillboardPS_Wireframe"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\TreeBillboardPS_Wireframe.cso");
 
-	mShaders["lineToCylinderVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderVS.cso");
-	mShaders["lineToCylinderGS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderGS.cso");
-	mShaders["lineToCylinderPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderPS.cso");
+	mShaders["lineToCylinderVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderVS.cso");
+	mShaders["lineToCylinderGS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderGS.cso");
+	mShaders["lineToCylinderPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\LineToCylinderPS.cso");
 
-	mShaders["explodeGS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\ExplodeGS.cso");
+	mShaders["explodeGS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\ExplodeGS.cso");
 
-	mShaders["LOD_GS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\LOD_GS.cso");
+	mShaders["LOD_GS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\LOD_GS.cso");
 
-	mShaders["vertexDebugGS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugGS.cso");
-	mShaders["vertexDebugPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugPS.cso");
+	mShaders["vertexDebugGS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugGS.cso");
+	mShaders["vertexDebugPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\VertexDebugPS.cso");
 
-	mShaders["blurH"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\HorzBlurCS.cso");
-	mShaders["blurV"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\VertBlurCS.cso");
+	mShaders["blurH"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\HorzBlurCS.cso");
+	mShaders["blurV"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\VertBlurCS.cso");
 
-	mShaders["sobelCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\SobelCS.cso");
-	mShaders["CompositeCS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
+	mShaders["sobelCS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\SobelCS.cso");
+	mShaders["CompositeCS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
 
-	mShaders["tessVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessVS.cso");
-	mShaders["tessHS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessHS.cso");
-	mShaders["tessDS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS.cso");
-	mShaders["tessDS_Wall"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS_Wall.cso");
-	mShaders["tessPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\tessPS.cso");
+	mShaders["tessVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessVS.cso");
+	mShaders["tessHS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessHS.cso");
+	mShaders["tessDS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS.cso");
+	mShaders["tessDS_Wall"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessDS_Wall.cso");
+	mShaders["tessPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessPS.cso");
 
-	mShaders["highlightVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS.cso");
-	mShaders["highlightVS_Mask"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS_Mask.cso");
-	mShaders["highlightPS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightPS.cso");
+	mShaders["highlightVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS.cso");
+	mShaders["highlightVS_Mask"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightVS_Mask.cso");
+	mShaders["highlightPS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\highlightPS.cso");
 
-	mShaders["skinnedVS"] = d3dUtil::LoadBinary(L"Resource\\Shaders\\Compiled\\skinnedVS.cso");
+	mShaders["skinnedVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\skinnedVS.cso");
 
 #endif
 
@@ -352,7 +352,7 @@ void RenderApp::BuildShadersAndInputLayout()
 void RenderApp::BuildBackbufferSRV()
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
-	for (int i = 0; i < SwapChainBufferCount; i++)
+	for (int i = 0; i < RenderConfig::SwapChainBufferCount; i++)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

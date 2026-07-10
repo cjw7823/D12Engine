@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "BlurFilter.h"
-#include "d3dUtil.h"
+#include "Renderer/DirectX12/MACRO.h"
 #include <cmath>
 
 BlurFilter::BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format)

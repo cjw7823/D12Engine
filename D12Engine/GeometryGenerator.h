@@ -5,7 +5,7 @@
 
 #include <DirectXMath.h>
 
-#include "RenderData.h"
+#include "Renderer/DirectX12/RenderData.h"
 
 class GeometryGenerator
 {

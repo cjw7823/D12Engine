@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GameTimer.h"
+#include "EngineCore/GameTimer.h"
 
 class GpuWaves
 {

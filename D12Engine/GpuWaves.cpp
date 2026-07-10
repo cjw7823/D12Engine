@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "GpuWaves.h"
-#include "d3dUtil.h"
+#include "Renderer/DirectX12/D3D12Util.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 GpuWaves::GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int m, int n, float dx, float dt, float speed, float damping)
 {

@@ -15,47 +15,10 @@
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 
-#include "GameTimer.h"
-#include "d3dUtil.h"
-
-struct MsaaOption
-{
-	MsaaOption() = default;
-	MsaaOption(UINT i) { index = i; }
-
-	static constexpr std::array<UINT, 4> kMsaaSampleCandidates = { 2, 4, 8, 16 };
-	inline static std::vector<std::pair<UINT, UINT>> UsableSamples{ {1,1} }; //sample count, num quality levels
-	
-	bool IsEnable() { return index == 0 ? false : true; }
-
-	void operator()(UINT i)
-	{
-		if (i < kMsaaSampleCandidates[0] || i > kMsaaSampleCandidates.back())
-		{
-			index = 0;
-			return;
-		}
-
-		for (UINT j = 0; j < UsableSamples.size(); j++)
-		{
-			UINT k = UsableSamples[j].first;
-			if (i == k) index = i;
-			else if (i < k) index = j - 1;
-		}
-	}
-
-	UINT GetState() const { return index; }
-	UINT SampleCount() const { return UsableSamples[index].first; }
-	UINT Quality() const { return UsableSamples[index].second - 1; }
-	void Next()
-	{
-		index++;
-		if (index >= UsableSamples.size()) index = 0;
-	}
-
-private:
-	UINT index = 0;
-};
+#include "EngineCore/GameTimer.h"
+#include "EngineCore/WinHandle.h"
+#include "EngineCore/MsaaOption.h"
+#include "EngineCore/RenderConfig.h"
 
 class Dx12App
 {
@@ -110,7 +73,6 @@ protected:
 
 protected:
 	inline static Dx12App* mApp = nullptr;
-	static const int SwapChainBufferCount = 2;
 
 	HINSTANCE mhInstance = nullptr;
 	HWND mhMainWnd = nullptr;
@@ -131,12 +93,11 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mCommandAlloc;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[SwapChainBufferCount];
+	Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[RenderConfig::SwapChainBufferCount];
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
-	//Microsoft::WRL::ComPtr<ID3D12Resource> mMsaaRenderTarget;
 
 	//GPU Timestamp¸¦ À§ÇÑ qury heap
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> mTimestampQueryHeap = nullptr;

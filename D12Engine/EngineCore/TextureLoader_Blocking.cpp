@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TextureLoader_Blocking.h"
 #include "RenderData.h"
+#include "Renderer/DirectX12/MACRO.h"
 
 using Microsoft::WRL::ComPtr;
 

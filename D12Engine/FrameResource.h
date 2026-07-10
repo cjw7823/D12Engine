@@ -5,8 +5,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
-#include "UploadBuffer.h"
-#include "RenderData.h"
+#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/DirectX12/UploadBuffer.h"
 
 struct FrameResource
 {
@@ -16,7 +16,7 @@ public:
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource() {};
 
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdListAlloc;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAlloc;
 
 	//std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	std::unique_ptr<UploadBuffer<SkinnedConstants>> SkinnedCB = nullptr;
