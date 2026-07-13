@@ -52,9 +52,6 @@
     <Filter Include="EngineCore\Animation">
       <UniqueIdentifier>{5c8b0eca-cd57-4336-b86d-46e6085c2d78}</UniqueIdentifier>
     </Filter>
-    <Filter Include="EngineCore\TextureLoader">
-      <UniqueIdentifier>{fa2ec8f0-9c0b-414c-9e57-fc018cfca0a4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Renderer\DirectX12\Rendering">
       <UniqueIdentifier>{a529fe07-133c-4ba0-994f-9db1fb87a627}</UniqueIdentifier>
     </Filter>
@@ -63,6 +60,15 @@
     </Filter>
     <Filter Include="EngineCore\Scene">
       <UniqueIdentifier>{c4aa0e5d-acb1-40ec-9002-34f3fa234a77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Assets">
+      <UniqueIdentifier>{8f199f98-f8a3-4b2c-b50a-4caf6f8f4dfc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\DirectX12\Desc">
+      <UniqueIdentifier>{c35d1f0f-36c4-44fc-b663-1609eca90b27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\DirectX12\Util">
+      <UniqueIdentifier>{5736995c-112f-479f-9d22-10166b325cc8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -93,32 +99,8 @@
     <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>External\DDSTextureLoader</Filter>
     </ClCompile>
-    <ClCompile Include="Dx12App.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp_Geometry.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp_Gizmo.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp_Input.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp_Pipeline.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderApp_Resources.cpp">
-      <Filter>이전 항목\App_</Filter>
-    </ClCompile>
     <ClCompile Include="D12Engine.cpp">
       <Filter>App</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp">
-      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="Editor\EditorLayer.cpp">
       <Filter>Editor</Filter>
@@ -134,12 +116,6 @@
     </ClCompile>
     <ClCompile Include="EngineCore\SkinnedData.cpp">
       <Filter>EngineCore\Animation</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\TextureLoader_Blocking.cpp">
-      <Filter>EngineCore\TextureLoader</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\Camera.cpp">
-      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="EngineCore\MathHelper.cpp">
       <Filter>EngineCore</Filter>
@@ -176,6 +152,15 @@
     </ClCompile>
     <ClCompile Include="Editor\SceneViewPanel.cpp">
       <Filter>Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Assets\TextureManager.cpp">
+      <Filter>Renderer\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\Camera.cpp">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp">
+      <Filter>Renderer\DirectX12\Util</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -227,17 +212,11 @@
     <ClInclude Include="EngineCore\StringUtil.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\D3D12Util.h">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\DirectX12\D3D12Context.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Editor\EditorLayer.h">
       <Filter>Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\MACRO.h">
-      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Editor\EditorApplication.h">
       <Filter>Editor</Filter>
@@ -250,18 +229,6 @@
     </ClInclude>
     <ClInclude Include="EngineCore\SkinnedData.h">
       <Filter>EngineCore\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\TextureLoader_Blocking.h">
-      <Filter>EngineCore\TextureLoader</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\Camera.h">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\RenderData.h">
-      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\MathHelper.h">
       <Filter>EngineCore</Filter>
@@ -308,6 +275,30 @@
     <ClInclude Include="Editor\SceneViewPanel.h">
       <Filter>Editor</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Assets\TextureManager.h">
+      <Filter>Renderer\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Assets\TextureDesc.h">
+      <Filter>Renderer\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\RenderData.h">
+      <Filter>Renderer\DirectX12\Desc</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\MACRO.h">
+      <Filter>Renderer\DirectX12\Desc</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\Camera.h">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\D3D12Util.h">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\TextureLoader_Blocking.h">
+      <Filter>이전 항목</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">
@@ -339,6 +330,30 @@
     </None>
     <None Include="Resource\Shaders\Outline.hlsl">
       <Filter>Shaders</Filter>
+    </None>
+    <None Include="Dx12App.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp_Geometry.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp_Gizmo.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp_Input.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp_Pipeline.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="RenderApp_Resources.cpp">
+      <Filter>이전 항목\App_</Filter>
+    </None>
+    <None Include="EngineCore\TextureLoader_Blocking.cpp">
+      <Filter>이전 항목</Filter>
     </None>
   </ItemGroup>
 </Project>

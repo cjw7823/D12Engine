@@ -186,16 +186,6 @@ struct Material
 	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };
 
-struct Texture
-{
-	std::string Name;
-	std::wstring FilePath;
-	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr; //Default Heap 용도
-	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
-
-	int SrvHeapIndex = -1;
-};
-
 //렌더링 순서에 영향
 enum class RenderLayer : int
 {

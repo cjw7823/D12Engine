@@ -19,6 +19,8 @@ public:
 	void Render(D3D12Context& context, const Scene& scene);
 
 private:
+	void LoadTextures();
+
 	void BuildDescriptorHeaps(D3D12Context& context);
 	void BuildMaterials(D3D12Context& context);
 	void BuildRootSignature(D3D12Context& context);

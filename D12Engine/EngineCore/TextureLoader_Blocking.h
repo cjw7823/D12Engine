@@ -2,6 +2,7 @@
 
 #include <wrl.h>
 #include "EngineCore/WinHandle.h"
+#include "Renderer/Assets/TextureDesc.h"
 
 struct Texture;
 

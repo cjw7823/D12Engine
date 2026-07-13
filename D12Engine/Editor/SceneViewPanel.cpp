@@ -3,16 +3,25 @@
 
 void SceneViewPanel::OnImGuiRender()
 {
-    ImGui::Begin("Scene View");
+    bool visible = ImGui::Begin("Scene View");
+
+    mHasValidSize = false;
+
+    if (!visible)
+    {
+        ImGui::End();
+        return;
+    }
 
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
+    if (availableSize.x < 1.0f || availableSize.y < 1.0f)
+    {
+        ImGui::TextDisabled("Scene View size is invalid.");
+        ImGui::End();
+        return;
+    }
 
-    if (availableSize.x < 1.0f)
-        availableSize.x = 1.0f;
-
-    if (availableSize.y < 1.0f)
-        availableSize.y = 1.0f;
-
+    mHasValidSize = true;
     mViewportSize = availableSize;
 
     if (mTextureId != NULL)

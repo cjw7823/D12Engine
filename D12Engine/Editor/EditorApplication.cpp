@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EditorApplication.h"
+#include "Renderer/Assets/TextureManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -35,6 +36,8 @@ bool EditorApplication::Initialize()
 		return false;
 	}
 
+	TextureManager::GetInstance().Initialize(mD3D12Context);
+
 	if (!mImGuiLayer.Initialize(mhMainWnd, mD3D12Context))
 		return false;
 
@@ -42,8 +45,6 @@ bool EditorApplication::Initialize()
 
 	mSceneRenderTarget.Create(
 		mD3D12Context,
-		512,
-		512,
 		DXGI_FORMAT_R8G8B8A8_UNORM,
 		DXGI_FORMAT_D24_UNORM_S8_UINT);
 
@@ -105,40 +106,37 @@ bool EditorApplication::InitMainWindow()
 	return true;
 }
 
-void EditorApplication::Tick()
+void EditorApplication::Tick(const GameTimer& gt)
 {
-	mD3D12Context.BeginFrame();
-
-	SceneViewPanel& sceneViewPanel = mEditorLayer.GetSceneViewPanel();
-
-	int sceneWidth = std::max(1, sceneViewPanel.GetWidth());
-	int sceneHeight = std::max(1, sceneViewPanel.GetHeight());
-
-	if (mSceneRenderTarget.GetWidth() != sceneWidth ||
-		mSceneRenderTarget.GetHeight() != sceneHeight)
-	{
-		mSceneRenderTarget.Resize(
-			mD3D12Context,
-			sceneWidth,
-			sceneHeight);
-	}
-
-	const float sceneClearColor[4] =
-	{
-		0.12f, 0.16f, 0.22f, 1.0f
-	};
-
-	mSceneRenderTarget.Clear(
-		mD3D12Context,
-		sceneClearColor);
-
 	ImTextureID sceneTextureId = static_cast<ImTextureID>(mSceneRenderTarget.GetSRVGpu().ptr);
 	mEditorLayer.SetSceneViewTexture(sceneTextureId);
 
-	//ImGui Frame 구성
+	//에디터의 ImGui Frame 구성.
 	mImGuiLayer.BeginFrame();
 	mEditorLayer.OnImGuiRender();
 	mImGuiLayer.EndFrame();
+
+	SceneViewPanel& sceneViewPanel = mEditorLayer.GetSceneViewPanel();
+	bool renderSceneView = sceneViewPanel.HasValidSize();
+	if (renderSceneView)
+	{
+		int sceneWidth = sceneViewPanel.GetWidth();
+		int sceneHeight = sceneViewPanel.GetHeight();
+
+		if (mSceneRenderTarget.GetWidth() != sceneWidth ||
+			mSceneRenderTarget.GetHeight() != sceneHeight)
+		{
+			mSceneRenderTarget.Resize(mD3D12Context, sceneWidth, sceneHeight);
+		}
+	}
+
+	mD3D12Context.BeginFrame();
+
+	if (renderSceneView)
+	{
+		mSceneRenderTarget.Clear(mD3D12Context);
+		//mSceneRenderer.Render(mD3D12Context, mSceneRenderTarget, mActiveScene);
+	}
 
 	//렌더링
 	const float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
@@ -152,6 +150,8 @@ int EditorApplication::Run()
 {
 	MSG msg{};
 
+	mTimer.Reset();
+
 	while (msg.message != WM_QUIT)
 	{
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -161,7 +161,8 @@ int EditorApplication::Run()
 		}
 		else
 		{
-			Tick();
+			mTimer.Tick();
+			Tick(mTimer);
 		}
 	}
 

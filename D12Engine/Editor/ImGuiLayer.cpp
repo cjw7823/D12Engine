@@ -62,6 +62,7 @@ bool ImGuiLayer::Initialize(HWND hwnd, D3D12Context& context)
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
+    //ImGui::StyleColorsClassic();
 
     float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 

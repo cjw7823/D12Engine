@@ -43,7 +43,7 @@ struct D3D12ContextDesc
     bool EnableVSync = true;
     bool EnableTearing = true;
 
-    std::array<float, 4> BackBufferClearColor = { 0.45f, 0.55f, 0.60f, 1.00f };
+    std::array<float, 4> BackBufferClearColor = { 0.45f, 0.55f, 0.60f, 1.0f };
 };
 
 class D3D12Context

@@ -11,23 +11,13 @@ public:
     D3D12RenderTarget(const D3D12RenderTarget&) = delete;
     D3D12RenderTarget& operator=(const D3D12RenderTarget&) = delete;
 
-    void Create(
-        D3D12Context& context,
-        int width,
-        int height,
-        DXGI_FORMAT colorFormat,
-        DXGI_FORMAT depthFormat);
+    void Create(D3D12Context& context, DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat);
 
-    void Resize(
-        D3D12Context& context,
-        int width,
-        int height);
+    void Resize(D3D12Context& context, int width, int height);
 
     void Shutdown(D3D12Context& context);
 
-    void Clear(
-        D3D12Context& context,
-        const float clearColor[4]);
+    void Clear(D3D12Context& context, const float clearColor[4] = mClearColor);
 
     bool IsValid() const { return mColorBuffer != nullptr; }
 
@@ -60,4 +50,6 @@ private:
 
     D3D12_VIEWPORT mViewport{};
     D3D12_RECT mScissorRect{};
+
+    inline static const float mClearColor[4] = { 0.12f, 0.16f, 0.22f, 1.0f };
 };

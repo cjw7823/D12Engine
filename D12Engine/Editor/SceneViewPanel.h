@@ -12,6 +12,11 @@ public:
         mTextureId = textureId;
     }
 
+    bool HasValidSize() const
+    {
+        return mHasValidSize;
+    }
+
     int GetWidth() const
     {
         return static_cast<int>(mViewportSize.x);
@@ -24,5 +29,6 @@ public:
 
 private:
     ImTextureID mTextureId = NULL;
-    ImVec2 mViewportSize = ImVec2(1.0f, 1.0f);
+    bool mHasValidSize = false;
+    ImVec2 mViewportSize = ImVec2(0.0f, 0.0f);
 };

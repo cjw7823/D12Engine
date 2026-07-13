@@ -4,15 +4,8 @@
 
 using namespace Microsoft::WRL;
 
-void D3D12RenderTarget::Create(
-    D3D12Context& context,
-    int width,
-    int height,
-    DXGI_FORMAT colorFormat,
-    DXGI_FORMAT depthFormat)
+void D3D12RenderTarget::Create(D3D12Context& context, DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat)
 {
-    mWidth = std::max(1, width);
-    mHeight = std::max(1, height);
     mColorFormat = colorFormat;
     mDepthFormat = depthFormat;
 
@@ -29,10 +22,7 @@ void D3D12RenderTarget::Create(
     CreateViews(context);
 }
 
-void D3D12RenderTarget::Resize(
-    D3D12Context& context,
-    int width,
-    int height)
+void D3D12RenderTarget::Resize(D3D12Context& context, int width, int height)
 {
     width = std::max(1, width);
     height = std::max(1, height);
@@ -184,9 +174,7 @@ void D3D12RenderTarget::CreateViews(D3D12Context& context)
         mDsv.Cpu);
 }
 
-void D3D12RenderTarget::Clear(
-    D3D12Context& context,
-    const float clearColor[4])
+void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
 {
     assert(mColorBuffer);
     assert(mDepthBuffer);

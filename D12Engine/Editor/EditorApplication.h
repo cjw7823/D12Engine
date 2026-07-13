@@ -15,6 +15,7 @@
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 
 #include "EngineCore/Scene.h"
+#include "EngineCore/GameTimer.h"
 
 /*
 	EditorApplication
@@ -40,7 +41,7 @@ public:
 
 protected:
 	bool InitMainWindow();
-	void Tick();
+	void Tick(const GameTimer& gt);
 
 private:
 	inline static EditorApplication* mApp = nullptr;
@@ -62,4 +63,6 @@ private:
 	SceneRenderer mSceneRenderer;
 
 	D3D12RenderTarget mSceneRenderTarget;
+
+	GameTimer mTimer;
 };
