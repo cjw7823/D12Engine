@@ -7,8 +7,8 @@
 using namespace Microsoft::WRL;
 
 /// <summary>
-/// ìµœìƒìœ„ ë¹„íŠ¸ 15ë²ˆ bit = í˜„ì¬ í‚¤ê°€ ëˆŒë ¤ ìˆìœ¼ë©´ 1
-//  ìµœí•˜ìœ„ ë¹„íŠ¸ 0ë²ˆ bit = ì´ì „ í˜¸ì¶œ ì´í›„ í‚¤ê°€ ëˆŒë¦° ì  ìˆìœ¼ë©´ 1
+/// ÃÖ»óÀ§ ºñÆ® 15¹ø bit = ÇöÀç Å°°¡ ´­·Á ÀÖÀ¸¸é 1
+//  ÃÖÇÏÀ§ ºñÆ® 0¹ø bit = ÀÌÀü È£Ãâ ÀÌÈÄ Å°°¡ ´­¸° Àû ÀÖÀ¸¸é 1
 /// </summary>
 /// <param name="vkeyCode"></param>
 /// <returns></returns>
@@ -19,7 +19,7 @@ bool D3D12Util::IsKeyDown(int vkeyCode)
 
 UINT D3D12Util::CalcConstantBufferByteSize(UINT byteSize)
 {
-	//ìƒìˆ˜ ë²„í¼ëŠ” ìµœì†Œ í•˜ë“œì›¨ì–´ í• ë‹¹ í¬ê¸°(256ë°”ì´íŠ¸)ì˜ ë°°ìˆ˜ì—¬ì•¼ í•¨.
+	//»ó¼ö ¹öÆÛ´Â ÃÖ¼Ò ÇÏµå¿ş¾î ÇÒ´ç Å©±â(256¹ÙÀÌÆ®)ÀÇ ¹è¼ö¿©¾ß ÇÔ.
 	return (byteSize + 255) & ~255;
 }
 
@@ -85,8 +85,8 @@ Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Util::CreateDefaultBuffer(ID3D12Devi
 		D3D12_RESOURCE_STATE_COPY_DEST);
 	cmdList->ResourceBarrier(1, &barrier1);
 
-	//CPUë©”ëª¨ë¦¬ -> Upload Heap ë³µì‚¬ ì‹¤í–‰
-	//Upload Heap -> Default Heap Copy ëª…ë ¹ ê¸°ë¡.
+	//CPU¸Ş¸ğ¸® -> Upload Heap º¹»ç ½ÇÇà
+	//Upload Heap -> Default Heap Copy ¸í·É ±â·Ï.
 	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
 
 	CD3DX12_RESOURCE_BARRIER barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -95,9 +95,9 @@ Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Util::CreateDefaultBuffer(ID3D12Devi
 		D3D12_RESOURCE_STATE_GENERIC_READ);
 	cmdList->ResourceBarrier(1, &barrier2);
 
-	//ì°¸ê³ : ìœ„ í•¨ìˆ˜ í˜¸ì¶œ í›„ì—ë„ uploadBufferëŠ” ê³„ì† ìœ ì§€ë˜ì–´ì•¼ í•¨.
-	//cmdListì— ëª…ë ¹ì„ ê¸°ë¡í–ˆì„ ë¿ ì•„ì§ ì‹¤í–‰ë˜ì§€ ì•ŠìŒ.
-	//í˜¸ì¶œìëŠ” ë³µì‚¬ê°€ ì‹¤í–‰ë˜ì—ˆìŒì„ í™•ì¸í•œ í›„ì— uploadBufferë¥¼ í•´ì œ ê°€ëŠ¥.
+	//Âü°í: À§ ÇÔ¼ö È£Ãâ ÈÄ¿¡µµ uploadBuffer´Â °è¼Ó À¯ÁöµÇ¾î¾ß ÇÔ.
+	//cmdList¿¡ ¸í·ÉÀ» ±â·ÏÇßÀ» »Ó ¾ÆÁ÷ ½ÇÇàµÇÁö ¾ÊÀ½.
+	//È£ÃâÀÚ´Â º¹»ç°¡ ½ÇÇàµÇ¾úÀ½À» È®ÀÎÇÑ ÈÄ¿¡ uploadBuffer¸¦ ÇØÁ¦ °¡´É.
 
 	return defaultBuffer;
 }

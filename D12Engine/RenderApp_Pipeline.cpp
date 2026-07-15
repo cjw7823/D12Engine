@@ -373,7 +373,7 @@ void RenderApp::BuildPSOs()
 	ctx.Device = md3dDevice.Get();
 	ctx.InputLayout = &mInputLayout;
 	ctx.RootSignature = mRootSignature.Get();
-	ctx.BackBufferFormat = mBackBufferFormat;
+	ctx.RenderTargetFormat = mBackBufferFormat;
 	ctx.DepthStencilFormat = mDepthStencilFormat;
 	ctx.SampleCount = mMsaaOption.SampleCount();
 	ctx.SampleQuality = mMsaaOption.Quality();

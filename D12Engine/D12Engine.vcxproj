@@ -182,6 +182,10 @@
     <ClCompile Include="Editor\EditorLayer.cpp" />
     <ClCompile Include="Editor\ImGuiLayer.cpp" />
     <ClCompile Include="Editor\SceneViewPanel.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp" />
     <ClCompile Include="EngineCore\LoadM3d.cpp" />
     <ClCompile Include="EngineCore\MathHelper.cpp" />
     <ClCompile Include="EngineCore\Scene.cpp" />
@@ -227,6 +231,10 @@
     <ClInclude Include="Editor\SceneViewPanel.h" />
     <ClInclude Include="EngineCore\DxException.h" />
     <ClInclude Include="EngineCore\GameTimer.h" />
+    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h" />
+    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h" />
+    <ClInclude Include="EngineCore\InputSystem\InputSystem.h" />
+    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h" />
     <ClInclude Include="EngineCore\LoadM3d.h" />
     <ClInclude Include="EngineCore\MathHelper.h" />
     <ClInclude Include="EngineCore\MsaaOption.h" />

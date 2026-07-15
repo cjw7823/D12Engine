@@ -1,18 +1,17 @@
 #pragma once
 
-//#include <Windows.h>
 #include <vector>
 #include <array>
 
 struct MsaaOption
 {
-	MsaaOption() = default;
-	MsaaOption(uint16_t i) { index = i; }
-
 	static constexpr std::array<uint16_t, 4> kMsaaSampleCandidates = { 2, 4, 8, 16 };
 	inline static std::vector<std::pair<uint16_t, uint16_t>> UsableSamples{ {1,1} }; //sample count, num quality levels
 
-	bool IsEnable() { return index == 0 ? false : true; }
+	MsaaOption() = default;
+	MsaaOption(uint16_t i) { index = i; }
+
+	bool IsEnable() const { return index == 0 ? false : true; }
 
 	void operator()(uint16_t i)
 	{

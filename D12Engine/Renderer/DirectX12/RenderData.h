@@ -1,13 +1,12 @@
 #pragma once
 
+#include "DirectX-Headers/d3dx12.h"
 #include "EngineCore/MathHelper.h"
-#include <stdint.h>
 #include "EngineCore/SkinnedData.h"
-#include "EngineCore/RenderConfig.h"
-#include <DirectXCollision.h>
+
+#include <stdint.h>
 #include <string>
 #include <wrl.h>
-#include <d3d12.h>
 
 inline constexpr int MaxLights = 16;
 
@@ -167,23 +166,6 @@ struct MeshGeometry
 		VertexBufferUploader = nullptr;
 		IndexBufferUploader = nullptr;
 	}
-};
-
-//실제 엔진에서는 Material 클래스 계층 구조로 존재할 수 있다.
-struct Material
-{
-	std::string Name;
-
-	int MatBufferIndex = -1;
-	int DiffuseSrvHeapIndex = -1;
-	int NormalSrvHeapIndex = -1;
-
-	int NumFramesDirty = RenderConfig::NumFrameResources;
-
-	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-	float Roughness = 0.25f;
-	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };
 
 //렌더링 순서에 영향

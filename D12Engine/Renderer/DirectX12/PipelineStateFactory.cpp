@@ -738,7 +738,7 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC PipelineStateFactory::BuildBaseGraphicsPsoDes
 	basePsoDesc.SampleMask = UINT_MAX; //모든 샘플 사용.
 	basePsoDesc.PrimitiveTopologyType = mContext.topologyType;
 	basePsoDesc.NumRenderTargets = 1;
-	basePsoDesc.RTVFormats[0] = mContext.BackBufferFormat;
+	basePsoDesc.RTVFormats[0] = mContext.RenderTargetFormat;
 	basePsoDesc.SampleDesc.Count = mContext.SampleCount;
 	basePsoDesc.SampleDesc.Quality = mContext.SampleQuality;
 	basePsoDesc.DSVFormat = mContext.DepthStencilFormat;

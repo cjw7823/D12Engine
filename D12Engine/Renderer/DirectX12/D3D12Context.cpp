@@ -23,9 +23,9 @@ bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc
 	mClientHeight = std::max(1, height);
 	mDesc = desc;
 
-	mDesc.RtvDescriptorCount = std::max<UINT>(mDesc.RtvDescriptorCount, RenderConfig::SwapChainBufferCount);
-	mDesc.DsvDescriptorCount = std::max<UINT>(mDesc.DsvDescriptorCount, 1);
-	mDesc.CbvSrvUavDescriptorMaxCount = std::max<UINT>(mDesc.CbvSrvUavDescriptorMaxCount, 1);
+	mDesc.RtvHeapCapacity = std::max<UINT>(mDesc.RtvHeapCapacity, RenderConfig::SwapChainBufferCount);
+	mDesc.DsvHeapCapacity = std::max<UINT>(mDesc.DsvHeapCapacity, 1);
+	mDesc.CbvSrvUavHeapCapacity = std::max<UINT>(mDesc.CbvSrvUavHeapCapacity, 1);
 
 	CreateDevice();
 
@@ -40,7 +40,7 @@ bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc
 	for (UINT i = 0; i < MsaaOption::kMsaaSampleCandidates.size(); i++)
 	{
 		D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels{};
-		msQualityLevels.Format = mDesc.BackBufferFormat;
+		msQualityLevels.Format = mDesc.RenderTargetFormat;
 		msQualityLevels.SampleCount = MsaaOption::kMsaaSampleCandidates[i];
 		msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 		msQualityLevels.NumQualityLevels = 0;
@@ -132,7 +132,7 @@ void D3D12Context::ResizeSwapChain(int width, int height)
 	ThrowIfFailed(mSwapChain->GetDesc1(&desc));
 	ThrowIfFailed(mSwapChain->ResizeBuffers(RenderConfig::SwapChainBufferCount,
 		mClientWidth, mClientHeight,
-		mDesc.BackBufferFormat,
+		mDesc.RenderTargetFormat,
 		desc.Flags));
 
 	CreateBackBufferRTVs();
@@ -227,17 +227,17 @@ D3D12DescriptorHandle D3D12Context::AllocateSrvDescriptor()
 
 void D3D12Context::FreeRtvDescriptor(D3D12DescriptorHandle handle)
 {
-	FreeCpuDescriptor(handle, mRtvFreeIndices, mDesc.RtvDescriptorCount);
+	FreeCpuDescriptor(handle, mRtvFreeIndices, mDesc.RtvHeapCapacity);
 }
 
 void D3D12Context::FreeDsvDescriptor(D3D12DescriptorHandle handle)
 {
-	FreeCpuDescriptor(handle, mDsvFreeIndices, mDesc.DsvDescriptorCount);
+	FreeCpuDescriptor(handle, mDsvFreeIndices, mDesc.DsvHeapCapacity);
 }
 
 void D3D12Context::FreeSrvDescriptor(D3D12DescriptorHandle handle)
 {
-	FreeCpuDescriptor(handle, mSrvFreeIndices, mDesc.CbvSrvUavDescriptorMaxCount);
+	FreeCpuDescriptor(handle, mSrvFreeIndices, mDesc.CbvSrvUavHeapCapacity);
 }
 
 void D3D12Context::AllocateSrvDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
@@ -410,7 +410,7 @@ void D3D12Context::CreateDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtvHeapDesc.NumDescriptors = mDesc.RtvDescriptorCount;
+	rtvHeapDesc.NumDescriptors = mDesc.RtvHeapCapacity;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
@@ -419,7 +419,7 @@ void D3D12Context::CreateDescriptorHeaps()
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	dsvHeapDesc.NumDescriptors = mDesc.DsvDescriptorCount;
+	dsvHeapDesc.NumDescriptors = mDesc.DsvHeapCapacity;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
@@ -428,20 +428,20 @@ void D3D12Context::CreateDescriptorHeaps()
 
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.NumDescriptors = mDesc.CbvSrvUavDescriptorMaxCount;
+	srvHeapDesc.NumDescriptors = mDesc.CbvSrvUavHeapCapacity;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
 		&srvHeapDesc,
 		IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
 
-	for (int i = (int)mDesc.RtvDescriptorCount - 1; i >= RenderConfig::SwapChainBufferCount; i--)
+	for (int i = (int)mDesc.RtvHeapCapacity - 1; i >= RenderConfig::SwapChainBufferCount; i--)
 		mRtvFreeIndices.push_back(i);
 
-	for (int i = (int)mDesc.DsvDescriptorCount - 1; i >= 0; i--)
+	for (int i = (int)mDesc.DsvHeapCapacity - 1; i >= 0; i--)
 		mDsvFreeIndices.push_back(i);
 
-	for (int i = (int)mDesc.CbvSrvUavDescriptorMaxCount - 1; i >= 0; i--)
+	for (int i = (int)mDesc.CbvSrvUavHeapCapacity - 1; i >= 0; i--)
 		mSrvFreeIndices.push_back(i);
 }
 
@@ -489,7 +489,7 @@ void D3D12Context::CreateSwapChain()
 	sd.BufferDesc.Height = mClientHeight;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
-	sd.BufferDesc.Format = mDesc.BackBufferFormat;
+	sd.BufferDesc.Format = mDesc.RenderTargetFormat;
 	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED; //DXGI에 맞김. 해당 값 고정.
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
@@ -649,7 +649,7 @@ void D3D12Context::LogAdapterOutputs(IDXGIAdapter* adapter)
 		text += L"\n\n";
 
 		OutputDebugString(text.c_str());
-		LogOutputDisplayModes(output, mDesc.BackBufferFormat);
+		LogOutputDisplayModes(output, mDesc.RenderTargetFormat);
 		ReleaseCom(output);
 		i++;
 	}
@@ -722,6 +722,6 @@ UINT D3D12Context::GetSrvDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) 
 
 	const UINT index = static_cast<UINT>((cpuHandle.ptr - cpuStart.ptr) / mCbvSrvUavDescriptorSize);
 
-	assert(index < mDesc.CbvSrvUavDescriptorMaxCount);
+	assert(index < mDesc.CbvSrvUavHeapCapacity);
 	return index;
 }

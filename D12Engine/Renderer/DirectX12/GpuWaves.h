@@ -1,10 +1,21 @@
 #pragma once
 
 #include "EngineCore/GameTimer.h"
+#include <functional>
 
 class GpuWaves
 {
 public:
+	using AllocateDescriptorCallback =
+		std::function<void(
+			D3D12_CPU_DESCRIPTOR_HANDLE* outCpu,
+			D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)>;
+
+	using FreeDescriptorCallback =
+		std::function<void(
+			D3D12_CPU_DESCRIPTOR_HANDLE cpu,
+			D3D12_GPU_DESCRIPTOR_HANDLE gpu)>;
+
 	GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int m, int n, float dx, float dt, float speed, float damping);
 	GpuWaves(const GpuWaves& rhs) = delete;
 	GpuWaves& operator=(const GpuWaves& rhs) = delete;
@@ -24,10 +35,7 @@ public:
 
 	void BuildResource(ID3D12GraphicsCommandList* cmdList);
 
-	void BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor,
-		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDescriptor,
-		UINT descriptorSize);
+	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor);
 
 	void Update(
 		const GameTimer& gt,

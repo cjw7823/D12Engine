@@ -34,12 +34,6 @@
     <Filter Include="Renderer">
       <UniqueIdentifier>{9de5894b-8129-46ad-aa97-c5e2f12e3f8a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="이전 항목">
-      <UniqueIdentifier>{1d1ae2b9-ee03-4be6-94bc-2347f6507f4d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="이전 항목\App_">
-      <UniqueIdentifier>{14f4b72a-8760-4fce-ab71-3f95fd1a93e1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Renderer\DirectX12">
       <UniqueIdentifier>{e4e37790-45cd-48e0-8a33-9b89a2b45f3e}</UniqueIdentifier>
     </Filter>
@@ -69,6 +63,15 @@
     </Filter>
     <Filter Include="Renderer\DirectX12\Util">
       <UniqueIdentifier>{5736995c-112f-479f-9d22-10166b325cc8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="이전 항목%28빌드x%29">
+      <UniqueIdentifier>{1d1ae2b9-ee03-4be6-94bc-2347f6507f4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="이전 항목%28빌드x%29\App_">
+      <UniqueIdentifier>{14f4b72a-8760-4fce-ab71-3f95fd1a93e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\InputSystem">
+      <UniqueIdentifier>{6851cebe-d474-44a8-aecf-15cbd7ccb723}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -162,6 +165,10 @@
     <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp">
       <Filter>Renderer\DirectX12\Util</Filter>
     </ClCompile>
+    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -195,10 +202,10 @@
       <Filter>External\DDSTextureLoader</Filter>
     </ClInclude>
     <ClInclude Include="Dx12App.h">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </ClInclude>
     <ClInclude Include="RenderApp.h">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\DxException.h">
       <Filter>EngineCore</Filter>
@@ -297,8 +304,12 @@
       <Filter>Renderer\DirectX12\Util</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\TextureLoader_Blocking.h">
-      <Filter>이전 항목</Filter>
+      <Filter>이전 항목%28빌드x%29</Filter>
     </ClInclude>
+    <ClInclude Include="EngineCore\InputSystem\InputSystem.h" />
+    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h" />
+    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h" />
+    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">
@@ -332,28 +343,28 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Dx12App.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp_Geometry.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp_Gizmo.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp_Input.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp_Pipeline.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="RenderApp_Resources.cpp">
-      <Filter>이전 항목\App_</Filter>
+      <Filter>이전 항목%28빌드x%29\App_</Filter>
     </None>
     <None Include="EngineCore\TextureLoader_Blocking.cpp">
-      <Filter>이전 항목</Filter>
+      <Filter>이전 항목%28빌드x%29</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -33,11 +33,11 @@ struct D3D12DescriptorHandle
 struct D3D12ContextDesc
 {
     // RTV 0 ~ SwapChainBufferCount - 1은 스왑 체인 백 버퍼용으로 예약.
-    UINT RtvDescriptorCount = RenderConfig::SwapChainBufferCount + 32;
-    UINT DsvDescriptorCount = 16;
-    UINT CbvSrvUavDescriptorMaxCount = 256;
+    UINT RtvHeapCapacity = RenderConfig::SwapChainBufferCount + 32;
+    UINT DsvHeapCapacity = 16;
+    UINT CbvSrvUavHeapCapacity = 256;
 
-    DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT RenderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     DXGI_FORMAT DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
     bool EnableVSync = true;
@@ -46,6 +46,27 @@ struct D3D12ContextDesc
     std::array<float, 4> BackBufferClearColor = { 0.45f, 0.55f, 0.60f, 1.0f };
 };
 
+/*
+    [실행 / 제어 관련 객체]
+    |
+    ├─ Command Allocator
+    │  └─ Command List가 기록한 GPU 명령 스트림 저장소
+    │     CPU가 기록하고 GPU/드라이버가 실행 시 읽는다.
+    │     ID3D12Resource가 아니며 실제 물리 위치는 드라이버/하드웨어 구현 의존.
+    │
+    ├─ Command List
+    │  └─ GPU 명령을 기록하는 인터페이스
+    │     Command Allocator를 backing storage로 사용
+    │
+    ├─ Descriptor Heap
+    │  └─ CBV/SRV/UAV/RTV/DSV/Sampler descriptor 배열
+    │     리소스 데이터 자체가 아니라 리소스를 어떻게 접근할지에 대한 View 정보 저장.
+    │     Shader-visible heap은 CPU가 작성하고 GPU가 읽을 수 있는 descriptor storage.
+    │     실제 물리 위치는 드라이버/하드웨어 구현 의존.
+    │
+    └─ Root Signature / PSO / 기타 객체
+       └─ 드라이버가 내부 표현으로 관리
+*/
 class D3D12Context
 {
 public:
@@ -74,7 +95,7 @@ public:
 
     // 콜백 호환 디스크립터 할당 헬퍼.
     // raw CPU/GPU 디스크립터 핸들이 필요한 외부 시스템에서 사용됨.
-    // 현재는 ImGui에서 사용.
+    // ImGui, GpuWaves에서 사용
     void AllocateSrvDescriptor(
         D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle);
@@ -94,14 +115,15 @@ public:
     UINT GetDsvDescriptorSize() const { return mDsvDescriptorSize; }
     UINT GetCbvSrvUavDescriptorSize() const { return mCbvSrvUavDescriptorSize; }
 
-    DXGI_FORMAT GetBackBufferFormat() const { return mDesc.BackBufferFormat; }
+    DXGI_FORMAT GetBackBufferFormat() const { return mDesc.RenderTargetFormat; }
     DXGI_FORMAT GetDepthStencilFormat() const { return mDesc.DepthStencilFormat; }
 
     const D3D12_VIEWPORT& GetScreenViewport() const { return mScreenViewport; }
     const D3D12_RECT& GetScissorRect() const { return mScissorRect; }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferRTV() const;
-    UINT GetCurrentBackBufferIndex() const { return mCurrentBackBufferIndex; }
+    const UINT GetCurrentBackBufferIndex() const noexcept { return mCurrentBackBufferIndex; }
+    const UINT GetCurrentFrameIndex() const noexcept { return mFrameIndex; }
 
     void BeginBackBufferRenderPass(const float clearColor[4]);
 
@@ -130,6 +152,9 @@ private:
         UINT descriptorCount);
 
     UINT GetSrvDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const;
+
+public:
+    MsaaOption mMsaaOption{ 2 };
 
 private:
     HWND mhWnd = nullptr;
@@ -175,8 +200,6 @@ private:
     std::vector<UINT> mDsvFreeIndices;
     std::vector<UINT> mSrvFreeIndices;
 
-    D3D12_VIEWPORT mScreenViewport = {};
-    D3D12_RECT mScissorRect = {};
-
-    MsaaOption mMsaaOption{ 2 };
+    D3D12_VIEWPORT mScreenViewport{};
+    D3D12_RECT mScissorRect{};
 };

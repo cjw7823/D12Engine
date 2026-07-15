@@ -8,7 +8,6 @@
 
 #include <DirectXCollision.h>
 #include <DirectXMath.h>
-#include <d3d12.h>
 #include <d3dcommon.h>
 #include <wrl/client.h>
 
@@ -26,58 +25,6 @@
 #include "EngineCore/GameTimer.h"
 #include "EngineCore/TextureLoader_Blocking.h"
 
-/*
-	1. Resource Heap / Resource Memory
-	├─ Default Heap
-	│  └─ GPU가 빠르게 접근하는 리소스 저장소
-	│     예: Texture, Vertex Buffer, Index Buffer, Render Target
-	│
-	├─ Upload Heap
-	│  └─ CPU가 쓰고 GPU가 읽거나 복사 소스로 사용하는 리소스 저장소
-	│     예: 업로드 버퍼, 동적 상수 버퍼
-	│
-	└─ Readback Heap
-	   └─ GPU 결과를 CPU가 읽기 위한 리소스 저장소
-
-	2. 실행 / 제어 관련 객체
-	├─ Command Allocator
-	│  └─ Command List가 기록한 GPU 명령의 실제 저장 공간
-	│     CPU가 명령을 기록하고, GPU/드라이버가 나중에 소비한다.
-	│     ID3D12Resource가 아니며 실제 물리 위치는 드라이버/하드웨어 구현 의존.
-	│
-	├─ Command List
-	│  └─ GPU 명령을 기록하는 인터페이스
-	│     자체가 대량의 명령 데이터를 소유한다기보다 Command Allocator를 backing storage로 사용한다.
-	│
-	├─ Descriptor Heap
-	│  └─ CBV/SRV/UAV/RTV/DSV/Sampler descriptor 배열
-	│     리소스 데이터 자체가 아니라 리소스를 어떻게 접근할지에 대한 View 정보 저장.
-	│     Shader-visible heap은 CPU가 작성하고 GPU가 읽을 수 있는 descriptor storage.
-	│     실제 물리 위치는 드라이버/하드웨어 구현 의존.
-	│
-	├─ Root Signature
-	│  └─ 셰이더 리소스 바인딩 구조 정의
-	│
-	└─ PSO
-	   └─ 셰이더 및 고정 파이프라인 상태 묶음
-
-	물리 메모리 관점 요약
-	├─ Default / Upload / Readback Heap
-	│  └─ D3D12_HEAP_TYPE으로 성격이 비교적 명확함
-	│
-	├─ Command Allocator
-	│  └─ GPU 명령 스트림 저장소.
-	│     CPU가 기록하고 GPU/드라이버가 실행 시 읽는다.
-	│     실제 위치는 구현 의존이며, 프로그래머가 heap type으로 지정하지 않는다.
-	│
-	├─ Descriptor Heap
-	│  └─ descriptor 저장소.
-	│     Shader-visible이면 GPU가 descriptor table을 통해 읽을 수 있다.
-	│     실제 위치는 구현 의존.
-	│
-	└─ Root Signature / PSO / 기타 객체
-	   └─ 드라이버가 내부 표현으로 관리
-*/
 class RenderApp : public Dx12App
 {
 public:

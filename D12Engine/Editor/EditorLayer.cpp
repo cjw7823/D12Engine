@@ -12,6 +12,11 @@ void EditorLayer::OnImGuiRender()
 	DrawEditorUI();
 }
 
+void EditorLayer::SetSceneViewTexture(ImTextureID textureID)
+{
+	mSceneViewPanel.SetTexture(textureID);
+}
+
 void EditorLayer::DrawEditorUI()
 {
 	DrawMainDockSpace();
@@ -169,7 +174,7 @@ void EditorLayer::DrawContentBrowser()
 
 	ImGui::Separator();
 
-	if (mCurrentDirectory != mProjectRoot)
+	if (mCurrentDirectory != mResourcesRoot)
 	{
 		if (ImGui::Button(".."))
 		{

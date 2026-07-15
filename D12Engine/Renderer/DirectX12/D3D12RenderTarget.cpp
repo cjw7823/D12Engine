@@ -18,8 +18,14 @@ void D3D12RenderTarget::Create(D3D12Context& context, DXGI_FORMAT colorFormat, D
     if (!mSrv.IsValid())
         mSrv = context.AllocateSrvDescriptor();
 
+    if (context.mMsaaOption.IsEnable() && !mMsaaDescriptorHandle.IsValid())
+        mMsaaDescriptorHandle = context.AllocateRtvDescriptor();
+
     CreateResources(context);
     CreateViews(context);
+
+    if (context.mMsaaOption.IsEnable())
+        CreateMsaaRenderTarget(context);
 }
 
 void D3D12RenderTarget::Resize(D3D12Context& context, int width, int height)
@@ -37,9 +43,12 @@ void D3D12RenderTarget::Resize(D3D12Context& context, int width, int height)
 
     mColorBuffer.Reset();
     mDepthBuffer.Reset();
+    mMsaaRenderTarget.Reset();
 
     CreateResources(context);
     CreateViews(context);
+    if (context.mMsaaOption.IsEnable())
+        CreateMsaaRenderTarget(context);
 }
 
 void D3D12RenderTarget::Shutdown(D3D12Context& context)
@@ -117,8 +126,8 @@ void D3D12RenderTarget::CreateResources(D3D12Context& context)
     depthDesc.DepthOrArraySize = 1;
     depthDesc.MipLevels = 1;
     depthDesc.Format = mDepthFormat;
-    depthDesc.SampleDesc.Count = 1;
-    depthDesc.SampleDesc.Quality = 0;
+    depthDesc.SampleDesc.Count = context.mMsaaOption.SampleCount();
+    depthDesc.SampleDesc.Quality = context.mMsaaOption.Quality();
     depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
@@ -164,14 +173,57 @@ void D3D12RenderTarget::CreateViews(D3D12Context& context)
 
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
     dsvDesc.Format = mDepthFormat;
-    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-    dsvDesc.Texture2D.MipSlice = 0;
+    if (context.mMsaaOption.IsEnable())
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+    else
+    {
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Texture2D.MipSlice = 0;
+    }
 
     device->CreateDepthStencilView(
         mDepthBuffer.Get(),
         &dsvDesc,
         mDsv.Cpu);
+}
+
+void D3D12RenderTarget::CreateMsaaRenderTarget(D3D12Context& context)
+{
+    D3D12_RESOURCE_DESC texDesc = {};
+    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    texDesc.Width = mWidth;
+    texDesc.Height = mHeight;
+    texDesc.DepthOrArraySize = 1;
+    texDesc.MipLevels = 1;
+    texDesc.Format = mColorFormat;
+    texDesc.SampleDesc.Count = context.mMsaaOption.SampleCount();
+    texDesc.SampleDesc.Quality = context.mMsaaOption.Quality();
+    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = mColorFormat;
+    clearValue.Color[0] = mClearColor[0];
+    clearValue.Color[1] = mClearColor[1];
+    clearValue.Color[2] = mClearColor[2];
+    clearValue.Color[3] = mClearColor[3];
+
+    mMsaaState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+    ThrowIfFailed(context.GetDevice()->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &texDesc,
+        mMsaaState,
+        &clearValue,
+        IID_PPV_ARGS(mMsaaRenderTarget.GetAddressOf())));
+
+    context.GetDevice()->CreateRenderTargetView(
+        mMsaaRenderTarget.Get(),
+        nullptr,
+        mMsaaDescriptorHandle.Cpu);
 }
 
 void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
@@ -181,45 +233,63 @@ void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
 
     ID3D12GraphicsCommandList* cmdList = context.GetCommandList();
 
-    if (mColorState != D3D12_RESOURCE_STATE_RENDER_TARGET)
-    {
-        auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            mColorBuffer.Get(),
-            mColorState,
-            D3D12_RESOURCE_STATE_RENDER_TARGET);
+    D3D12_RESOURCE_STATES newState = context.mMsaaOption.IsEnable() ? D3D12_RESOURCE_STATE_RESOLVE_DEST : D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        cmdList->ResourceBarrier(1, &barrier);
-        mColorState = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    }
+    TransitionIfNeeded(context.GetCommandList(), mColorBuffer.Get(), mColorState, newState);
+    TransitionIfNeeded(context.GetCommandList(), mMsaaRenderTarget.Get(), mMsaaState, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     cmdList->RSSetViewports(1, &mViewport);
     cmdList->RSSetScissorRects(1, &mScissorRect);
 
-    cmdList->ClearRenderTargetView(
-        mRtv.Cpu,
-        clearColor,
-        0,
-        nullptr);
+    auto rtvHandle = context.mMsaaOption.IsEnable() ? mMsaaDescriptorHandle.Cpu : mRtv.Cpu;
+    cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
     cmdList->ClearDepthStencilView(
         mDsv.Cpu,
         D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);
+        1.0f, 0, 0, nullptr);
 
-    cmdList->OMSetRenderTargets(
-        1,
-        &mRtv.Cpu,
-        false,
-        &mDsv.Cpu);
+    cmdList->OMSetRenderTargets(1, &rtvHandle, true, &mDsv.Cpu);
+}
 
-    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+void D3D12RenderTarget::TransitionIfNeeded(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* resource, D3D12_RESOURCE_STATES& currState, D3D12_RESOURCE_STATES newState)
+{
+    assert(cmdList);
+    assert(resource);
+
+    if (currState != newState)
+    {
+        auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource, currState, newState);
+        cmdList->ResourceBarrier(1, &barrier);
+        currState = newState;
+    }
+}
+
+void D3D12RenderTarget::ResolveMsaaToColorBuffer(ID3D12GraphicsCommandList* commandList)
+{
+    TransitionIfNeeded(commandList, mMsaaRenderTarget.Get(), mMsaaState, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+
+    commandList->ResolveSubresource(
         mColorBuffer.Get(),
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        0,
+        mMsaaRenderTarget.Get(),
+        0,
+        mColorFormat);
+
+    TransitionIfNeeded(commandList, mMsaaRenderTarget.Get(), mMsaaState, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    TransitionIfNeeded(commandList, mColorBuffer.Get(), mColorState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    commandList->OMSetRenderTargets(1, &mRtv.Cpu, true, nullptr);
+}
+
+void D3D12RenderTarget::PrepareForSampling(ID3D12GraphicsCommandList* commandList)
+{
+    TransitionIfNeeded(
+        commandList,
+        mColorBuffer.Get(),
+        mColorState,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    cmdList->ResourceBarrier(1, &barrier);
-    mColorState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList->OMSetRenderTargets(1, &mRtv.Cpu, true, nullptr);
 }

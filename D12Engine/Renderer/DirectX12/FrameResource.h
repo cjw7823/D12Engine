@@ -1,10 +1,9 @@
 #pragma once
 
 #include <memory>
-
-#include <d3d12.h>
 #include <wrl/client.h>
 
+#include "DirectX-Headers/d3dx12.h"
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/DirectX12/UploadBuffer.h"
 
@@ -32,6 +31,4 @@ public:
 	// 예를 들어, 인스턴싱 없이 1,000개의 객체를 그린다면 1,000개 분량의 데이터를 담을 수 있는 상수 버퍼(constant buffer)를 생성하게 됩니다. 
 	// 인스턴싱을 사용할 때도 마찬가지로, 1,000개 인스턴스의 데이터를 저장할 수 있을 만큼 충분히 큰 구조화된 버퍼를 생성하기만 하면 됩니다.
 	std::unique_ptr<UploadBuffer<InstanceData_GPU>> InstanceBuffer = nullptr;
-
-	UINT64 FenceValue = 0;
 };

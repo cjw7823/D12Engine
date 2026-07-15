@@ -177,8 +177,10 @@ void GpuWaves::BuildResource(ID3D12GraphicsCommandList* cmdList)
 	cmdList->ResourceBarrier(1, &barrier);
 }
 
-void GpuWaves::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDescriptor, UINT descriptorSize)
+void GpuWaves::BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor)
 {
+	assert(allocateDescriptor);
+
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
@@ -191,20 +193,28 @@ void GpuWaves::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor, CD
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	uavDesc.Texture2D.MipSlice = 0;
 
-	md3dDevice->CreateShaderResourceView(mPrevSol.Get(), &srvDesc, hCpuDescriptor);
-	md3dDevice->CreateShaderResourceView(mCurrSol.Get(), &srvDesc, hCpuDescriptor.Offset(1, descriptorSize));
-	md3dDevice->CreateShaderResourceView(mNextSol.Get(), &srvDesc, hCpuDescriptor.Offset(1, descriptorSize));
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hCpu{};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE hGpu{};
 
-	md3dDevice->CreateUnorderedAccessView(mPrevSol.Get(), nullptr, &uavDesc, hCpuDescriptor.Offset(1, descriptorSize));
-	md3dDevice->CreateUnorderedAccessView(mCurrSol.Get(), nullptr, &uavDesc, hCpuDescriptor.Offset(1, descriptorSize));
-	md3dDevice->CreateUnorderedAccessView(mNextSol.Get(), nullptr, &uavDesc, hCpuDescriptor.Offset(1, descriptorSize));
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateShaderResourceView(mPrevSol.Get(), &srvDesc, hCpu);
+	mPrevSolSrv = hGpu;
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateShaderResourceView(mCurrSol.Get(), &srvDesc, hCpu);
+	mCurrSolSrv = hGpu;
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateShaderResourceView(mNextSol.Get(), &srvDesc, hCpu);
+	mNextSolSrv = hGpu;
 
-	mPrevSolSrv = hGpuDescriptor;
-	mCurrSolSrv = hGpuDescriptor.Offset(1, descriptorSize);
-	mNextSolSrv = hGpuDescriptor.Offset(1, descriptorSize);
-	mPrevSolUav = hGpuDescriptor.Offset(1, descriptorSize);
-	mCurrSolUav = hGpuDescriptor.Offset(1, descriptorSize);
-	mNextSolUav = hGpuDescriptor.Offset(1, descriptorSize);
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateUnorderedAccessView(mPrevSol.Get(), nullptr, &uavDesc, hCpu);
+	mPrevSolUav = hGpu;
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateUnorderedAccessView(mCurrSol.Get(), nullptr, &uavDesc, hCpu);
+	mCurrSolUav = hGpu;
+	allocateDescriptor(&hCpu, &hGpu);
+	md3dDevice->CreateUnorderedAccessView(mNextSol.Get(), nullptr, &uavDesc, hCpu);
+	mNextSolUav = hGpu;
 }
 
 void GpuWaves::Update(const GameTimer & gt, ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature * rootSig, ID3D12PipelineState * pso)

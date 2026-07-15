@@ -5,13 +5,12 @@
 #endif
 
 #include <Windows.h>
-
 #include <vector>
-
-#include <d3d12.h>
 #include <d3dcommon.h>
 #include <dxgiformat.h>
 #include <wrl/client.h>
+
+#include "DirectX-Headers/d3dx12.h"
 
 struct PsoBuildContext
 {
@@ -20,7 +19,7 @@ struct PsoBuildContext
 
 	const std::vector<D3D12_INPUT_ELEMENT_DESC>* InputLayout = nullptr;
 
-	DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_UNKNOWN;
+	DXGI_FORMAT RenderTargetFormat = DXGI_FORMAT_UNKNOWN;
 	DXGI_FORMAT DepthStencilFormat = DXGI_FORMAT_UNKNOWN;
 
 	UINT SampleCount = 1;

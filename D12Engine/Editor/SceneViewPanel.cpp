@@ -4,14 +4,13 @@
 void SceneViewPanel::OnImGuiRender()
 {
     bool visible = ImGui::Begin("Scene View");
-
-    mHasValidSize = false;
-
     if (!visible)
     {
         ImGui::End();
         return;
     }
+
+    UpdateInputState();
 
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
     if (availableSize.x < 1.0f || availableSize.y < 1.0f)
@@ -21,10 +20,9 @@ void SceneViewPanel::OnImGuiRender()
         return;
     }
 
-    mHasValidSize = true;
     mViewportSize = availableSize;
 
-    if (mTextureId != NULL)
+    if (mTextureId != 0)
     {
         ImGui::Image(mTextureId, availableSize);
     }
@@ -40,10 +38,30 @@ void SceneViewPanel::OnImGuiRender()
             IM_COL32(220, 220, 220, 255),
             "Scene render target is not ready."
         );
-
-        //입력신호를 받기 위해.
-        ImGui::InvisibleButton("SceneViewEmpty", availableSize);
     }
 
     ImGui::End();
+}
+
+void SceneViewPanel::UpdateInputState()
+{
+    mInputState.IsHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+    mInputState.IsFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
+    const ImVec2 windowPosition = ImGui::GetWindowPos();
+    const ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
+    const ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
+
+    mInputState.Min =
+    {
+        windowPosition.x + contentMin.x,
+        windowPosition.y + contentMin.y
+    };
+
+    mInputState.Max =
+    {
+        windowPosition.x + contentMax.x,
+        windowPosition.y + contentMax.y
+    };
 }

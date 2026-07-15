@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
+#include "DirectX-Headers/d3dx12.h"
 #include "Renderer/DirectX12/MACRO.h"
 #include "Renderer/DirectX12/D3D12Util.h"
 

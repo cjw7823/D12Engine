@@ -23,13 +23,19 @@ public:
 	void Initialize(D3D12Context& ctx);
 
 	//반환 시점에 outTex.Resource는 "즉시 SRV로 사용 가능" 상태를 보장.
+	//Srv 생성까지 담당.
 	HRESULT LoadDDS(D3D12Context& ctx, const std::vector<std::filesystem::path>& paths);
+
+	static UINT GetNumTexture() { return (UINT)GetInstance().mTextures.size(); }
+	Texture* Find(const std::wstring& path);
 
 private:
 	TextureManager() = default;
 	~TextureManager() = default;
 
 	HRESULT FlushCommandQueue();
+
+	void CreateSRV(D3D12Context& ctx);
 
 private:
 	bool isInitialized = false;

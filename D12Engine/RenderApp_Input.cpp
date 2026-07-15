@@ -13,9 +13,6 @@ void RenderApp::OnMouseDown(WPARAM btnState, int x, int y)
 			ClearSelectedInstance();
 			SelectRenderItemByMouseClick(x, y);
 		}
-
-		mLastMousePos = { x, y };
-		SetCapture(mhMainWnd);
 	}
 
 	mLastMousePos = { x,y };

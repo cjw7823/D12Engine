@@ -14,10 +14,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return EditorApplication::GetApp()->MsgProc(hWnd, msg, wParam, lParam);
 }
 
-EditorApplication::EditorApplication(HINSTANCE hInstance)
+EditorApplication::EditorApplication(HINSTANCE hInstance) : mSceneViewInputHandler(mSceneRenderer)
 {
 	assert(mApp == nullptr);
 	mApp = this;
+
+	mEditorInputRouter.SetGlobalHandler(&mGlobalInputHandler);
+	mEditorInputRouter.SetSceneViewHandler(&mSceneViewInputHandler);
 }
 
 EditorApplication::~EditorApplication()
@@ -30,13 +33,16 @@ bool EditorApplication::Initialize()
 		return false;
 
 	D3D12ContextDesc ctx{};
-	if (!mD3D12Context.Initialize(mhMainWnd, mClientWidth, mClientHeight, ctx))
+	if (!mD3D12Context.Initialize(mhMainWnd, mApplicationWidth, mApplicationHeight, ctx))
 	{
 		::UnregisterClassW(mWndClassName.c_str(), mhInstance);
 		return false;
 	}
 
+	//mSceneViewInputHandler.RegistCallback_ChangeMsaaOption();
+
 	TextureManager::GetInstance().Initialize(mD3D12Context);
+	mSceneViewInputHandler.SetScene(&mActiveScene);
 
 	if (!mImGuiLayer.Initialize(mhMainWnd, mD3D12Context))
 		return false;
@@ -48,8 +54,10 @@ bool EditorApplication::Initialize()
 		DXGI_FORMAT_R8G8B8A8_UNORM,
 		DXGI_FORMAT_D24_UNORM_S8_UINT);
 
-	if (!mSceneRenderer.Initialize(mD3D12Context))
+	mD3D12Context.BeginFrame();
+	if (!mSceneRenderer.Initialize(mD3D12Context, mSceneRenderTarget))
 		return false;
+	mD3D12Context.EndFrame();
 
 	return true;
 }
@@ -82,7 +90,7 @@ bool EditorApplication::InitMainWindow()
 		return false;
 	}
 
-	RECT R = { 0,0, mClientWidth, mClientHeight };
+	RECT R = { 0,0, mApplicationWidth, mApplicationHeight };
 	AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
 	int width = R.right - R.left;
 	int height = R.bottom - R.top;
@@ -106,14 +114,16 @@ bool EditorApplication::InitMainWindow()
 	return true;
 }
 
-void EditorApplication::Tick(const GameTimer& gt)
+void EditorApplication::Tick()
 {
 	ImTextureID sceneTextureId = static_cast<ImTextureID>(mSceneRenderTarget.GetSRVGpu().ptr);
 	mEditorLayer.SetSceneViewTexture(sceneTextureId);
 
-	//에디터의 ImGui Frame 구성.
+	//에디터의 ImGui UI 렌더링
 	mImGuiLayer.BeginFrame();
 	mEditorLayer.OnImGuiRender();
+	// OnImGuiRender에서 Scene View의 Hover/Focus/영역이 결정된 뒤 입력 분배
+	RouteEditorInput();
 	mImGuiLayer.EndFrame();
 
 	SceneViewPanel& sceneViewPanel = mEditorLayer.GetSceneViewPanel();
@@ -127,6 +137,7 @@ void EditorApplication::Tick(const GameTimer& gt)
 			mSceneRenderTarget.GetHeight() != sceneHeight)
 		{
 			mSceneRenderTarget.Resize(mD3D12Context, sceneWidth, sceneHeight);
+			mSceneRenderer.OnResize(mD3D12Context, mSceneRenderTarget);
 		}
 	}
 
@@ -135,7 +146,7 @@ void EditorApplication::Tick(const GameTimer& gt)
 	if (renderSceneView)
 	{
 		mSceneRenderTarget.Clear(mD3D12Context);
-		//mSceneRenderer.Render(mD3D12Context, mSceneRenderTarget, mActiveScene);
+		mSceneRenderer.Tick(mD3D12Context, mSceneRenderTarget, mActiveScene);
 	}
 
 	//렌더링
@@ -146,24 +157,50 @@ void EditorApplication::Tick(const GameTimer& gt)
 	mD3D12Context.EndFrame();
 }
 
+void EditorApplication::RouteEditorInput()
+{
+	const ImGuiIO& io = ImGui::GetIO();
+
+	const ImGuiInputCaptureState capture
+	{
+		io.WantCaptureMouse,
+		io.WantCaptureKeyboard,
+		io.WantTextInput
+	};
+
+	mEditorInputRouter.Route(
+		mInputSystem,
+		mEditorLayer.GetSceneViewPanel().GetInputState(),
+		mEditorLayer.GetGameViewPanel().GetInputState(),
+		capture,
+		mEditorLayer.IsPlayMode());
+}
+
 int EditorApplication::Run()
 {
 	MSG msg{};
+	bool running = true;
 
-	mTimer.Reset();
-
-	while (msg.message != WM_QUIT)
+	while (running)
 	{
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		mInputSystem.BeginFrame();
+
+		while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			if (msg.message == WM_QUIT)
+			{
+				running = false;
+				break;
+			}
+
+			::TranslateMessage(&msg);
+			::DispatchMessage(&msg);
 		}
-		else
-		{
-			mTimer.Tick();
-			Tick(mTimer);
-		}
+
+		if (!running) break;
+
+		if (IsActivate()) Tick();
+		else ::WaitMessage(); //Sleep(100);
 	}
 
 	mD3D12Context.FlushCommandQueue();
@@ -182,28 +219,103 @@ LRESULT EditorApplication::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 {
 	static bool mResizing = false;
 
-	if (mImGuiLayer.WndProcHandler(hWnd, msg, wParam, lParam))
-		return true;
+	mImGuiLayer.WndProcHandler(hWnd, msg, wParam, lParam);
 
 	switch (msg)
 	{
-	case WM_SIZE:
-		mClientWidth = LOWORD(lParam);
-		mClientHeight = HIWORD(lParam);
-		if (mD3D12Context.GetDevice() && wParam != SIZE_MINIMIZED && !mResizing)
-			mD3D12Context.ResizeSwapChain(mClientWidth, mClientHeight);
+	case WM_ACTIVATE:
+		if (LOWORD(wParam) == WA_INACTIVE)
+		{
+			mAppPaused = true;
+			mInputSystem.Reset();
+		}
+		else
+			mAppPaused = false;
 		return 0;
+
+	case WM_SIZE:
+		//드래그 중 WM_SIZE 메시지가 계속 발생. 체크 후 OnResize 호출방지.
+		// SetWindowPos 등의 API호출로도 발생.
+		mApplicationWidth = LOWORD(lParam);
+		mApplicationHeight = HIWORD(lParam);
+		if (mD3D12Context.GetDevice() && wParam != SIZE_MINIMIZED && !mResizing)
+			mD3D12Context.ResizeSwapChain(mApplicationWidth, mApplicationHeight);
+		return 0;
+
 	case WM_ENTERSIZEMOVE:
 		mResizing = true;
+		mAppPaused = true;
 		return 0;
 	case WM_EXITSIZEMOVE:
 		mResizing = false;
-		mD3D12Context.ResizeSwapChain(mClientWidth, mClientHeight);
+		mAppPaused = false;
+		mD3D12Context.ResizeSwapChain(mApplicationWidth, mApplicationHeight);
 		return 0;
+	case WM_GETMINMAXINFO:
+		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 200;
+		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 200;
+		return 0;
+
+	case WM_MENUCHAR:
+		// 유효하지 않은 메뉴 니모닉 입력 시 메뉴를 닫고 비프음을 방지한다.
+		return MAKELRESULT(0, MNC_CLOSE);
+
 	case WM_SYSCOMMAND:
-		if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
+		// Alt 또는 F10으로 Windows 메뉴 모드에 진입하는 것을 막는다.
+		if ((wParam & 0xFFF0) == SC_KEYMENU)
 			return 0;
 		break;
+
+	case WM_LBUTTONDOWN:
+		::SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
+		mInputSystem.OnMouseButtonDown(MouseButton::Left);
+		return 0;
+	case WM_LBUTTONUP:
+		ReleaseCapture();
+		mInputSystem.OnMouseButtonUp(MouseButton::Left);
+		return 0;
+	case WM_RBUTTONDOWN:
+		::SetCapture(mhMainWnd);
+		mInputSystem.OnMouseButtonDown(MouseButton::Right);
+		return 0;
+	case WM_RBUTTONUP:
+		ReleaseCapture();
+		mInputSystem.OnMouseButtonUp(MouseButton::Right);
+		return 0;
+	case WM_MBUTTONDOWN:
+		::SetCapture(mhMainWnd);
+		mInputSystem.OnMouseButtonDown(MouseButton::Middle);
+		return 0;
+	case WM_MBUTTONUP:
+		ReleaseCapture();
+		mInputSystem.OnMouseButtonUp(MouseButton::Middle);
+		return 0;
+
+	case WM_MOUSEMOVE:
+		//클라이언트 좌표
+		mInputSystem.OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+	case WM_MOUSEWHEEL:
+	{
+		//스크린 좌표 -> 클라이언트 좌표 변경
+		POINT position
+		{
+			GET_X_LPARAM(lParam),
+			GET_Y_LPARAM(lParam)
+		};
+		::ScreenToClient(hWnd, &position);
+		mInputSystem.OnMouseMove(position.x, position.y);
+		mInputSystem.OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
+		return 0;
+	}
+
+	case WM_KEYDOWN:
+		mInputSystem.OnKeyDown(wParam);
+		return 0;
+	case WM_KEYUP:
+		mInputSystem.OnKeyUp(wParam);
+		return 0;
+
 	case WM_DESTROY:
 		::PostQuitMessage(0);
 		return 0;

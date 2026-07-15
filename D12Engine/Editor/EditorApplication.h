@@ -7,15 +7,18 @@
 #include <Windows.h>
 #include <filesystem>
 
-#include "EditorLayer.h"
-#include "ImGuiLayer.h"
+#include "Editor/EditorLayer.h"
+#include "Editor/ImGuiLayer.h"
 
 #include "Renderer/DirectX12/D3D12Context.h"
 #include "Renderer/DirectX12/SceneRenderer.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 
 #include "EngineCore/Scene.h"
-#include "EngineCore/GameTimer.h"
+#include "EngineCore/InputSystem/InputSystem.h"
+#include "EngineCore/InputSystem/EditorInputRouter.h"
+#include "EngineCore/InputSystem/GlobalInputHandler.h"
+#include "EngineCore/InputSystem/SceneViewInputHandler.h"
 
 /*
 	EditorApplication
@@ -34,6 +37,7 @@ public:
 	virtual ~EditorApplication();
 
 	static EditorApplication* GetApp() { return mApp; }
+	bool IsActivate() const { return !mAppPaused; }
 	bool Initialize();
 	int Run();
 
@@ -41,28 +45,35 @@ public:
 
 protected:
 	bool InitMainWindow();
-	void Tick(const GameTimer& gt);
+	void Tick();
+	void RouteEditorInput();
+private:
 
 private:
 	inline static EditorApplication* mApp = nullptr;
-
 	HINSTANCE mhInstance = nullptr;
 	HWND mhMainWnd = nullptr;
 
 	std::wstring mMainWndCaption = L"Direct3D 12 App";
 	std::wstring mWndClassName = L"MainWnd";
-	int mClientWidth = 1200;
-	int mClientHeight = 900;
-	bool mResizing = false;
+	int mApplicationWidth = 1200;
+	int mApplicationHeight = 900;
 
 	D3D12Context mD3D12Context;
+
 	ImGuiLayer mImGuiLayer;
 	EditorLayer mEditorLayer;
 
 	Scene mActiveScene;
 	SceneRenderer mSceneRenderer;
-
 	D3D12RenderTarget mSceneRenderTarget;
 
-	GameTimer mTimer;
+	//For Massage Proc
+	bool mAppPaused = false;
+
+	//For InputSystem
+	InputSystem mInputSystem;
+	EditorInputRouter mEditorInputRouter;
+	GlobalInputHandler mGlobalInputHandler;
+	SceneViewInputHandler mSceneViewInputHandler;
 };

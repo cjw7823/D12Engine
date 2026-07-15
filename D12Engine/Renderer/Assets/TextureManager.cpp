@@ -137,7 +137,14 @@ HRESULT TextureManager::LoadDDS(D3D12Context& ctx, const std::vector<std::filesy
 			std::move(pending.TextureData));
 	}
 
+	CreateSRV(ctx);
+
 	return S_OK;
+}
+
+Texture* TextureManager::Find(const std::wstring& path)
+{
+	return mTextures.find(path)->second.get();
 }
 
 HRESULT TextureManager::FlushCommandQueue()
@@ -155,4 +162,25 @@ HRESULT TextureManager::FlushCommandQueue()
 	}
 
 	return S_OK;
+}
+
+void TextureManager::CreateSRV(D3D12Context& ctx)
+{
+	for (auto& p : mTextures)
+	{
+		auto& tex = p.second;
+		tex->Srv = ctx.AllocateSrvDescriptor();
+
+		auto resource = tex->Resource;
+		auto desc = resource->GetDesc();
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = desc.Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+		ctx.GetDevice()->CreateShaderResourceView(resource.Get(), &srvDesc, tex->Srv.Cpu);
+	}
 }
