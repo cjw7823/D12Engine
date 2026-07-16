@@ -2,6 +2,8 @@
 #include "SobelFilter.h"
 #include "Renderer/DirectX12/MACRO.h"
 
+#include <cassert>
+
 SobelFilter::SobelFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format)
 {
 	md3dDevice = device;
@@ -32,17 +34,28 @@ UINT SobelFilter::DescriptorCount() const
 	return 4;
 }
 
-void SobelFilter::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDesc, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDesc, UINT descSize)
+void SobelFilter::BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor)
 {
-	mhCpuSrv = hCpuDesc;
-	mhCpuUav = hCpuDesc.Offset(1, descSize);
-	mhCompositeCpuSrv = hCpuDesc.Offset(1, descSize);
-	mhCompositeCpuUav = hCpuDesc.Offset(1, descSize);
+	assert(allocateDescriptor);
 
-	mhGpuSrv = hGpuDesc;
-	mhGpuUav = hGpuDesc.Offset(1, descSize);
-	mhCompositeGpuSrv = hGpuDesc.Offset(1, descSize);
-	mhCompositeGpuUav = hGpuDesc.Offset(1, descSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hCpu{};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE hGpu{};
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mhCpuSrv = hCpu;
+	mhGpuSrv = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mhCpuUav = hCpu;
+	mhGpuUav = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mhCompositeCpuSrv = hCpu;
+	mhCompositeGpuSrv = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mhCompositeCpuUav = hCpu;
+	mhCompositeGpuUav = hGpu;
 
 	BuildDescriptors();
 }

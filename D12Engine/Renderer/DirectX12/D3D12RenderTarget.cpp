@@ -16,9 +16,9 @@ void D3D12RenderTarget::Create(D3D12Context& context, DXGI_FORMAT colorFormat, D
         mDsv = context.AllocateDsvDescriptor();
 
     if (!mSrv.IsValid())
-        mSrv = context.AllocateSrvDescriptor();
+        mSrv = context.AllocateSrvUavDescriptor();
 
-    if (context.mMsaaOption.IsEnable() && !mMsaaDescriptorHandle.IsValid())
+    if (!mMsaaDescriptorHandle.IsValid())
         mMsaaDescriptorHandle = context.AllocateRtvDescriptor();
 
     CreateResources(context);
@@ -72,7 +72,7 @@ void D3D12RenderTarget::Shutdown(D3D12Context& context)
 
     if (mSrv.IsValid())
     {
-        context.FreeSrvDescriptor(mSrv);
+        context.FreeSrvUavDescriptor(mSrv);
         mSrv = {};
     }
 }
@@ -236,7 +236,8 @@ void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
     D3D12_RESOURCE_STATES newState = context.mMsaaOption.IsEnable() ? D3D12_RESOURCE_STATE_RESOLVE_DEST : D3D12_RESOURCE_STATE_RENDER_TARGET;
 
     TransitionIfNeeded(context.GetCommandList(), mColorBuffer.Get(), mColorState, newState);
-    TransitionIfNeeded(context.GetCommandList(), mMsaaRenderTarget.Get(), mMsaaState, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    if(context.mMsaaOption.IsEnable())
+        TransitionIfNeeded(context.GetCommandList(), mMsaaRenderTarget.Get(), mMsaaState, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     cmdList->RSSetViewports(1, &mViewport);
     cmdList->RSSetScissorRects(1, &mScissorRect);

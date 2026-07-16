@@ -39,9 +39,14 @@ bool EditorApplication::Initialize()
 		return false;
 	}
 
-	//mSceneViewInputHandler.RegistCallback_ChangeMsaaOption();
-
 	TextureManager::GetInstance().Initialize(mD3D12Context);
+	mSceneViewInputHandler.RegistCallback_ChangeMsaaOption(
+		[this]()
+		{
+			mD3D12Context.mMsaaOption.Next();
+			mSceneRenderTarget.Resize(mD3D12Context, mApplicationWidth, mApplicationHeight);
+			mSceneRenderer.ChangeMsaa(mD3D12Context);
+		});
 	mSceneViewInputHandler.SetScene(&mActiveScene);
 
 	if (!mImGuiLayer.Initialize(mhMainWnd, mD3D12Context))
@@ -55,8 +60,12 @@ bool EditorApplication::Initialize()
 		DXGI_FORMAT_D24_UNORM_S8_UINT);
 
 	mD3D12Context.BeginFrame();
-	if (!mSceneRenderer.Initialize(mD3D12Context, mSceneRenderTarget))
+	if (!mSceneRenderer.Initialize(
+			mD3D12Context, 
+			mSceneRenderTarget.GetColorFormat(),
+			mSceneRenderTarget.GetDepthFormat()))
 		return false;
+
 	mD3D12Context.EndFrame();
 
 	return true;

@@ -53,9 +53,11 @@ void SceneViewInputHandler::ProcessKeyboardInput(
     if (input.IsKeyPressed('4'))
         mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::VertexNormal;
     if (input.IsKeyPressed('5'))
-        mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::Sobel;
+        mSceneRenderer.mRenderSettings.SobelEnabled = !mSceneRenderer.mRenderSettings.SobelEnabled;
     if (input.IsKeyPressed('6'))
         mSceneRenderer.mRenderSettings.NextBlurCount();
+    if (input.IsKeyPressed('7') && mChangeMsaaOptionCallback)
+        mChangeMsaaOptionCallback();
 
     //camera move
     const float camMoveSpeed = 10.0f;

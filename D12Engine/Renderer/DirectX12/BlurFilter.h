@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DirectX-Headers\d3dx12.h"
+#include <functional>
 
 /// <summary>
 /// 생성자 매개변수로 렌더 텍스처(블러용)를 생성하므로 화면 크기가 변경되면 새로 생성해야 한다.
@@ -8,6 +9,11 @@
 class BlurFilter
 {
 public:
+	using AllocateDescriptorCallback =
+		std::function<void(
+			D3D12_CPU_DESCRIPTOR_HANDLE* outCpu,
+			D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)>;
+
 	BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format);
 
 	BlurFilter(const BlurFilter& rhs) = delete;
@@ -16,10 +22,7 @@ public:
 
 	ID3D12Resource* SobelOutput();
 
-	void BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor,
-		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDescriptor,
-		UINT descriptorSize);
+	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor);
 
 	void OnResize(UINT newWidth, UINT newHeight);
 
@@ -29,6 +32,7 @@ public:
 		ID3D12PipelineState* horzBlurPSO,
 		ID3D12PipelineState* vertBlurPSO,
 		ID3D12Resource* input,
+		D3D12_RESOURCE_STATES& inputState,
 		int mBlurCount);
 
 	UINT DescriptorCount() const;

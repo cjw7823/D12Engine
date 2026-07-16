@@ -32,6 +32,8 @@ public:
     const D3D12_RECT& GetScissorRect() const noexcept { return mScissorRect; }
     ID3D12Resource* GetColorResource() const noexcept { return mColorBuffer.Get(); }
     ID3D12Resource* GetDepthResource() const noexcept { return mDepthBuffer.Get(); }
+    D3D12_RESOURCE_STATES& GetColorState() { return mColorState; }
+
 private:
     void CreateResources(D3D12Context& context);
     void CreateViews(D3D12Context& context);

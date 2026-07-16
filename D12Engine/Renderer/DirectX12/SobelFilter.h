@@ -3,10 +3,16 @@
 #include "DirectX-Headers\d3dx12.h"
 #include <Windows.h>
 #include <wrl.h>
+#include <functional>
 
 class SobelFilter
 {
 public:
+	using AllocateDescriptorCallback =
+		std::function<void(
+			D3D12_CPU_DESCRIPTOR_HANDLE* outCpu,
+			D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)>;
+
 	/// <summary>
 	/// 생성자 매개변수로 렌더 텍스처(블러용)를 생성하므로 화면 크기가 변경되면 새로 생성해야 한다.
 	/// </summary>
@@ -22,10 +28,7 @@ public:
 
 	UINT DescriptorCount() const;
 
-	void BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDesc,
-		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDesc,
-		UINT descSize);
+	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor);
 
 	void OnResize(UINT newWidth, UINT newHeight);
 

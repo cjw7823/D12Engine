@@ -95,7 +95,7 @@ void D3D12Context::Shutdown()
 
 	mRtvHeap.Reset();
 	mDsvHeap.Reset();
-	mSrvHeap.Reset();
+	mSrvUavHeap.Reset();
 
 	md3dDevice.Reset();
 	mdxgiFactory.Reset();
@@ -220,9 +220,9 @@ D3D12DescriptorHandle D3D12Context::AllocateDsvDescriptor()
 	return AllocateCpuDescriptor(mDsvHeap.Get(), mDsvFreeIndices, mDsvDescriptorSize, false);
 }
 
-D3D12DescriptorHandle D3D12Context::AllocateSrvDescriptor()
+D3D12DescriptorHandle D3D12Context::AllocateSrvUavDescriptor()
 {
-	return AllocateCpuDescriptor(mSrvHeap.Get(), mSrvFreeIndices, mCbvSrvUavDescriptorSize, true);
+	return AllocateCpuDescriptor(mSrvUavHeap.Get(), mSrvFreeIndices, mCbvSrvUavDescriptorSize, true);
 }
 
 void D3D12Context::FreeRtvDescriptor(D3D12DescriptorHandle handle)
@@ -235,26 +235,34 @@ void D3D12Context::FreeDsvDescriptor(D3D12DescriptorHandle handle)
 	FreeCpuDescriptor(handle, mDsvFreeIndices, mDesc.DsvHeapCapacity);
 }
 
-void D3D12Context::FreeSrvDescriptor(D3D12DescriptorHandle handle)
+void D3D12Context::FreeSrvUavDescriptor(D3D12DescriptorHandle handle)
 {
 	FreeCpuDescriptor(handle, mSrvFreeIndices, mDesc.CbvSrvUavHeapCapacity);
 }
 
-void D3D12Context::AllocateSrvDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
+void D3D12Context::AllocateSrvUavDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
 {
-	D3D12DescriptorHandle handle = AllocateSrvDescriptor();
+	D3D12DescriptorHandle handle = AllocateSrvUavDescriptor();
 	*outCpuHandle = handle.Cpu;
 	*outGpuHandle = handle.Gpu;
 }
 
-void D3D12Context::FreeSrvDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
+void D3D12Context::FreeSrvUavDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle)
 {
 	D3D12DescriptorHandle handle{};
 	handle.Cpu = cpuHandle;
-	handle.Gpu = gpuHandle;
-	handle.Index = GetSrvDescriptorIndex(cpuHandle);
+	handle.Index = GetSrvUavDescriptorIndex(cpuHandle);
 
-	FreeSrvDescriptor(handle);
+	FreeSrvUavDescriptor(handle);
+}
+
+void D3D12Context::FreeSrvUavDescriptor(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
+{
+	D3D12DescriptorHandle handle{};
+	handle.Gpu = gpuHandle;
+	handle.Index = GetSrvUavDescriptorIndex(gpuHandle);
+
+	FreeSrvUavDescriptor(handle);
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12Context::GetCurrentBackBufferRTV() const
@@ -433,7 +441,7 @@ void D3D12Context::CreateDescriptorHeaps()
 	srvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
 		&srvHeapDesc,
-		IID_PPV_ARGS(mSrvHeap.GetAddressOf())));
+		IID_PPV_ARGS(mSrvUavHeap.GetAddressOf())));
 
 	for (int i = (int)mDesc.RtvHeapCapacity - 1; i >= RenderConfig::SwapChainBufferCount; i--)
 		mRtvFreeIndices.push_back(i);
@@ -714,13 +722,25 @@ void D3D12Context::FreeCpuDescriptor(D3D12DescriptorHandle handle, std::vector<U
 	freeIndices.push_back(handle.Index);
 }
 
-UINT D3D12Context::GetSrvDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const
+UINT D3D12Context::GetSrvUavDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const
 {
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuStart(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuStart(mSrvUavHeap->GetCPUDescriptorHandleForHeapStart());
 
 	assert(cpuHandle.ptr >= cpuStart.ptr);
 
 	const UINT index = static_cast<UINT>((cpuHandle.ptr - cpuStart.ptr) / mCbvSrvUavDescriptorSize);
+
+	assert(index < mDesc.CbvSrvUavHeapCapacity);
+	return index;
+}
+
+UINT D3D12Context::GetSrvUavDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) const
+{
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuStart(mSrvUavHeap->GetGPUDescriptorHandleForHeapStart());
+
+	assert(gpuHandle.ptr >= gpuStart.ptr);
+
+	const UINT index = static_cast<UINT>((gpuHandle.ptr - gpuStart.ptr) / mCbvSrvUavDescriptorSize);
 
 	assert(index < mDesc.CbvSrvUavHeapCapacity);
 	return index;

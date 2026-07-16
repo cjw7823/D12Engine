@@ -25,6 +25,20 @@ GpuWaves::GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int
 	BuildResource(cmdList);
 }
 
+GpuWaves::~GpuWaves()
+{
+	if (mFreeDescriptorCallback)
+	{
+		mFreeDescriptorCallback(mPrevSolSrv);
+		mFreeDescriptorCallback(mCurrSolSrv);
+		mFreeDescriptorCallback(mNextSolSrv);
+
+		mFreeDescriptorCallback(mPrevSolUav);
+		mFreeDescriptorCallback(mCurrSolUav);
+		mFreeDescriptorCallback(mNextSolUav);
+	}
+}
+
 UINT GpuWaves::RowCount() const
 {
 	return mNumRows;
@@ -177,9 +191,13 @@ void GpuWaves::BuildResource(ID3D12GraphicsCommandList* cmdList)
 	cmdList->ResourceBarrier(1, &barrier);
 }
 
-void GpuWaves::BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor)
+void GpuWaves::BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor,
+	FreeDescriptorCallback freeDescriptor)
 {
 	assert(allocateDescriptor);
+	assert(freeDescriptor);
+
+	mFreeDescriptorCallback = std::move(freeDescriptor);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

@@ -182,7 +182,7 @@ enum class RenderLayer : int
 	LineToCylinder,				//선분으로 그리는 원통
 	Waves,
 	MirrorStencil,
-	MirrorWall,
+	//MirrorWall,
 	TessWall,
 	MirrorBaseFill,
 	Reflected,

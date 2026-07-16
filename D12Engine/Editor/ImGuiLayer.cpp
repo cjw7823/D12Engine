@@ -90,7 +90,7 @@ bool ImGuiLayer::Initialize(HWND hwnd, D3D12Context& context)
     initInfo.NumFramesInFlight = RenderConfig::NumFrameResources;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
-    initInfo.SrvDescriptorHeap = context.GetSrvHeap();
+    initInfo.SrvDescriptorHeap = context.GetSrvUavHeap();
     initInfo.UserData = &context;
 
     // SRV 디스크립터(텍스처용) 할당은 애플리케이션의 책임이므로 콜백을 제공(현재 백엔드 버전은 디스크립터를 하나만 할당하며, 향후 버전에서는 더 많이 할당해야 합니다.)
@@ -100,7 +100,7 @@ bool ImGuiLayer::Initialize(HWND hwnd, D3D12Context& context)
             D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
         {
             auto context = static_cast<D3D12Context*>(initInfo->UserData);
-            context->AllocateSrvDescriptor(outCpuHandle, outGpuHandle);
+            context->AllocateSrvUavDescriptor(outCpuHandle, outGpuHandle);
         };
 
     initInfo.SrvDescriptorFreeFn =
@@ -109,7 +109,7 @@ bool ImGuiLayer::Initialize(HWND hwnd, D3D12Context& context)
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
         {
             auto context = static_cast<D3D12Context*>(initInfo->UserData);
-            context->FreeSrvDescriptor(cpuHandle, gpuHandle);
+            context->FreeSrvUavDescriptor(cpuHandle);
         };
 
     if (!ImGui_ImplDX12_Init(&initInfo))
@@ -141,7 +141,7 @@ void ImGuiLayer::RenderDrawData(D3D12Context& context)
 {
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
-        context.GetSrvHeap()
+        context.GetSrvUavHeap()
     };
 
     context.GetCommandList()->SetDescriptorHeaps(

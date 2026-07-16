@@ -2,6 +2,7 @@
 #include "BlurFilter.h"
 #include "Renderer/DirectX12/MACRO.h"
 #include <cmath>
+#include <cassert>
 
 BlurFilter::BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format)
 {
@@ -19,17 +20,28 @@ ID3D12Resource* BlurFilter::SobelOutput()
 	return mBlurMap0.Get();
 }
 
-void BlurFilter::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDescriptor, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuDescriptor, UINT descriptorSize)
+void BlurFilter::BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor)
 {
-	mBlur0CpuSrv = hCpuDescriptor;
-	mBlur0CpuUav = hCpuDescriptor.Offset(1, descriptorSize);
-	mBlur1CpuSrv = hCpuDescriptor.Offset(1, descriptorSize);
-	mBlur1CpuUav = hCpuDescriptor.Offset(1, descriptorSize);
+	assert(allocateDescriptor);
 
-	mBlur0GpuSrv = hGpuDescriptor;
-	mBlur0GpuUav = hGpuDescriptor.Offset(1, descriptorSize);
-	mBlur1GpuSrv = hGpuDescriptor.Offset(1, descriptorSize);
-	mBlur1GpuUav = hGpuDescriptor.Offset(1, descriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hCpu{};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE hGpu{};
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mBlur0CpuSrv = hCpu;
+	mBlur0GpuSrv = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mBlur0CpuUav = hCpu;
+	mBlur0GpuUav = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mBlur1CpuSrv = hCpu;
+	mBlur1GpuSrv = hGpu;
+
+	allocateDescriptor(&hCpu, &hGpu);
+	mBlur1CpuUav = hCpu;
+	mBlur1GpuUav = hGpu;
 
 	BuildDescriptors();
 }
@@ -46,7 +58,7 @@ void BlurFilter::OnResize(UINT newWidth, UINT newHeight)
 	}
 }
 
-void BlurFilter::Excute(ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature * rootSig, ID3D12PipelineState * horzBlurPSO, ID3D12PipelineState * vertBlurPSO, ID3D12Resource * input, int mBlurCount)
+void BlurFilter::Excute(ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature * rootSig, ID3D12PipelineState * horzBlurPSO, ID3D12PipelineState * vertBlurPSO, ID3D12Resource * input, D3D12_RESOURCE_STATES& inputState, int mBlurCount)
 {
 	auto weights = CalcGaussWeights(2.5f);
 	int blurRadius = (int)weights.size() / 2;
@@ -57,9 +69,10 @@ void BlurFilter::Excute(ID3D12GraphicsCommandList * cmdList, ID3D12RootSignature
 
 	CD3DX12_RESOURCE_BARRIER barrier1 = CD3DX12_RESOURCE_BARRIER::Transition(
 		input,
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
+		inputState,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 	cmdList->ResourceBarrier(1, &barrier1);
+	inputState = D3D12_RESOURCE_STATE_COPY_SOURCE;
 
 	CD3DX12_RESOURCE_BARRIER barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
 		mBlurMap0.Get(),

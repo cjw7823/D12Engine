@@ -169,7 +169,7 @@ void TextureManager::CreateSRV(D3D12Context& ctx)
 	for (auto& p : mTextures)
 	{
 		auto& tex = p.second;
-		tex->Srv = ctx.AllocateSrvDescriptor();
+		tex->Srv = ctx.AllocateSrvUavDescriptor();
 
 		auto resource = tex->Resource;
 		auto desc = resource->GetDesc();

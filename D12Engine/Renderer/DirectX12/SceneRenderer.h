@@ -27,30 +27,61 @@ class Scene;
 class GameTimer;
 struct GizmoState;
 
+enum class ComputePass
+{
+	WavesUpdate,
+	WavesDisturb,
+
+	BlurHorizontal,
+	BlurVertical,
+
+	SobelExcute,
+	SobelComposite,
+
+	Count
+};
+
+enum class GraphicsPass
+{
+	DepthComplexityVisualize,
+
+	SelectedMask,
+	SelectedOutline,
+
+	VertexNormalVisualize,
+
+	Count
+};
+
+//상호 베타적인 렌더 모드들. 해당 모드에 따라서 특정 GraphicsPass On/Off
 enum class SceneRenderMode
 {
 	Lit,
 	Wireframe,
 	DepthComplexity,
 	VertexNormal,
-	Sobel
+
+	Count
 };
 
 struct SceneRenderSettings
 {
 	SceneRenderMode Mode = SceneRenderMode::Lit;
 	bool FrustumCullingEnabled = true;
+	bool SobelEnabled = false;
 
+	UINT GetBlurCount() const { return BlurCounts[mBlurCountIndex]; }
 	void NextBlurCount()
 	{
-		static const std::array<UINT, 4> counts = { 1, 2, 4, 8 };
-		static UINT index = 0;
-
-		index = (index + 1) % counts.size();
-		BlurCount = counts[index];
+		mBlurCountIndex = (mBlurCountIndex + 1) % BlurCounts.size();
 	}
 private:
-	UINT BlurCount = 0;
+	inline static constexpr std::array<UINT, 5> BlurCounts =
+	{
+		0, 1, 2, 4, 8
+	};
+
+	size_t mBlurCountIndex = 0;
 };
 
 class SceneRenderer
@@ -60,7 +91,7 @@ public:
 	SceneRenderer(const SceneRenderer&) = delete;
 	SceneRenderer& operator=(const SceneRenderer&) = delete;
 
-	bool Initialize(D3D12Context& context, D3D12RenderTarget& rt);
+	bool Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat);
 	void Shutdown();
 
 	void OnResize(D3D12Context& context, const D3D12RenderTarget& renderTarget);
@@ -76,6 +107,7 @@ public:
 	void MoveCameraRight(float speed) { mCamera.MoveRight(speed * mTimer.DeltaTime()); }
 	void MoveCameraUp(float speed) { mCamera.MoveUp(speed * mTimer.DeltaTime()); }
 	void MoveSun(float deltaTheta, float deltaPhi);
+	void ChangeMsaa(const D3D12Context& context);
 
 private:
 	void Update(const Scene& scene, float deltaTime);
@@ -109,7 +141,7 @@ private:
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
 	void BuildRenderItems_SkinnedModel(UINT& IinstanceBufferIndex);
 	void BuildFrameResources(D3D12Context& context);
-	void BuildPSOs(D3D12Context& context, D3D12RenderTarget& rt);
+	void BuildPSOs(const D3D12Context& context);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
@@ -133,6 +165,7 @@ private:
 
 	void CreateQueryHeap(D3D12Context& context);
 
+	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
 public:
 	//Render Mode
 	SceneRenderSettings mRenderSettings;
@@ -143,12 +176,20 @@ private:
 	int mViewportWidth = 1;
 	int mViewportHeight = 1;
 
+	DXGI_FORMAT mColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT mDepthFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
 	int mCurrFrameResourceIndex = 0;
 
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
-	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+
+	//mPSOs[RenderLayer][SceneRenderMode].get();
+	std::array < std::array< Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)SceneRenderMode::Count>, (int)RenderLayer::Count> mLayerPSOs;
+	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)ComputePass::Count> mComputePSOs;
+	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)GraphicsPass::Count> mGraphicsPSOs;
+
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
@@ -188,13 +229,7 @@ private:
 	float mSunTheta = 1.25f * DirectX::XM_PI;
 	float mSunPhi = DirectX::XM_PIDIV4;
 
-	bool mIsWireframe = false;
-	bool mIsDepthComplexityDebug = false;
-	bool mIsVertexNormalDebug = false;
 	bool mFrustumCullingEnabled = true;
-	bool is_Blur = false;
-	UINT mBlurCount = 1;
-	bool is_Sobel = false;
 
 	//For Performance Measurement
 	double mFullGpuMs = 0.0;

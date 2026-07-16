@@ -12,14 +12,13 @@ public:
 			D3D12_GPU_DESCRIPTOR_HANDLE* outGpu)>;
 
 	using FreeDescriptorCallback =
-		std::function<void(
-			D3D12_CPU_DESCRIPTOR_HANDLE cpu,
-			D3D12_GPU_DESCRIPTOR_HANDLE gpu)>;
+		std::function<void(D3D12_GPU_DESCRIPTOR_HANDLE gpu)>;
 
-	GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int m, int n, float dx, float dt, float speed, float damping);
+	GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
+		int m, int n, float dx, float dt, float speed, float damping);
 	GpuWaves(const GpuWaves& rhs) = delete;
 	GpuWaves& operator=(const GpuWaves& rhs) = delete;
-	~GpuWaves() = default;
+	~GpuWaves();
 
 	UINT RowCount() const;
 	UINT ColumnCount() const;
@@ -35,7 +34,8 @@ public:
 
 	void BuildResource(ID3D12GraphicsCommandList* cmdList);
 
-	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor);
+	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor,
+		FreeDescriptorCallback freeDescriptor);
 
 	void Update(
 		const GameTimer& gt,
@@ -90,4 +90,6 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> mPrevUploadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mCurrUploadBuffer = nullptr;
+
+	FreeDescriptorCallback mFreeDescriptorCallback;
 };

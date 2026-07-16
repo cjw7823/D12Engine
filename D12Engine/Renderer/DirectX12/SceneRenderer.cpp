@@ -10,13 +10,17 @@
 #include "Renderer/DirectX12/PipelineStateFactory.h"
 
 #include <filesystem>
+#include <cassert>
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
-bool SceneRenderer::Initialize(D3D12Context& context, D3D12RenderTarget& rt)
+bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat)
 {
 	if (mInitialized) return true;
+
+	mColorFormat = colorFormat;
+	mDepthFormat = depthFormat;
 
 	mTimestampDescriptorHandle = context.AllocateRtvDescriptor();
 	
@@ -24,6 +28,16 @@ bool SceneRenderer::Initialize(D3D12Context& context, D3D12RenderTarget& rt)
 		context.GetDevice(),
 		context.GetCommandList(),
 		256, 256, 0.25f, 0.03f, 2.0f, 0.2f);
+
+	mBlurFilter = std::make_unique<BlurFilter>(
+		context.GetDevice(),
+		mViewportWidth, mViewportWidth,
+		mColorFormat);
+
+	mSobelFilter = std::make_unique<SobelFilter>(
+		context.GetDevice(),
+		mViewportWidth, mViewportWidth,
+		mColorFormat);
 
 	mCamera.SetPosition(15.0f, 20.0f, -30.0f);
 	mCamera.Pitch(0.5f);
@@ -38,7 +52,7 @@ bool SceneRenderer::Initialize(D3D12Context& context, D3D12RenderTarget& rt)
 	BuildMaterials(context);
 	BuildRenderItems();
 	BuildFrameResources(context);
-	BuildPSOs(context, rt);
+	BuildPSOs(context);
 
 	CreateQueryHeap(context);
 
@@ -68,7 +82,8 @@ void SceneRenderer::OnResize(D3D12Context& context, const D3D12RenderTarget& ren
 
 	BoundingFrustum::CreateFromMatrix(mCamFrustum, mCamera.GetProj());
 
-	//카메라 등 반영 예정.
+	mBlurFilter->OnResize(mViewportWidth, mViewportHeight);
+	mSobelFilter->OnResize(mViewportWidth, mViewportHeight);
 }
 
 void SceneRenderer::Tick(D3D12Context& context, D3D12RenderTarget& renderTarget, const Scene& scene)
@@ -110,6 +125,11 @@ void SceneRenderer::MoveSun(float deltaTheta, float deltaPhi)
 	mSunPhi = MathHelper::Clamp(mSunPhi, 1.0f, XM_PIDIV2);
 }
 
+void SceneRenderer::ChangeMsaa(const D3D12Context& context)
+{
+	BuildPSOs(context);
+}
+
 void SceneRenderer::Update(const Scene& scene, float deltaTime)
 {
 	if (!mInitialized) return;
@@ -146,7 +166,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 	D3D12_QUERY_TYPE queryType = D3D12_QUERY_TYPE_TIMESTAMP;
 	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, FullStart);
 
-	std::vector<ID3D12DescriptorHeap*> descriptorHeap = { context.GetSrvHeap() };
+	std::vector<ID3D12DescriptorHeap*> descriptorHeap = { context.GetSrvUavHeap() };
 	mCommandList->SetDescriptorHeaps(static_cast<UINT>(descriptorHeap.size()), descriptorHeap.data());
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
@@ -157,7 +177,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 	UINT passCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(PassConstants));
 
 	UINT treeArrayTexIndex = TextureManager::GetInstance().Find(L"Resource/Textures/Treearray2.dds")->Srv.Index;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(context.GetSrvHeap()->GetGPUDescriptorHandleForHeapStart());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(context.GetSrvUavHeap()->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetGraphicsRootDescriptorTable(3, hTable);
 	hTable.Offset(treeArrayTexIndex, context.GetCbvSrvUavDescriptorSize());
 	mCommandList->SetGraphicsRootDescriptorTable(7, hTable);
@@ -175,123 +195,47 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 
 	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
 	{
-		mCommandList->OMSetStencilRef(0);
-		mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress());
-		switch (layer)
-		{
-		case (int)RenderLayer::Opaque:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
-			break;
-		//case (int)RenderLayer::SkinnedOpaque:
-		//	mCommandList->SetPipelineState(mIsWireframe ? mPSOs["skinnedOpaque_wireframe"].Get() : mPSOs["skinnedOpaque"].Get());
-			break;
-		case (int)RenderLayer::TessLand:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["tessLand_wireframe"].Get() : mPSOs["tessLand"].Get());
-			break;
-		case (int)RenderLayer::MultiTextureBlend:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["multiTextureBlend"].Get());
-			break;
-		case (int)RenderLayer::AlphaTestOpaque:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["alphaTest"].Get());
-			break;
-		case (int)RenderLayer::A2C_TreeBillboard:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["treeBillboard_wireframe"].Get() : mPSOs["treeBillboard"].Get());
-			break;
-		case (int)RenderLayer::GeoSphereLOD:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["geoSphereLOD_wireframe"].Get() : mPSOs["geoSphereLOD"].Get());
-			break;
-		case (int)RenderLayer::GeoExplode:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["geoExplode_wireframe"].Get() : mPSOs["geoExplode"].Get());
-			break;
-		case (int)RenderLayer::LineToCylinder:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["lineToCylinder_wireframe"].Get() : mPSOs["lineToCylinder"].Get());
-			break;
-		case (int)RenderLayer::Waves:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["wavesRender"].Get());
-			break;
-		case (int)RenderLayer::MirrorStencil:
-			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetPipelineState(mPSOs["mirrorStencil"].Get());
-			break;
-		case (int)RenderLayer::TessWall:
-			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["tessWall_wireframe"].Get() : mPSOs["tessWall"].Get());
-			break;
-		case (int)RenderLayer::MirrorBaseFill:
-			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetPipelineState(mPSOs["mirrorBaseFill"].Get());
-			break;
-		case (int)RenderLayer::Reflected:
-			//반전된 광원을 포함한 별도의 매 패스 상수 버퍼를 제공.
-			mCommandList->OMSetStencilRef(1);
-			mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress() + passCBByteSize);
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["mirrorReflected"].Get());
-			break;
-		case (int)RenderLayer::Shadow:
-			mCommandList->SetPipelineState(mPSOs["shadow"].Get());
-			break;
-		case (int)RenderLayer::Transparent:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["transparent"].Get());
-			break;
-		case (int)RenderLayer::Gizmo:
-			mCommandList->SetPipelineState(mPSOs["gizmo"].Get());
-			break;
-		default:
-			mCommandList->SetPipelineState(mIsWireframe ? mPSOs["opaque_wireframe"].Get() : mPSOs["opaque"].Get());
-			break;
-		}
+		RenderLayer renderLayer = (RenderLayer)layer;
+		assert(mLayerPSOs[layer][(int)SceneRenderMode::Lit] && "모든 RenderLayer에는 Lit PSO가 필요합니다.");
 
-		if (mIsDepthComplexityDebug)
-		{
-			switch (layer)
-			{
-			case (int)RenderLayer::A2C_TreeBillboard:
-				mCommandList->SetPipelineState(mPSOs["treeBillboard_depthCount"].Get());
-				break;
-			case (int)RenderLayer::LineToCylinder:
-				mCommandList->SetPipelineState(mPSOs["lineToCylinder_depthCount"].Get());
-				break;
-			case (int)RenderLayer::GeoSphereLOD:
-				mCommandList->SetPipelineState(mPSOs["geoSphereLOD_depthCount"].Get());
-				break;
-			case (int)RenderLayer::GeoExplode:
-				mCommandList->SetPipelineState(mPSOs["geoExplode_depthCount"].Get());
-				break;
-			case (int)RenderLayer::TessWall:
-				mCommandList->SetPipelineState(mPSOs["tessWall_depthCount"].Get());
-				break;
-			case (int)RenderLayer::TessLand:
-				mCommandList->SetPipelineState(mPSOs["tessLand_depthCount"].Get());
-				break;
-			default:
-				mCommandList->SetPipelineState(mPSOs["depthCount"].Get());
-				break;
-			}
-		}
+		mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress());
+		if (renderLayer == RenderLayer::Reflected)
+			mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress() + passCBByteSize);
+
+		mCommandList->OMSetStencilRef(0);
+		if(renderLayer == RenderLayer::MirrorStencil || renderLayer == RenderLayer::TessWall ||
+			renderLayer == RenderLayer::MirrorBaseFill || renderLayer == RenderLayer::Reflected)
+			mCommandList->OMSetStencilRef(1);
+
+		ID3D12PipelineState* pso = ResolvePSO(renderLayer, mRenderSettings.Mode);
+		mCommandList->SetPipelineState(pso);
 
 		DrawRenderItems(mCommandList, mRenderItemLayer[layer]);
 
-		if (mIsVertexNormalDebug)
+		if (mRenderSettings.Mode == SceneRenderMode::VertexNormal)
 		{
-			mCommandList->SetPipelineState(mPSOs["vertexNormalDebug"].Get());
+			mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::VertexNormalVisualize].Get());
 			DrawRenderItems_VertexNormalDebug(mCommandList, mRenderItemLayer[layer]);
 		}
 	}
 
-	// 선택 원본 메시를 stencil에 기록
-	mCommandList->SetPipelineState(mPSOs["selectedMask"].Get());
-	mCommandList->OMSetStencilRef(0x80);
-	DrawSelectedInstance(mCommandList);
+	if (!mSelectedInstances.empty())
+	{
+		mCommandList->OMSetStencilRef(0x80);
 
-	// stencil != 1 인 부분에만 부풀린 외곽선 출력
-	mCommandList->SetPipelineState(mPSOs["selectedOutline"].Get());
-	mCommandList->OMSetStencilRef(0x80);
-	DrawSelectedInstance(mCommandList);
+		// 선택 원본 메시를 stencil에 기록
+		mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::SelectedMask].Get());
+		DrawSelectedInstance(mCommandList);
 
-	if (mIsDepthComplexityDebug)
+		// stencil != 1 인 부분에만 부풀린 외곽선 출력
+		mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::SelectedOutline].Get());
+		DrawSelectedInstance(mCommandList);
+	}
+
+	if (mRenderSettings.Mode == SceneRenderMode::DepthComplexity)
 	{
 		mCommandList->SetGraphicsRootSignature(mRootSignature_debug.Get());
-		mCommandList->SetPipelineState(mPSOs["depthDebug"].Get());
+		mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::DepthComplexityVisualize].Get());
 		DrawDebugColorTriangle(mCommandList);
 	}
 
@@ -302,49 +246,65 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 
 	if (context.mMsaaOption.IsEnable())
 		renderTarget.ResolveMsaaToColorBuffer(mCommandList);
-	else
-		renderTarget.PrepareForSampling(mCommandList);
 
-	if (is_Sobel)
+	if (mRenderSettings.SobelEnabled)
 	{
-		//CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		//	D3D12_RESOURCE_STATE_RENDER_TARGET,
-		//	D3D12_RESOURCE_STATE_GENERIC_READ);
-		//mCommandList->ResourceBarrier(1, &barrier);
+		renderTarget.TransitionIfNeeded(
+			mCommandList,
+			renderTarget.GetColorResource(),
+			renderTarget.GetColorState(),
+			D3D12_RESOURCE_STATE_GENERIC_READ);
 
-		//mSobelFilter->Excute(mCommandList.Get(), mPostProcessRootSignature.Get(), mPSOs["sobel"].Get(), CurrentBackBufferSRV());
+		mSobelFilter->Excute(mCommandList,
+			mPostProcessRootSignature.Get(),
+			mComputePSOs[(int)ComputePass::SobelExcute].Get(),
+			(CD3DX12_GPU_DESCRIPTOR_HANDLE)renderTarget.GetSRVGpu());
 
-		//mSobelFilter->Composite(mCommandList.Get(), mPostProcessRootSignature.Get(), mPSOs["composite"].Get(), CurrentBackBufferSRV(), mSobelFilter->SobelOutputSrv());
+		mSobelFilter->Composite(mCommandList,
+			mPostProcessRootSignature.Get(),
+			mComputePSOs[(int)ComputePass::SobelComposite].Get(),
+			(CD3DX12_GPU_DESCRIPTOR_HANDLE)renderTarget.GetSRVGpu(),
+			mSobelFilter->SobelOutputSrv());
 
-		//barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		//	D3D12_RESOURCE_STATE_GENERIC_READ,
-		//	D3D12_RESOURCE_STATE_COPY_DEST);
-		//mCommandList->ResourceBarrier(1, &barrier);
+		renderTarget.TransitionIfNeeded(
+			mCommandList,
+			renderTarget.GetColorResource(),
+			renderTarget.GetColorState(),
+			D3D12_RESOURCE_STATE_COPY_DEST);
 
-		//mCommandList->CopyResource(CurrentBackBuffer(), mSobelFilter->CompositeOutput());
+		mCommandList->CopyResource(renderTarget.GetColorResource(), mSobelFilter->CompositeOutput());
 
-		//barrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		//	D3D12_RESOURCE_STATE_COPY_DEST,
-		//	D3D12_RESOURCE_STATE_RENDER_TARGET);
-		//mCommandList->ResourceBarrier(1, &barrier);
+		renderTarget.TransitionIfNeeded(
+			mCommandList,
+			renderTarget.GetColorResource(),
+			renderTarget.GetColorState(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
 
-	if (is_Blur)
+	if (mRenderSettings.GetBlurCount() != 0)
 	{
-		//mBlurFilter->Excute(mCommandList.Get(), mPostProcessRootSignature.Get(),
-		//	mPSOs["blurH"].Get(), mPSOs["blurV"].Get(),
-		//	CurrentBackBuffer(), mBlurCount);
+		mBlurFilter->Excute(mCommandList, mPostProcessRootSignature.Get(),
+			mComputePSOs[(int)ComputePass::BlurHorizontal].Get(),
+			mComputePSOs[(int)ComputePass::BlurVertical].Get(),
+			renderTarget.GetColorResource(), renderTarget.GetColorState(),
+			mRenderSettings.GetBlurCount());
 
-		//CD3DX12_RESOURCE_BARRIER backbufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		//	D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
-		//mCommandList->ResourceBarrier(1, &backbufferBarrier);
+		renderTarget.TransitionIfNeeded(
+			mCommandList,
+			renderTarget.GetColorResource(),
+			renderTarget.GetColorState(),
+			D3D12_RESOURCE_STATE_COPY_DEST);
 
-		//mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->SobelOutput());
+		mCommandList->CopyResource(renderTarget.GetColorResource(), mBlurFilter->SobelOutput());
 
-		//backbufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		//	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		//mCommandList->ResourceBarrier(1, &backbufferBarrier);
+		renderTarget.TransitionIfNeeded(
+			mCommandList,
+			renderTarget.GetColorResource(),
+			renderTarget.GetColorState(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
+
+	renderTarget.PrepareForSampling(mCommandList);
 
 	//Timestamp end
 	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, FullEnd);
@@ -411,7 +371,25 @@ void SceneRenderer::BuildDescriptorHeaps(D3D12Context& context)
 		D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
 		D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
 		{
-			context.AllocateSrvDescriptor(outCpuHandle, outGpuHandle);
+			context.AllocateSrvUavDescriptor(outCpuHandle, outGpuHandle);
+		},
+		[&context](D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
+		{
+			context.FreeSrvUavDescriptor(gpuHandle);
+		});
+
+	mBlurFilter->BuildDescriptors([&context](
+			D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
+			D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
+		{
+			context.AllocateSrvUavDescriptor(outCpuHandle, outGpuHandle);
+		});
+
+	mSobelFilter->BuildDescriptors([&context](
+		D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
+		{
+			context.AllocateSrvUavDescriptor(outCpuHandle, outGpuHandle);
 		});
 }
 
@@ -859,7 +837,7 @@ void SceneRenderer::BuildShadersAndInputLayout()
 	mShaders["blurV"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_1");
 
 	mShaders["sobelCS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_1");
-	mShaders["CompositeCS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
+	mShaders["sobelCompositeCS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Sobel.hlsl", nullptr, "CompositeCS", "cs_5_1");
 
 	mShaders["tessVS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["tessHS"] = D3D12Util::CompileShader(L"Resource\\Shaders\\Tessellation.hlsl", nullptr, "HS", "hs_5_1");
@@ -906,7 +884,7 @@ void SceneRenderer::BuildShadersAndInputLayout()
 	mShaders["blurV"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\VertBlurCS.cso");
 
 	mShaders["sobelCS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\SobelCS.cso");
-	mShaders["CompositeCS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
+	mShaders["sobelCompositeCS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\CompositeCS.cso");
 
 	mShaders["tessVS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessVS.cso");
 	mShaders["tessHS"] = D3D12Util::LoadBinary(L"Resource\\Shaders\\Compiled\\tessHS.cso");
@@ -947,32 +925,32 @@ void SceneRenderer::BuildShadersAndInputLayout()
 		{"SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
 
-	//mSkinnedInputLayout =
-	//{
-	//	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, Pos),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	mSkinnedInputLayout =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, Pos),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
-	//	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, Normal),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, Normal),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
-	//	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, TexC),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, TexC),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
-	//	{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, TangentU),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, TangentU),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
-	//	{ "WEIGHTS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, BoneWeights),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "WEIGHTS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+			offsetof(M3DLoader::SkinnedVertex, BoneWeights),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
-	//	{ "BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0,
-	//		offsetof(M3DLoader::SkinnedVertex, BoneIndices),
-	//		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-	//};
+		{ "BONEINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0,
+			offsetof(M3DLoader::SkinnedVertex, BoneIndices),
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
 }
 
 
@@ -1871,175 +1849,237 @@ void SceneRenderer::BuildFrameResources(D3D12Context& context)
 	}
 }
 
-void SceneRenderer::BuildPSOs(D3D12Context& context, D3D12RenderTarget& rt)
+void SceneRenderer::BuildPSOs(const D3D12Context& context)
 {
 	ComPtr<ID3D12Device> device = context.GetDevice();
-	ComPtr<ID3D12GraphicsCommandList> list = context.GetCommandList();
 
 	PsoBuildContext ctx{};
 	ctx.Device = device.Get();
 	ctx.InputLayout = &mInputLayout;
 	ctx.RootSignature = mRootSignature.Get();
-	ctx.RenderTargetFormat = rt.GetColorFormat();
-	ctx.DepthStencilFormat = rt.GetDepthFormat();
+	ctx.RenderTargetFormat = mColorFormat;
+	ctx.DepthStencilFormat = mDepthFormat;
 	ctx.SampleCount = context.mMsaaOption.SampleCount();
 	ctx.SampleQuality = context.mMsaaOption.Quality();
 	ctx.IsWireframe = false;
 	ctx.CullMode = D3D12_CULL_MODE_BACK;
 	ctx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-	PsoBuildContext opaqueCtx = ctx;
-	PipelineStateFactory factory(opaqueCtx);
-	mPSOs["opaque"] = factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-	mPSOs["transparent"] = factory.CreateTransparentPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-	mPSOs["wavesRender"] = factory.CreateTransparentPSO(mShaders["wavesVS"].Get(), mShaders["opaquePS"].Get());
-	mPSOs["multiTextureBlend"] = factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["multiTextureBlendPS"].Get());
-	opaqueCtx.IsWireframe = true;
-	factory(opaqueCtx);
-	mPSOs["opaque_wireframe"] = factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+	//mLayerPSOs
+	{
+		PsoBuildContext opaqueCtx = ctx;
+		PipelineStateFactory factory(opaqueCtx);
+		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::Lit] =
+			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+		mLayerPSOs[(int)RenderLayer::Transparent][(int)SceneRenderMode::Lit] =
+			factory.CreateTransparentPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+		mLayerPSOs[(int)RenderLayer::Waves][(int)SceneRenderMode::Lit] =
+			factory.CreateTransparentPSO(mShaders["wavesVS"].Get(), mShaders["opaquePS"].Get());
+		mLayerPSOs[(int)RenderLayer::MultiTextureBlend][(int)SceneRenderMode::Lit] =
+			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["multiTextureBlendPS"].Get());
 
-	//alpha test
-	PsoBuildContext alphaTestCtx = ctx;
-	alphaTestCtx.CullMode = D3D12_CULL_MODE_NONE;
-	PipelineStateFactory alphaTestFactory(alphaTestCtx);
-	mPSOs["alphaTest"] = alphaTestFactory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
+		PsoBuildContext alphaTestCtx = ctx;
+		alphaTestCtx.CullMode = D3D12_CULL_MODE_NONE;
+		PipelineStateFactory alphaTestFactory(alphaTestCtx);
+		mLayerPSOs[(int)RenderLayer::AlphaTestOpaque][(int)SceneRenderMode::Lit] =
+			alphaTestFactory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
+	}
 
-	//waves
-	PsoBuildContext waveCtx = ctx;
-	waveCtx.RootSignature = mWavesRootSignature.Get();
-	PipelineStateFactory waveFactory(waveCtx);
-	mPSOs["wavesSimUpdate"] = waveFactory.CreateComputePSO(mShaders["wavesSimUpdate"].Get());
-	mPSOs["wavesSimDisturb"] = waveFactory.CreateComputePSO(mShaders["wavesSimDisturb"].Get());
+	{
+		PsoBuildContext opaqueWireframeCtx = ctx;
+		opaqueWireframeCtx.IsWireframe = true;
+		PipelineStateFactory factory(opaqueWireframeCtx);
+		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::Wireframe] =
+			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+	}
 
-	//depth complexity
-	PsoBuildContext depthCtx = ctx;
-	PipelineStateFactory depthFactory(depthCtx);
-	mPSOs["depthCount"] = depthFactory.CreateDepthCountPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-	depthCtx.RootSignature = mRootSignature_debug.Get();
-	depthFactory(depthCtx);
-	mPSOs["depthDebug"] = depthFactory.CreateDepthComplexityDebugPSO(mShaders["depthDebugVS"].Get(), mShaders["depthDebugPS"].Get());
+	{
+		PsoBuildContext depthCtx = ctx;
+		PipelineStateFactory depthFactory(depthCtx);
+		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::DepthComplexity] =
+			depthFactory.CreateDepthCountPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+	}
 
-	//mirror
-	PsoBuildContext mirrorCtx = ctx;
-	PipelineStateFactory mirrorFactory(mirrorCtx);
+	{
+		PsoBuildContext mirrorCtx = ctx;
+		PipelineStateFactory mirrorFactory(mirrorCtx);
+		mLayerPSOs[(int)RenderLayer::MirrorStencil][(int)SceneRenderMode::Lit] =
+			mirrorFactory.CreateMirrorStencilPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
-	PsoBuildContext mirrorCtx2 = mirrorCtx;
-	mirrorCtx2.CullMode = D3D12_CULL_MODE_NONE;
-	PipelineStateFactory mirrorFactory2(mirrorCtx2);
+		PsoBuildContext mirrorCtx2 = ctx;
+		mirrorCtx2.Clockwise = true;
+		mirrorCtx2.CullMode = D3D12_CULL_MODE_NONE;
+		PipelineStateFactory mirrorFactory2(mirrorCtx2);
+		mLayerPSOs[(int)RenderLayer::Reflected][(int)SceneRenderMode::Lit] =
+			mirrorFactory2.CreateMirrorReflectedPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
-	mPSOs["mirrorStencil"] = mirrorFactory.CreateMirrorStencilPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+		PsoBuildContext mirrorCtx3 = ctx;
+		PipelineStateFactory mirrorFactory3(mirrorCtx3);
+		mLayerPSOs[(int)RenderLayer::MirrorBaseFill][(int)SceneRenderMode::Lit] =
+			mirrorFactory3.CreateMirrorBaseFillPSO(mShaders["standardVS"].Get(), mShaders["mirrorBaseFillPS"].Get());
+	}
 
-	PsoBuildContext mirrorCtx3 = ctx;
-	mirrorCtx3.Clockwise = true;
-	mirrorCtx3.CullMode = D3D12_CULL_MODE_NONE;
-	PipelineStateFactory mirrorFactory3(mirrorCtx3);
-	mPSOs["mirrorReflected"] = mirrorFactory3.CreateMirrorReflectedPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
-	PsoBuildContext mirrorCtx4 = ctx;
-	PipelineStateFactory mirrorFactory4(mirrorCtx4);
-	mPSOs["mirrorBaseFill"] = mirrorFactory4.CreateMirrorBaseFillPSO(mShaders["standardVS"].Get(), mShaders["mirrorBaseFillPS"].Get());
+	{
+		PsoBuildContext shadowCtx = ctx;
+		PipelineStateFactory shadowFactory(shadowCtx);
+		mLayerPSOs[(int)RenderLayer::Shadow][(int)SceneRenderMode::Lit] = 
+			shadowFactory.CreateShadowPSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
+	}
 
-	//shadow
-	PsoBuildContext shadowCtx = ctx;
-	PipelineStateFactory shadowFactory(shadowCtx);
-	mPSOs["shadow"] = shadowFactory.CreateShadowPSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
+	{
+		PsoBuildContext treeCtx = ctx;
+		treeCtx.InputLayout = &mTreeBillboardInputLayout;
+		treeCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		PipelineStateFactory treeFactory(treeCtx);
+		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::Lit] =
+			treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get(), true);
+		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::DepthComplexity] =
+			treeFactory.CreateDepthCountPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get());
 
-	//tree billboard
-	PsoBuildContext treeCtx = ctx;
-	treeCtx.InputLayout = &mTreeBillboardInputLayout;
-	treeCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-	PipelineStateFactory treeFactory(treeCtx);
-	mPSOs["treeBillboard"] = treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get(), true);
-	mPSOs["treeBillboard_depthCount"] = treeFactory.CreateDepthCountPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get());
-	treeCtx.IsWireframe = true;
-	treeFactory(treeCtx);
-	mPSOs["treeBillboard_wireframe"] = treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS_Wireframe"].Get(), true);
+		PsoBuildContext treeCtx2 = treeCtx;
+		treeCtx2.IsWireframe = true;
+		PipelineStateFactory treeFactory2(treeCtx2);
+		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::Wireframe] =
+			treeFactory2.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS_Wireframe"].Get(), true);
+	}
 
-	//extended Cylinder
-	PsoBuildContext exCylCtx = ctx;
-	exCylCtx.InputLayout = &mInputLayout;
-	exCylCtx.CullMode = D3D12_CULL_MODE_NONE;
-	exCylCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-	PipelineStateFactory exCylFactory(exCylCtx);
-	mPSOs["lineToCylinder"] = exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
-	mPSOs["lineToCylinder_depthCount"] = exCylFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
-	exCylCtx.IsWireframe = true;
-	exCylFactory(exCylCtx);
-	mPSOs["lineToCylinder_wireframe"] = exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
+	{
+		PsoBuildContext exCylCtx = ctx;
+		exCylCtx.InputLayout = &mInputLayout;
+		exCylCtx.CullMode = D3D12_CULL_MODE_NONE;
+		exCylCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		PipelineStateFactory exCylFactory(exCylCtx);
+		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::Lit] =
+			exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
+		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::DepthComplexity] =
+			exCylFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
 
-	//explode
-	PsoBuildContext explodeCtx = ctx;
-	explodeCtx.CullMode = D3D12_CULL_MODE_NONE;
-	PipelineStateFactory explodeFactory(explodeCtx);
-	mPSOs["geoExplode"] = explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
-	mPSOs["geoExplode_depthCount"] = explodeFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
-	explodeCtx.IsWireframe = true;
-	explodeFactory(explodeCtx);
-	mPSOs["geoExplode_wireframe"] = explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
+		PsoBuildContext exCylCtx2 = exCylCtx;
+		exCylCtx2.IsWireframe = true;
+		PipelineStateFactory exCylFactory2(exCylCtx2);
+		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::Wireframe] =
+			exCylFactory2.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
+	}
 
-	//geo LOD
-	PsoBuildContext lodCtx = ctx;
-	PipelineStateFactory lodFactory(lodCtx);
-	mPSOs["geoSphereLOD"] = lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
-	mPSOs["geoSphereLOD_depthCount"] = lodFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
-	lodCtx.IsWireframe = true;
-	lodFactory(lodCtx);
-	mPSOs["geoSphereLOD_wireframe"] = lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
+	{
+		PsoBuildContext explodeCtx = ctx;
+		explodeCtx.CullMode = D3D12_CULL_MODE_NONE;
+		PipelineStateFactory explodeFactory(explodeCtx);
+		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::Lit] =
+			explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
+		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::DepthComplexity] =
+			explodeFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
 
-	//vertex normal debug
-	PsoBuildContext normalDebugCtx = ctx;
-	normalDebugCtx.CullMode = D3D12_CULL_MODE_NONE;
-	normalDebugCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-	PipelineStateFactory normalDebugFactory(normalDebugCtx);
-	mPSOs["vertexNormalDebug"] = normalDebugFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["vertexDebugGS"].Get(), mShaders["vertexDebugPS"].Get());
+		PsoBuildContext explodeCtx2 = explodeCtx;
+		explodeCtx2.IsWireframe = true;
+		PipelineStateFactory explodeFactory2(explodeCtx2);
+		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::Wireframe] =
+			explodeFactory2.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
+	}
 
-	//blur
-	PsoBuildContext blurCtx = ctx;
-	blurCtx.RootSignature = mPostProcessRootSignature.Get();
-	PipelineStateFactory blurFactory(blurCtx);
-	mPSOs["blurH"] = blurFactory.CreateComputePSO(mShaders["blurH"].Get());
-	mPSOs["blurV"] = blurFactory.CreateComputePSO(mShaders["blurV"].Get());
+	{
+		PsoBuildContext lodCtx = ctx;
+		PipelineStateFactory lodFactory(lodCtx);
+		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::Lit] =
+			lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
+		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::DepthComplexity] =
+			lodFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
+	
+		PsoBuildContext lodCtx2 = lodCtx;
+		lodCtx2.IsWireframe = true;
+		PipelineStateFactory lodFactory2(lodCtx2);
+		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::Wireframe] =
+			lodFactory2.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
+	}
+	
+	{
+		PsoBuildContext tessCtx = ctx;
+		tessCtx.CullMode = D3D12_CULL_MODE_NONE;
+		tessCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		PipelineStateFactory tessFactory(tessCtx);
+		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::Lit] =
+			tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::DepthComplexity] =
+			tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::Lit] =
+			tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::DepthComplexity] =
+			tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
 
-	//sobel
-	PsoBuildContext sobelCtx = ctx;
-	sobelCtx.RootSignature = mPostProcessRootSignature.Get();
-	PipelineStateFactory sobelFactory(sobelCtx);
-	mPSOs["sobel"] = sobelFactory.CreateComputePSO(mShaders["sobelCS"].Get());
-	mPSOs["composite"] = sobelFactory.CreateComputePSO(mShaders["CompositeCS"].Get());
+		PsoBuildContext tessCtx2 = tessCtx;
+		tessCtx2.IsWireframe = true;
+		PipelineStateFactory tessFactory2(tessCtx2);
+		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::Wireframe] =
+			tessFactory2.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
+		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::Wireframe] =
+			tessFactory2.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+	}
 
-	//tessellation
-	PsoBuildContext tessCtx = ctx;
-	tessCtx.CullMode = D3D12_CULL_MODE_NONE;
-	tessCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-	PipelineStateFactory tessFactory(tessCtx);
-	mPSOs["tessLand"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-	mPSOs["tessLand_depthCount"] = tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-	mPSOs["tessWall"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
-	mPSOs["tessWall_depthCount"] = tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
-	tessCtx.IsWireframe = true;
-	tessFactory(tessCtx);
-	mPSOs["tessLand_wireframe"] = tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-	mPSOs["tessWall_wireframe"] = tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
+	{
+		PsoBuildContext gizmoCtx = ctx;
+		PipelineStateFactory gizmoFactory(gizmoCtx);
+		mLayerPSOs[(int)RenderLayer::Gizmo][(int)SceneRenderMode::Lit] =
+			gizmoFactory.CreateGizmoPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+	}
 
-	//selected PSO
-	PsoBuildContext selectedCtx = ctx;
-	PipelineStateFactory selectedFactory(selectedCtx);
-	mPSOs["selectedMask"] = selectedFactory.CreateSelectedStencilMaskPSO(mShaders["highlightVS_Mask"].Get(), mShaders["highlightPS"].Get());
-	mPSOs["selectedOutline"] = selectedFactory.CreateSelectedPSO(mShaders["highlightVS"].Get(), mShaders["highlightPS"].Get());
+	{
+		PsoBuildContext skinnedCtx = ctx;
+		skinnedCtx.InputLayout = &mSkinnedInputLayout;
+		PipelineStateFactory skinnedFactory(skinnedCtx);
+		mLayerPSOs[(int)RenderLayer::SkinnedOpaque][(int)SceneRenderMode::Lit] =
+			skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
 
-	//Gizmo PSO
-	PsoBuildContext gizmoCtx = ctx;
-	PipelineStateFactory gizmoFactory(gizmoCtx);
-	mPSOs["gizmo"] = gizmoFactory.CreateGizmoPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+		PsoBuildContext skinnedCtx2 = skinnedCtx;
+		skinnedCtx2.IsWireframe = true;
+		PipelineStateFactory skinnedFactory2(skinnedCtx2);
+		mLayerPSOs[(int)RenderLayer::SkinnedOpaque][(int)SceneRenderMode::Wireframe] =
+			skinnedFactory2.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
+	}
 
-	//Skinned Model
-	//PsoBuildContext skinnedCtx = ctx;
-	//skinnedCtx.InputLayout = &mSkinnedInputLayout;
-	//PipelineStateFactory skinnedFactory(skinnedCtx);
-	//mPSOs["skinnedOpaque"] = skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
-	//skinnedCtx.IsWireframe = true;
-	//skinnedFactory(skinnedCtx);
-	//mPSOs["skinnedOpaque_wireframe"] = skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
+	//mGraphicsPSOs
+	{
+		PsoBuildContext depthVisualizeCtx = ctx;
+		depthVisualizeCtx.RootSignature = mRootSignature_debug.Get();
+		PipelineStateFactory depthVisualizeFactory(depthVisualizeCtx);
+		mGraphicsPSOs[(int)GraphicsPass::DepthComplexityVisualize] =
+			depthVisualizeFactory.CreateDepthComplexityDebugPSO(mShaders["depthDebugVS"].Get(), mShaders["depthDebugPS"].Get());
+
+		PsoBuildContext normalDebugCtx = ctx;
+		normalDebugCtx.CullMode = D3D12_CULL_MODE_NONE;
+		normalDebugCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		PipelineStateFactory normalDebugFactory(normalDebugCtx);
+		mGraphicsPSOs[(int)GraphicsPass::VertexNormalVisualize] =
+			normalDebugFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["vertexDebugGS"].Get(), mShaders["vertexDebugPS"].Get());
+
+		PsoBuildContext selectedCtx = ctx;
+		PipelineStateFactory selectedFactory(selectedCtx);
+		mGraphicsPSOs[(int)GraphicsPass::SelectedMask] =
+			selectedFactory.CreateSelectedStencilMaskPSO(mShaders["highlightVS_Mask"].Get(), mShaders["highlightPS"].Get());
+		mGraphicsPSOs[(int)GraphicsPass::SelectedOutline] =
+			selectedFactory.CreateSelectedPSO(mShaders["highlightVS"].Get(), mShaders["highlightPS"].Get());
+	}
+
+	//mComputePSOs
+	{
+		PsoBuildContext waveCtx = ctx;
+		waveCtx.RootSignature = mWavesRootSignature.Get();
+		PipelineStateFactory waveFactory(waveCtx);
+		mComputePSOs[(int)ComputePass::WavesDisturb] = waveFactory.CreateComputePSO(mShaders["wavesSimDisturb"].Get());
+		mComputePSOs[(int)ComputePass::WavesUpdate] = waveFactory.CreateComputePSO(mShaders["wavesSimUpdate"].Get());
+
+		PsoBuildContext blurCtx = ctx;
+		blurCtx.RootSignature = mPostProcessRootSignature.Get();
+		PipelineStateFactory blurFactory(blurCtx);
+		mComputePSOs[(int)ComputePass::BlurHorizontal] = blurFactory.CreateComputePSO(mShaders["blurH"].Get());
+		mComputePSOs[(int)ComputePass::BlurVertical] = blurFactory.CreateComputePSO(mShaders["blurV"].Get());
+
+		PsoBuildContext sobelCtx = ctx;
+		sobelCtx.RootSignature = mPostProcessRootSignature.Get();
+		PipelineStateFactory sobelFactory(sobelCtx);
+		mComputePSOs[(int)ComputePass::SobelExcute] = sobelFactory.CreateComputePSO(mShaders["sobelCS"].Get());
+		mComputePSOs[(int)ComputePass::SobelComposite] = sobelFactory.CreateComputePSO(mShaders["sobelCompositeCS"].Get());
+	}
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSamplers()
@@ -2353,10 +2393,10 @@ void SceneRenderer::UpdateWavesGPU(ID3D12GraphicsCommandList* cmdList)
 		int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
 		float r = MathHelper::RandF(0.5f, 1.0f);
 
-		mWaves->Disturb(cmdList, mWavesRootSignature.Get(), mPSOs["wavesSimDisturb"].Get(), i, j, r);
+		mWaves->Disturb(cmdList, mWavesRootSignature.Get(), mComputePSOs[(int)ComputePass::WavesDisturb].Get(), i, j, r);
 	}
 
-	mWaves->Update(mTimer, cmdList, mWavesRootSignature.Get(), mPSOs["wavesSimUpdate"].Get());
+	mWaves->Update(mTimer, cmdList, mWavesRootSignature.Get(), mComputePSOs[(int)ComputePass::WavesUpdate].Get());
 	mWaves->PrepareDraw(cmdList);
 }
 
@@ -2451,10 +2491,49 @@ void SceneRenderer::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
 
 void SceneRenderer::DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers)
 {
+	for (auto& ri : renderLayers)
+	{
+		if (ri->VisibleInstanceCount == 0) continue;
+
+		auto vbv = ri->Geo->VertexBufferView();
+		auto ibv = ri->Geo->IndexBufferView();
+
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
+		cmdList->IASetIndexBuffer(&ibv);
+		cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation, 0);
+
+		cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+	}
 }
 
 void SceneRenderer::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 {
+	static constexpr std::array<DebugColorConstants, 10> colors =
+	{
+		XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f},   // 1 빨강
+		XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f},   // 2 주황
+		XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f},   // 3 노랑
+		XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f},   // 4 초록
+		XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f},   // 5 파랑
+		XMFLOAT4{0.0f, 1.0f, 1.0f, 1.0f},   // 6 청록
+		XMFLOAT4{1.0f, 0.0f, 1.0f, 1.0f},   // 7 자홍
+		XMFLOAT4{0.5f, 0.0f, 1.0f, 1.0f},   // 8 보라
+		XMFLOAT4{1.0f, 1.0f, 1.0f, 1.0f},   // 9 흰색
+		XMFLOAT4{0.4f, 0.4f, 0.4f, 1.0f}    // 10 회색
+	};
+
+	UINT debugColorCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(DebugColorConstants));
+
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (UINT i = 0; i < colors.size(); i++)
+	{
+		cmdList->OMSetStencilRef(i + 1);
+		cmdList->SetGraphicsRoot32BitConstants(0, 4, &colors[i], 0);
+		cmdList->DrawInstanced(3, 1, 0, 0);
+	}
 }
 
 void SceneRenderer::CreateQueryHeap(D3D12Context& context)
@@ -2481,4 +2560,16 @@ void SceneRenderer::CreateQueryHeap(D3D12Context& context)
 		IID_PPV_ARGS(&mTimestampReadbackBuffer)));
 
 	context.GetCommandQueue()->GetTimestampFrequency(&mGpuTimestampFrequency);
+}
+
+ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMode mode) const
+{
+	if(mode == SceneRenderMode::VertexNormal)
+		return mLayerPSOs[(int)layer][(int)SceneRenderMode::Lit].Get();
+
+	const auto& modePso = mLayerPSOs[(int)layer][(int)mode];
+	if (modePso) return modePso.Get();
+
+	const auto& litPso = mLayerPSOs[(int)RenderLayer::Opaque][(int)mode];
+	return litPso.Get();
 }

@@ -87,21 +87,20 @@ public:
 
     D3D12DescriptorHandle AllocateRtvDescriptor();
     D3D12DescriptorHandle AllocateDsvDescriptor();
-    D3D12DescriptorHandle AllocateSrvDescriptor();
+    D3D12DescriptorHandle AllocateSrvUavDescriptor();
 
     void FreeRtvDescriptor(D3D12DescriptorHandle handle);
     void FreeDsvDescriptor(D3D12DescriptorHandle handle);
-    void FreeSrvDescriptor(D3D12DescriptorHandle handle);
+    void FreeSrvUavDescriptor(D3D12DescriptorHandle handle);
 
     // 콜백 호환 디스크립터 할당 헬퍼.
     // raw CPU/GPU 디스크립터 핸들이 필요한 외부 시스템에서 사용됨.
     // ImGui, GpuWaves에서 사용
-    void AllocateSrvDescriptor(
+    void AllocateSrvUavDescriptor(
         D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle);
-    void FreeSrvDescriptor(
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
+    void FreeSrvUavDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle);
+    void FreeSrvUavDescriptor(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
 
     ID3D12Device* GetDevice() const { return md3dDevice.Get(); }
     ID3D12CommandQueue* GetCommandQueue() const { return mCommandQueue.Get(); }
@@ -109,7 +108,7 @@ public:
 
     ID3D12DescriptorHeap* GetRtvHeap() const { return mRtvHeap.Get(); }
     ID3D12DescriptorHeap* GetDsvHeap() const { return mDsvHeap.Get(); }
-    ID3D12DescriptorHeap* GetSrvHeap() const { return mSrvHeap.Get(); }
+    ID3D12DescriptorHeap* GetSrvUavHeap() const { return mSrvUavHeap.Get(); }
 
     UINT GetRtvDescriptorSize() const { return mRtvDescriptorSize; }
     UINT GetDsvDescriptorSize() const { return mDsvDescriptorSize; }
@@ -151,10 +150,11 @@ private:
         std::vector<UINT>& freeIndices,
         UINT descriptorCount);
 
-    UINT GetSrvDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const;
+    UINT GetSrvUavDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle) const;
+    UINT GetSrvUavDescriptorIndex(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) const;
 
 public:
-    MsaaOption mMsaaOption{ 2 };
+    MsaaOption mMsaaOption{ 0 };
 
 private:
     HWND mhWnd = nullptr;
@@ -174,7 +174,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[RenderConfig::SwapChainBufferCount];
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvUavHeap;
 
     std::vector<std::unique_ptr<D3D12FrameContext>> mFrameContexts;
     D3D12FrameContext* mCurrentFrameContext = nullptr;
