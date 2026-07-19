@@ -6,15 +6,17 @@ void SceneViewPanel::OnImGuiRender()
     bool visible = ImGui::Begin("Scene View");
     if (!visible)
     {
+        mInputState.IsHovered = false;
+        mInputState.IsFocused = false;
         ImGui::End();
         return;
     }
 
-    UpdateInputState();
-
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
     if (availableSize.x < 1.0f || availableSize.y < 1.0f)
     {
+        mInputState.IsHovered = false;
+        mInputState.IsFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         ImGui::TextDisabled("Scene View size is invalid.");
         ImGui::End();
         return;
@@ -24,44 +26,48 @@ void SceneViewPanel::OnImGuiRender()
 
     if (mTextureId != 0)
     {
+        // Image가 하나의 ImGui Item으로 등록
         ImGui::Image(mTextureId, availableSize);
     }
     else
     {
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        ImVec2 end = ImVec2(pos.x + availableSize.x, pos.y + availableSize.y);
+        // 텍스처가 없어도 Scene View 영역을 ImGui Item으로 등록한다.
+        ImGui::Dummy(availableSize);
+
+        const ImVec2 min = ImGui::GetItemRectMin();
+        const ImVec2 max = ImGui::GetItemRectMax();
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        drawList->AddRectFilled(pos, end, IM_COL32(35, 35, 35, 255));
+        drawList->AddRectFilled(min, max, IM_COL32(35, 35, 35, 255));
         drawList->AddText(
-            ImVec2(pos.x + 10.0f, pos.y + 10.0f),
+            ImVec2(min.x + 10.0f, min.y + 10.0f),
             IM_COL32(220, 220, 220, 255),
-            "Scene render target is not ready."
-        );
+            "Scene render target is not ready.");
     }
+
+    // 반드시 Image 또는 Dummy 호출 이후 실행
+    UpdateInputState();
 
     ImGui::End();
 }
 
 void SceneViewPanel::UpdateInputState()
 {
-    mInputState.IsHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+    // 현재 마지막으로 그린 Item, 즉 Image 또는 Dummy의 실제 영역
+    mInputState.Min = ImGui::GetItemRectMin();
+    mInputState.Max = ImGui::GetItemRectMax();
 
-    mInputState.IsFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    // 전체 Scene View 윈도우가 아니라 실제 이미지 영역만 검사
+    mInputState.IsHovered = ImGui::IsItemHovered();
 
-    const ImVec2 windowPosition = ImGui::GetWindowPos();
-    const ImVec2 contentMin = ImGui::GetWindowContentRegionMin();
-    const ImVec2 contentMax = ImGui::GetWindowContentRegionMax();
+    mInputState.IsFocused =
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
-    mInputState.Min =
+    const ImVec2 mousePosition = ImGui::GetMousePos();
+
+    mInputState.MouseLocal =
     {
-        windowPosition.x + contentMin.x,
-        windowPosition.y + contentMin.y
-    };
-
-    mInputState.Max =
-    {
-        windowPosition.x + contentMax.x,
-        windowPosition.y + contentMax.y
+        mousePosition.x - mInputState.Min.x,
+        mousePosition.y - mInputState.Min.y
     };
 }

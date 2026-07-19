@@ -11,6 +11,8 @@ struct EditorPanelInputState
 
     ImVec2 Min{};
     ImVec2 Max{};
+    
+    ImVec2 MouseLocal{}; // 실제 Scene 이미지 내부 로컬 좌표
 
     int GetWidth() const noexcept
     {

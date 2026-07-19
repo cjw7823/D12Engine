@@ -180,6 +180,7 @@
     <None Include="Dx12App.cpp" />
     <ClCompile Include="Editor\EditorApplication.cpp" />
     <ClCompile Include="Editor\EditorLayer.cpp" />
+    <ClCompile Include="Editor\Gizmo.cpp" />
     <ClCompile Include="Editor\ImGuiLayer.cpp" />
     <ClCompile Include="Editor\SceneViewPanel.cpp" />
     <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp" />
@@ -203,7 +204,7 @@
     <None Include="RenderApp_Resources.cpp" />
     <ClCompile Include="Renderer\Assets\TextureManager.cpp" />
     <ClCompile Include="Renderer\DirectX12\BlurFilter.cpp" />
-    <ClCompile Include="Renderer\DirectX12\Camera.cpp" />
+    <ClCompile Include="EngineCore\Camera.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12Context.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12RenderTarget.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp" />
@@ -251,12 +252,13 @@
     <ClInclude Include="Renderer\Assets\TextureDesc.h" />
     <ClInclude Include="Renderer\Assets\TextureManager.h" />
     <ClInclude Include="Renderer\DirectX12\BlurFilter.h" />
-    <ClInclude Include="Renderer\DirectX12\Camera.h" />
+    <ClInclude Include="EngineCore\Camera.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12Context.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12RenderTarget.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12Util.h" />
     <ClInclude Include="Renderer\DirectX12\FrameResource.h" />
     <ClInclude Include="Renderer\DirectX12\GeometryGenerator.h" />
+    <ClInclude Include="Editor\Gizmo.h" />
     <ClInclude Include="Renderer\DirectX12\GpuWaves.h" />
     <ClInclude Include="Renderer\DirectX12\MACRO.h" />
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h" />

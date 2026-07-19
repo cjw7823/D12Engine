@@ -7,21 +7,6 @@
     <Filter Include="App">
       <UniqueIdentifier>{820d1915-4c7a-49b1-a6b8-1639e006fb01}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External">
-      <UniqueIdentifier>{e5684643-d082-405c-a931-67868dba2cd6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\IMGUI">
-      <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\IMGUI\backends">
-      <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\IMGUI\core">
-      <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\DDSTextureLoader">
-      <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{948ab57d-363f-4d14-ba88-936a43859abd}</UniqueIdentifier>
     </Filter>
@@ -72,6 +57,27 @@
     </Filter>
     <Filter Include="EngineCore\InputSystem">
       <UniqueIdentifier>{6851cebe-d474-44a8-aecf-15cbd7ccb723}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Scene\Camera">
+      <UniqueIdentifier>{1b076a3f-a606-46c5-a718-a88de1811240}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Editor\Viewport">
+      <UniqueIdentifier>{186d68ba-8f9e-4285-ad95-2eada9525758}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{e5684643-d082-405c-a931-67868dba2cd6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI">
+      <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI\backends">
+      <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\IMGUI\core">
+      <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\DDSTextureLoader">
+      <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -138,12 +144,6 @@
     <ClCompile Include="Renderer\DirectX12\FrameResource.cpp">
       <Filter>Renderer\DirectX12\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="EngineCore\Scene.cpp">
       <Filter>EngineCore\Scene</Filter>
     </ClCompile>
@@ -159,16 +159,33 @@
     <ClCompile Include="Renderer\Assets\TextureManager.cpp">
       <Filter>Renderer\Assets</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\Camera.cpp">
-      <Filter>Renderer\DirectX12\Util</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp">
       <Filter>Renderer\DirectX12\Util</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp" />
+    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Camera.cpp">
+      <Filter>EngineCore\Scene\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Gizmo.cpp">
+      <Filter>Editor\Viewport</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -258,12 +275,6 @@
     <ClInclude Include="Renderer\DirectX12\FrameResource.h">
       <Filter>Renderer\DirectX12\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\GeometryGenerator.h">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="EngineCore\Transform.h">
       <Filter>EngineCore\Scene</Filter>
     </ClInclude>
@@ -294,9 +305,6 @@
     <ClInclude Include="Renderer\DirectX12\MACRO.h">
       <Filter>Renderer\DirectX12\Desc</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\Camera.h">
-      <Filter>Renderer\DirectX12\Util</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
       <Filter>Renderer\DirectX12\Util</Filter>
     </ClInclude>
@@ -306,10 +314,30 @@
     <ClInclude Include="EngineCore\TextureLoader_Blocking.h">
       <Filter>이전 항목%28빌드x%29</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\InputSystem\InputSystem.h" />
-    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h" />
-    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h" />
-    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h" />
+    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\InputSystem\InputSystem.h">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h">
+      <Filter>EngineCore\InputSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\GeometryGenerator.h">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h">
+      <Filter>Renderer\DirectX12\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Camera.h">
+      <Filter>EngineCore\Scene\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Gizmo.h">
+      <Filter>Editor\Viewport</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">

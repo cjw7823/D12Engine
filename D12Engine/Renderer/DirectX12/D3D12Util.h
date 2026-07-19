@@ -9,7 +9,6 @@
 class D3D12Util
 {
 public:
-	static bool IsKeyDown(int vkeyCode);
 	static UINT CalcConstantBufferByteSize(UINT byteSize);
 	static Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
 		const std::wstring& filename,

@@ -13,14 +13,16 @@
 #include "DirectX-Headers/d3dx12.h"
 
 #include "EngineCore/LoadM3d.h"
+#include "EngineCore/Camera.h"
 
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 #include "Renderer/DirectX12/FrameResource.h"
 #include "Renderer/DirectX12/GpuWaves.h"
 #include "Renderer/DirectX12/BlurFilter.h"
 #include "Renderer/DirectX12/SobelFilter.h"
-#include "Renderer/DirectX12/Camera.h"
 #include "Renderer/Assets/TextureManager.h"
+
+#include "Editor/Gizmo.h"
 
 class D3D12Context;
 class Scene;
@@ -109,6 +111,13 @@ public:
 	void MoveSun(float deltaTheta, float deltaPhi);
 	void ChangeMsaa(const D3D12Context& context);
 
+	//for Selected Instance
+	bool BeginGizmoDrag(int vx, int vy);
+	void Pick(int vx, int vy);
+	void ClearSelectedInstance();
+	void UpdateGizmoDrag(int vx, int vy);
+	void EndGizmoDrag();
+
 private:
 	void Update(const Scene& scene, float deltaTime);
 	void Render(D3D12Context& context, D3D12RenderTarget& renderTarget, const Scene& scene);
@@ -166,9 +175,24 @@ private:
 	void CreateQueryHeap(D3D12Context& context);
 
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
+
+	//for Selected Instance
+	void BuildWorldRayFromViewport(int sx, int sy, DirectX::XMVECTOR& rayOriginW, DirectX::XMVECTOR& rayDirW) const;
+	InstanceData* GetPrimarySelectedInstance();
+	GizmoAxis PickGizmoAxis(int sx, int sy);
+	DirectX::XMVECTOR GetGizmoAxisVector(GizmoAxis axis) const;
+	DirectX::XMVECTOR BuildDragPlaneNormal(DirectX::XMVECTOR axisW, DirectX::XMVECTOR cameraForwardW) const;
+	DirectX::XMVECTOR MakePlaneFromPointNormal(DirectX::XMVECTOR pointW, DirectX::XMVECTOR normalW) const;
+	bool IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTOR rayDirW, DirectX::XMVECTOR plane, DirectX::XMVECTOR& hitPointW) const;
+	void SetSelectedObjectPositionW(const DirectX::XMFLOAT3& posW);
+	float CalcGizmoAxisLength(const DirectX::XMFLOAT3& pivotW) const;
+
 public:
 	//Render Mode
 	SceneRenderSettings mRenderSettings;
+
+	//For Gizmo
+	GizmoState mGizmo;
 
 private:
 	bool mInitialized = false;
@@ -240,7 +264,6 @@ private:
 	//For Gizmo
 	std::vector<SelectedInstance> mSelectedInstances;
 	RenderItem* mGizmoRI = nullptr;
-	GizmoState mGizmo;
 
 	//For Animation
 	UINT mSkinnedSrvHeapStart = 0;

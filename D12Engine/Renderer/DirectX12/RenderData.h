@@ -281,28 +281,6 @@ private:
 	std::vector<uint16_t> mIndices16;
 };
 
-enum class GizmoAxis
-{
-	None,
-	X,
-	Y,
-	Z
-};
-
-struct GizmoState
-{
-	bool Dragging = false;
-
-	GizmoAxis ActiveAxis = GizmoAxis::None;
-
-	DirectX::XMFLOAT3 StartObjectPosW = { 0.0f, 0.0f, 0.0f };
-	DirectX::XMFLOAT3 StartHitPosW = { 0.0f, 0.0f, 0.0f };
-	DirectX::XMFLOAT3 DragAxisW = { 1.0f, 0.0f, 0.0f };
-
-	// plane: ax + by + cz + d = 0
-	DirectX::XMFLOAT4 DragPlane = { 0.0f, 1.0f, 0.0f, 0.0f };
-};
-
 struct SkinnedModelInstance
 {
 	SkinnedData* skinnedInfo = nullptr;

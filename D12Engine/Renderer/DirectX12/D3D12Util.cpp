@@ -6,17 +6,6 @@
 
 using namespace Microsoft::WRL;
 
-/// <summary>
-/// 최상위 비트 15번 bit = 현재 키가 눌려 있으면 1
-//  최하위 비트 0번 bit = 이전 호출 이후 키가 눌린 적 있으면 1
-/// </summary>
-/// <param name="vkeyCode"></param>
-/// <returns></returns>
-bool D3D12Util::IsKeyDown(int vkeyCode)
-{
-	return (GetAsyncKeyState(vkeyCode) & 0x8000) != 0;
-}
-
 UINT D3D12Util::CalcConstantBufferByteSize(UINT byteSize)
 {
 	//상수 버퍼는 최소 하드웨어 할당 크기(256바이트)의 배수여야 함.

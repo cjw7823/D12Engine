@@ -12,20 +12,31 @@ void SceneViewInputHandler::ProcessMouseInput(
     const InputSystem& input,
     const EditorPanelInputState& viewport)
 {
-    const POINT mousePosition = input.GetMousePosition();
+    if (!viewport.IsHovered) return;
+
+    const POINT mousePosition = input.GetMousePosition(); //클라이언트 좌표
     const POINT mouseDelta = input.GetMouseDelta();
 
-    const int localX = mousePosition.x - static_cast<int>(viewport.Min.x);
-    const int localY = mousePosition.y - static_cast<int>(viewport.Min.y);
+    const float localX = viewport.MouseLocal.x;
+    const float localY = viewport.MouseLocal.y;
 
     if (input.IsMousePressed(MouseButton::Left))
     {
-        //mSceneRenderer.Pick(
-        //    mScene,
-        //    localX,
-        //    localY,
-        //    viewport.GetWidth(),
-        //    viewport.GetHeight());
+        if (!mSceneRenderer.BeginGizmoDrag(localX, localY)) //내부에서 기즈모 클릭 검사.
+        {
+            mSceneRenderer.ClearSelectedInstance();
+            mSceneRenderer.Pick(localX, localY);
+        }
+    }
+
+    if (input.IsMouseReleased(MouseButton::Left))
+    {
+        if (mSceneRenderer.mGizmo.Dragging) mSceneRenderer.EndGizmoDrag();
+    }
+
+    if (input.IsMouseDown(MouseButton::Left))
+    {
+        if (mSceneRenderer.mGizmo.Dragging) mSceneRenderer.UpdateGizmoDrag(localX, localY);
     }
 
     if (input.IsMouseDown(MouseButton::Right))
