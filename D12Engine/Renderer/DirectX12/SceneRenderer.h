@@ -103,6 +103,10 @@ public:
 	float AspectRatio() const;
 
 	//For Input
+	void SetRenderSetting(SceneRenderMode mode);
+	void ToggleSobel();
+	void NextBlurCount();
+	void PickRenderItem(int vx, int vy);
 	void ZoomCamera(int wheelDelta);
 	void RotateCamera(POINT mouseDelta);
 	void MoveCameraForward(float speed) { mCamera.MoveForward(speed * mTimer.DeltaTime()); }
@@ -111,19 +115,14 @@ public:
 	void MoveSun(float deltaTheta, float deltaPhi);
 	void ChangeMsaa(const D3D12Context& context);
 
-	//for Selected Instance
-	bool BeginGizmoDrag(int vx, int vy);
-	void Pick(int vx, int vy);
-	void ClearSelectedInstance();
-	void UpdateGizmoDrag(int vx, int vy);
-	void EndGizmoDrag();
-
 private:
 	void Update(const Scene& scene, float deltaTime);
 	void Render(D3D12Context& context, D3D12RenderTarget& renderTarget, const Scene& scene);
 
 	void ReadbackTimestampData(int frameResourceIndex);
 
+	MeshData LoadModelFromFile_dx12ex(const std::wstring& path);
+	void LoadSkinnedModel_dx12ex(D3D12Context& context);
 	void LoadTextures(D3D12Context& context);
 
 	void BuildDescriptorHeaps(D3D12Context& context);
@@ -148,14 +147,13 @@ private:
 	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
-	void BuildRenderItems_SkinnedModel(UINT& IinstanceBufferIndex);
+	void BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex);
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
 	float GetHillsHeight(float x, float z) const;
-	MeshData LoadModelFromFile(const std::wstring& path);
 
 	void UpdateSkinnedCBs();
 	void UpdateMainPassCB();
@@ -164,7 +162,6 @@ private:
 	void UpdateMaterialBuffer();
 	void UpdateWavesGPU(ID3D12GraphicsCommandList* cmdList);
 	void UpdateShadowTransform();
-	void UpdateGizmo();
 	void AnimateMaterials();
 
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
@@ -176,23 +173,9 @@ private:
 
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
 
-	//for Selected Instance
-	void BuildWorldRayFromViewport(int sx, int sy, DirectX::XMVECTOR& rayOriginW, DirectX::XMVECTOR& rayDirW) const;
-	InstanceData* GetPrimarySelectedInstance();
-	GizmoAxis PickGizmoAxis(int sx, int sy);
-	DirectX::XMVECTOR GetGizmoAxisVector(GizmoAxis axis) const;
-	DirectX::XMVECTOR BuildDragPlaneNormal(DirectX::XMVECTOR axisW, DirectX::XMVECTOR cameraForwardW) const;
-	DirectX::XMVECTOR MakePlaneFromPointNormal(DirectX::XMVECTOR pointW, DirectX::XMVECTOR normalW) const;
-	bool IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTOR rayDirW, DirectX::XMVECTOR plane, DirectX::XMVECTOR& hitPointW) const;
-	void SetSelectedObjectPositionW(const DirectX::XMFLOAT3& posW);
-	float CalcGizmoAxisLength(const DirectX::XMFLOAT3& pivotW) const;
-
 public:
-	//Render Mode
-	SceneRenderSettings mRenderSettings;
-
-	//For Gizmo
-	GizmoState mGizmo;
+	//For Gizmo / Selected Instances
+	Gizmo mGizmo;
 
 private:
 	bool mInitialized = false;
@@ -253,6 +236,8 @@ private:
 	float mSunTheta = 1.25f * DirectX::XM_PI;
 	float mSunPhi = DirectX::XM_PIDIV4;
 
+	//Render Mode
+	SceneRenderSettings mRenderSettings;
 	bool mFrustumCullingEnabled = true;
 
 	//For Performance Measurement
@@ -261,18 +246,12 @@ private:
 	UINT mInstanceCount = 0;
 	UINT mVisibleInstanceCount = 0;
 
-	//For Gizmo
-	std::vector<SelectedInstance> mSelectedInstances;
-	RenderItem* mGizmoRI = nullptr;
-
 	//For Animation
-	UINT mSkinnedSrvHeapStart = 0;
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
 	SkinnedData mSkinnedInfo;
-	std::vector<M3DLoader::Subset> mSkinnedSubsets;
 	std::vector<M3DLoader::M3dMaterial> mSkinnedMats;
-	std::vector<std::string> mSkinnedTextureNames;
-	std::vector<std::string> mSkinnedNormalTextureNames;
+	std::vector<std::wstring> mSkinnedTexturePaths;
+	std::vector<std::wstring> mSkinnedNormalTexturePaths;
 
 	//For Camera
 	DirectX::BoundingFrustum mCamFrustum;

@@ -13,30 +13,31 @@ void SceneViewInputHandler::ProcessMouseInput(
     const EditorPanelInputState& viewport)
 {
     if (!viewport.IsHovered) return;
+    if (!viewport.IsFocused) return;
 
-    const POINT mousePosition = input.GetMousePosition(); //ÌÅ¥ÎùºÏù¥Ïñ∏Ìä∏ Ï¢åÌëú
+    const POINT mousePosition = input.GetMousePosition(); //≈¨∂Û¿Ãæ∆Æ ¡¬«•
     const POINT mouseDelta = input.GetMouseDelta();
 
-    const float localX = viewport.MouseLocal.x;
-    const float localY = viewport.MouseLocal.y;
+    const int localX = (int)viewport.MouseLocal.x;
+    const int localY = (int)viewport.MouseLocal.y;
 
+    Gizmo& gizmo = mSceneRenderer.mGizmo;
     if (input.IsMousePressed(MouseButton::Left))
     {
-        if (!mSceneRenderer.BeginGizmoDrag(localX, localY)) //ÎÇ¥Î∂ÄÏóêÏÑú Í∏∞Ï¶àÎ™® ÌÅ¥Î¶≠ Í≤ÄÏÇ¨.
+        if (!gizmo.BeginGizmoDrag(localX, localY)) //≥ª∫Œø°º≠ ±‚¡Ó∏ ≈¨∏Ø ∞ÀªÁ.
         {
-            mSceneRenderer.ClearSelectedInstance();
-            mSceneRenderer.Pick(localX, localY);
+            mSceneRenderer.PickRenderItem(localX, localY);
         }
     }
 
     if (input.IsMouseReleased(MouseButton::Left))
     {
-        if (mSceneRenderer.mGizmo.Dragging) mSceneRenderer.EndGizmoDrag();
+        if (gizmo.IsGizmoDragging()) gizmo.EndGizmoDrag();
     }
 
     if (input.IsMouseDown(MouseButton::Left))
     {
-        if (mSceneRenderer.mGizmo.Dragging) mSceneRenderer.UpdateGizmoDrag(localX, localY);
+        if (gizmo.IsGizmoDragging()) gizmo.UpdateGizmoDrag(localX, localY);
     }
 
     if (input.IsMouseDown(MouseButton::Right))
@@ -56,17 +57,17 @@ void SceneViewInputHandler::ProcessKeyboardInput(
 {
     //change render mode
     if (input.IsKeyPressed('1'))
-        mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::Lit;
+        mSceneRenderer.SetRenderSetting(SceneRenderMode::Lit);
     if (input.IsKeyPressed('2'))
-        mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::Wireframe;
+        mSceneRenderer.SetRenderSetting(SceneRenderMode::Wireframe);
     if (input.IsKeyPressed('3'))
-        mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::DepthComplexity;
+        mSceneRenderer.SetRenderSetting(SceneRenderMode::DepthComplexity);
     if (input.IsKeyPressed('4'))
-        mSceneRenderer.mRenderSettings.Mode = SceneRenderMode::VertexNormal;
+        mSceneRenderer.SetRenderSetting(SceneRenderMode::VertexNormal);
     if (input.IsKeyPressed('5'))
-        mSceneRenderer.mRenderSettings.SobelEnabled = !mSceneRenderer.mRenderSettings.SobelEnabled;
+        mSceneRenderer.ToggleSobel();
     if (input.IsKeyPressed('6'))
-        mSceneRenderer.mRenderSettings.NextBlurCount();
+        mSceneRenderer.NextBlurCount();
     if (input.IsKeyPressed('7') && mChangeMsaaOptionCallback)
         mChangeMsaaOptionCallback();
 

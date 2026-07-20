@@ -26,6 +26,7 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetRTV() const noexcept { return mRtv.Cpu; }
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const noexcept { return mDsv.Cpu; }
     D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGpu() const noexcept { return mSrv.Gpu; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSceneViewSRVGpu() const { return mSceneViewSrv.Gpu; }
     DXGI_FORMAT GetColorFormat() const noexcept { return mColorFormat; }
     DXGI_FORMAT GetDepthFormat() const noexcept { return mDepthFormat; }
     const D3D12_VIEWPORT& GetViewport() const noexcept { return mViewport; }
@@ -54,6 +55,8 @@ private:
     D3D12DescriptorHandle mRtv{};
     D3D12DescriptorHandle mDsv{};
     D3D12DescriptorHandle mSrv{};
+    //ImGui::Image에서 알파 블랜딩을 막기 위해.
+    D3D12DescriptorHandle mSceneViewSrv{};
 
     D3D12_RESOURCE_STATES mColorState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     D3D12_RESOURCE_STATES mMsaaState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;

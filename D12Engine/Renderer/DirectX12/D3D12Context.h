@@ -102,6 +102,7 @@ public:
     void FreeSrvUavDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle);
     void FreeSrvUavDescriptor(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
 
+    const D3D12ContextDesc GetDesc() const { return mDesc; }
     ID3D12Device* GetDevice() const { return md3dDevice.Get(); }
     ID3D12CommandQueue* GetCommandQueue() const { return mCommandQueue.Get(); }
     ID3D12GraphicsCommandList* GetCommandList() const { return mCommandList.Get(); }

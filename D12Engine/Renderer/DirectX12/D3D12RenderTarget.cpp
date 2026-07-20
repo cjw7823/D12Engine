@@ -18,6 +18,9 @@ void D3D12RenderTarget::Create(D3D12Context& context, DXGI_FORMAT colorFormat, D
     if (!mSrv.IsValid())
         mSrv = context.AllocateSrvUavDescriptor();
 
+    if (!mSceneViewSrv.IsValid())
+        mSceneViewSrv = context.AllocateSrvUavDescriptor();
+
     if (!mMsaaDescriptorHandle.IsValid())
         mMsaaDescriptorHandle = context.AllocateRtvDescriptor();
 
@@ -83,10 +86,10 @@ void D3D12RenderTarget::CreateResources(D3D12Context& context)
 
     D3D12_CLEAR_VALUE colorClearValue = {};
     colorClearValue.Format = mColorFormat;
-    colorClearValue.Color[0] = 0.12f;
-    colorClearValue.Color[1] = 0.16f;
-    colorClearValue.Color[2] = 0.22f;
-    colorClearValue.Color[3] = 1.0f;
+    colorClearValue.Color[0] = mClearColor[0];
+    colorClearValue.Color[1] = mClearColor[1];
+    colorClearValue.Color[2] = mClearColor[2];
+    colorClearValue.Color[3] = mClearColor[3];
 
     D3D12_RESOURCE_DESC colorDesc = {};
     colorDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -158,6 +161,7 @@ void D3D12RenderTarget::CreateViews(D3D12Context& context)
         nullptr,
         mRtv.Cpu);
 
+    // 원본 RGBA SRV
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = mColorFormat;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -170,6 +174,20 @@ void D3D12RenderTarget::CreateViews(D3D12Context& context)
         mColorBuffer.Get(),
         &srvDesc,
         mSrv.Cpu);
+
+    // ImGui Scene View 표시용 SRV
+    // RGB는 원본, Alpha는 항상 1.0
+    srvDesc.Shader4ComponentMapping =
+        D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2,
+            D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1);
+
+    device->CreateShaderResourceView(
+        mColorBuffer.Get(),
+        &srvDesc,
+        mSceneViewSrv.Cpu);
 
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
     dsvDesc.Format = mDepthFormat;

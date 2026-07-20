@@ -125,7 +125,7 @@ bool EditorApplication::InitMainWindow()
 
 void EditorApplication::Tick()
 {
-	ImTextureID sceneTextureId = static_cast<ImTextureID>(mSceneRenderTarget.GetSRVGpu().ptr);
+	ImTextureID sceneTextureId = static_cast<ImTextureID>(mSceneRenderTarget.GetSceneViewSRVGpu().ptr);
 	mEditorLayer.SetSceneViewTexture(sceneTextureId);
 
 	//에디터의 ImGui UI 렌더링

@@ -12,7 +12,7 @@ struct EditorPanelInputState
     ImVec2 Min{};
     ImVec2 Max{};
     
-    ImVec2 MouseLocal{}; // ì‹¤ì œ Scene ì´ë¯¸ì§€ ë‚´ë¶€ ë¡œì»¬ ì¢Œí‘œ
+    ImVec2 MouseLocal{}; // ½ÇÁ¦ Scene ÀÌ¹ÌÁö ³»ºÎ ·ÎÄÃ ÁÂÇ¥
 
     int GetWidth() const noexcept
     {

@@ -43,6 +43,7 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	mCamera.Pitch(0.5f);
 	mCamera.RotateY(-0.5f);
 
+	LoadSkinnedModel_dx12ex(context);
 	LoadTextures(context);
 
 	BuildDescriptorHeaps(context);
@@ -102,6 +103,26 @@ float SceneRenderer::AspectRatio() const
 	return static_cast<float>(mViewportWidth) / mViewportHeight;
 }
 
+void SceneRenderer::SetRenderSetting(SceneRenderMode mode)
+{
+	mRenderSettings.Mode = mode;
+}
+
+void SceneRenderer::ToggleSobel()
+{
+	mRenderSettings.SobelEnabled = !mRenderSettings.SobelEnabled;
+}
+
+void SceneRenderer::NextBlurCount()
+{
+	mRenderSettings.NextBlurCount();
+}
+
+void SceneRenderer::PickRenderItem(int vx, int vy)
+{
+	mGizmo.Pick(vx, vy, mRenderItemLayer);
+}
+
 void SceneRenderer::ZoomCamera(int wheelDelta)
 {
 	constexpr float wheelSpeed = 0.01f;
@@ -135,6 +156,7 @@ void SceneRenderer::Update(const Scene& scene, float deltaTime)
 	if (!mInitialized) return;
 
 	mCamera.UpdateViewMatrix();
+	mGizmo.Update(&mCamera, mViewportWidth, mViewportHeight);
 
 	// 이 시점이면 이 FrameResource slot의 이전 GPU 작업은 완료됨.
 	ReadbackTimestampData(mCurrFrameResourceIndex);
@@ -144,7 +166,6 @@ void SceneRenderer::Update(const Scene& scene, float deltaTime)
 	UpdateSkinnedCBs();
 	UpdateMainPassCB();
 	UpdateReflectedPassCB();
-	UpdateGizmo();
 	UpdateInstanceBuffer();
 	UpdateMaterialBuffer();
 }
@@ -219,7 +240,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 		}
 	}
 
-	if (!mSelectedInstances.empty())
+	if (!mGizmo.GetSelectedInstances().empty())
 	{
 		mCommandList->OMSetStencilRef(0x80);
 
@@ -344,6 +365,24 @@ void SceneRenderer::LoadTextures(D3D12Context& context)
 		L"Resource/Textures/Help.dds",
 		L"Resource/Textures/Treearray2.dds",
 	};
+
+	for (UINT i = 0; i < mSkinnedMats.size(); i++)
+	{
+		std::string diffuseName = mSkinnedMats[i].DiffuseMapName;
+		std::string normalName = mSkinnedMats[i].NormalMapName;
+
+		std::wstring diffuseFilename = L"Resource/Textures/" + AnsiToWString(diffuseName);
+		std::wstring normalFilename = L"Resource/Textures/" + AnsiToWString(normalName);
+
+		//확장자 제거.
+		diffuseName = diffuseName.substr(0, diffuseName.find_last_of("."));
+		normalName = normalName.substr(0, normalName.find_last_of("."));
+
+		mSkinnedTexturePaths.push_back(diffuseFilename);
+		mSkinnedNormalTexturePaths.push_back(normalFilename);
+		paths.push_back(diffuseFilename);
+		//paths.push_back(normalFilename);
+	}
 
 	//묶음 로딩 : 텍스처 15개 기준 3ms 단축.
 	ThrowIfFailed(TextureManager::GetInstance().LoadDDS(context, paths));
@@ -596,6 +635,20 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	mMaterials[gizmoX->Name] = std::move(gizmoX);
 	mMaterials[gizmoY->Name] = std::move(gizmoY);
 	mMaterials[gizmoZ->Name] = std::move(gizmoZ);
+
+	for (UINT i = 0; i < mSkinnedMats.size(); ++i)
+	{
+		auto mat = std::make_unique<Material>();
+		mat->Name = mSkinnedMats[i].Name;
+		mat->MatBufferIndex = index++;
+		mat->DiffuseTexturePath = mSkinnedTexturePaths[i];
+		//mat->NormalTexturePath = mSkinnedNormalTexturePaths[i];
+		mat->DiffuseAlbedo = mSkinnedMats[i].DiffuseAlbedo;
+		mat->FresnelR0 = mSkinnedMats[i].FresnelR0;
+		mat->Roughness = mSkinnedMats[i].Roughness;
+
+		mMaterials[mat->Name] = std::move(mat);
+	}
 }
 
 void SceneRenderer::BuildRootSignature(D3D12Context& context)
@@ -609,12 +662,11 @@ void SceneRenderer::BuildRootSignature(D3D12Context& context)
 void SceneRenderer::BuildRootSignature_Default(D3D12Context& context)
 {
 	CD3DX12_DESCRIPTOR_RANGE diffuseMapTable;
-	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, (UINT)TextureManager::GetNumTexture() + RenderConfig::SwapChainBufferCount, 0); //t0
+	diffuseMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, context.GetDesc().CbvSrvUavHeapCapacity, 0); //t0
 	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
 	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2); //t0, space2
 	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
 	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
-
 
 	std::array<CD3DX12_ROOT_PARAMETER, 8> slotRootParameter{};
 	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
@@ -966,7 +1018,7 @@ void SceneRenderer::BuildGeometry(D3D12Context& context)
 
 void SceneRenderer::BuildShapeGeometry(D3D12Context& context)
 {
-	MeshData skull = LoadModelFromFile(L"Resource/Models/skull.txt");
+	MeshData skull = LoadModelFromFile_dx12ex(L"Resource/Models/skull.txt");
 
 	GeometryGenerator geoGen;
 	MeshData box = geoGen.CreateBox(1.5, 1.5, 1.5, 3);
@@ -1907,14 +1959,50 @@ void SceneRenderer::BuildRenderItems_Gizmo(UINT& InstanceBufferIndex)
 	gizmoRI->StartInstanceLocation = InstanceBufferIndex;
 	InstanceBufferIndex += static_cast<UINT>(gizmoRI->Instances.size());
 
-	mGizmoRI = gizmoRI.get();
+	mGizmo.SetGigmoRenderItem(gizmoRI.get());
 
 	mRenderItemLayer[(int)RenderLayer::Gizmo].push_back(gizmoRI.get());
 	mAllRenderItems.push_back(std::move(gizmoRI));
 }
 
-void SceneRenderer::BuildRenderItems_SkinnedModel(UINT& IinstanceBufferIndex)
+void SceneRenderer::BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex)
 {
+	for (UINT i = 0; i < mSkinnedMats.size(); ++i)
+	{
+		std::string submeshName = "sm_" + std::to_string(i);
+
+		auto ri = std::make_unique<RenderItem>();
+
+		// 데이터가 내보내진 좌표계(RHS)를 변경하기 위해 반전(reflect)을 수행합니다.
+		XMMATRIX modelScale = XMMatrixScaling(0.05f, 0.05f, -0.05f);
+		XMMATRIX modelRot = XMMatrixRotationY(XM_PI);
+		XMMATRIX modelOffset = XMMatrixTranslation(8.0f, 0.0f, -2.0f);
+		XMMATRIX world = modelScale * modelRot * modelOffset;
+		XMMATRIX invTransposeWorld = MathHelper::InverseTranspose(world);
+
+		ri->Geo = mGeometries["soldier"].get();
+		ri->IndexCount = ri->Geo->DrawArgs[submeshName].IndexCount;
+		ri->StartIndexLocation = ri->Geo->DrawArgs[submeshName].StartIndexLocation;
+		ri->BaseVertexLocation = ri->Geo->DrawArgs[submeshName].BaseVertexLocation;
+		ri->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		{
+			InstanceData instance;
+			XMStoreFloat4x4(&instance.World, world);
+			XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
+			instance.MaterialIndex = mMaterials[mSkinnedMats[i].Name]->MatBufferIndex;
+			instance.Bounds = ri->Geo->DrawArgs[submeshName].Bounds;
+			ri->Instances.push_back(instance);
+		}
+
+		// 이 soldier.m3d 인스턴스의 모든 렌더링 항목은 동일한 스킨드 모델 인스턴스를 공유합니다.
+		ri->SkinnedCBIndex = 0;
+		ri->SkinnedModelInstance = mSkinnedModelInstance.get();
+
+		ri->StartInstanceLocation = InstanceBufferIndex;
+		InstanceBufferIndex += (UINT)ri->Instances.size();
+		mRenderItemLayer[(int)RenderLayer::SkinnedOpaque].push_back(ri.get());
+		mAllRenderItems.push_back(std::move(ri));
+	}
 }
 
 void SceneRenderer::BuildFrameResources(D3D12Context& context)
@@ -2253,7 +2341,7 @@ float SceneRenderer::GetHillsHeight(float x, float z) const
 	return 0.3f * (z * sinf(0.05f * x) + x * cosf(0.1f * z));
 }
 
-MeshData SceneRenderer::LoadModelFromFile(const std::wstring& path)
+MeshData SceneRenderer::LoadModelFromFile_dx12ex(const std::wstring& path)
 {
 	std::ifstream file(path);
 	if (!file)
@@ -2311,8 +2399,73 @@ MeshData SceneRenderer::LoadModelFromFile(const std::wstring& path)
 	return md;
 }
 
+void SceneRenderer::LoadSkinnedModel_dx12ex(D3D12Context& context)
+{
+	std::vector<M3DLoader::SkinnedVertex> vertices;
+	std::vector<std::uint16_t> indices;
+
+	M3DLoader m3dLoader;
+	std::vector<M3DLoader::Subset> skinnedSubsets;
+	m3dLoader.LoadM3d("Resource\\Models\\soldier.m3d", vertices, indices,
+		skinnedSubsets, mSkinnedMats, mSkinnedInfo);
+
+	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
+	mSkinnedModelInstance->skinnedInfo = &mSkinnedInfo;
+	mSkinnedModelInstance->finalTransforms.resize(mSkinnedInfo.BoneCount());
+	mSkinnedModelInstance->clipName = "Take1";
+	mSkinnedModelInstance->timePos = 0.0f;
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(M3DLoader::SkinnedVertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "soldier";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(context.GetDevice(),
+		context.GetCommandList(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(context.GetDevice(),
+		context.GetCommandList(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+	geo->VertexByteStride = sizeof(M3DLoader::SkinnedVertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize = ibByteSize;
+
+	for (UINT i = 0; i < (UINT)skinnedSubsets.size(); ++i)
+	{
+		SubmeshGeometry submesh;
+		std::string name = "sm_" + std::to_string(i);
+
+		submesh.IndexCount = (UINT)skinnedSubsets[i].FaceCount * 3;
+		submesh.StartIndexLocation = skinnedSubsets[i].FaceStart * 3;
+		submesh.BaseVertexLocation = 0;
+		BoundingBox::CreateFromPoints(submesh.Bounds, vertices.size(), &vertices[0].Pos, sizeof(M3DLoader::SkinnedVertex));
+
+		geo->DrawArgs[name] = submesh;
+	}
+
+	mGeometries[geo->Name] = std::move(geo);
+}
+
 void SceneRenderer::UpdateSkinnedCBs()
 {
+	auto currSkinnedCB = mCurrFrameResource->SkinnedCB.get();
+
+	mSkinnedModelInstance->UpdateSkinnedAnimation(mTimer.DeltaTime());
+
+	SkinnedConstants skinnedConstant;
+	std::copy(std::begin(mSkinnedModelInstance->finalTransforms),
+		std::end(mSkinnedModelInstance->finalTransforms),
+		&skinnedConstant.BoneTransforms[0]);
+
+	currSkinnedCB->CopyData(0, skinnedConstant);
 }
 
 void SceneRenderer::UpdateMainPassCB()
@@ -2504,84 +2657,6 @@ void SceneRenderer::UpdateShadowTransform()
 	}
 }
 
-void SceneRenderer::UpdateGizmo()
-{
-	if (mGizmoRI == nullptr) return;
-
-	InstanceData* selectedInstance = GetPrimarySelectedInstance();
-
-	if (selectedInstance == nullptr)
-	{
-		mGizmoRI->Visible = false;
-		return;
-	}
-
-	auto world = selectedInstance->World;
-	XMFLOAT3 pivot{ world._41,world._42,world._43 };
-
-	float axisLength = CalcGizmoAxisLength(pivot);
-	float thickness = axisLength * 0.06f;
-
-	mGizmoRI->Visible = true;
-
-	// X axis: pivot에서 +X 방향으로 길게 뻗는 박스
-	{
-		XMMATRIX W =
-			XMMatrixScaling(axisLength, thickness, thickness) *
-			XMMatrixTranslation(
-				pivot.x + axisLength * 0.5f,
-				pivot.y,
-				pivot.z);
-
-		XMStoreFloat4x4(&mGizmoRI->Instances[0].World, W);
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[0].WorldInvTranspose,
-			MathHelper::InverseTranspose(W));
-
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[0].TexTransform,
-			XMMatrixIdentity());
-	}
-
-	// Y axis
-	{
-		XMMATRIX W =
-			XMMatrixScaling(thickness, axisLength, thickness) *
-			XMMatrixTranslation(
-				pivot.x,
-				pivot.y + axisLength * 0.5f,
-				pivot.z);
-
-		XMStoreFloat4x4(&mGizmoRI->Instances[1].World, W);
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[1].WorldInvTranspose,
-			MathHelper::InverseTranspose(W));
-
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[1].TexTransform,
-			XMMatrixIdentity());
-	}
-
-	// Z axis
-	{
-		XMMATRIX W =
-			XMMatrixScaling(thickness, thickness, axisLength) *
-			XMMatrixTranslation(
-				pivot.x,
-				pivot.y,
-				pivot.z + axisLength * 0.5f);
-
-		XMStoreFloat4x4(&mGizmoRI->Instances[2].World, W);
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[2].WorldInvTranspose,
-			MathHelper::InverseTranspose(W));
-
-		XMStoreFloat4x4(
-			&mGizmoRI->Instances[2].TexTransform,
-			XMMatrixIdentity());
-	}
-}
-
 void SceneRenderer::AnimateMaterials()
 {
 	auto waterMat = mMaterials["water0"].get();
@@ -2643,9 +2718,11 @@ void SceneRenderer::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const st
 
 void SceneRenderer::DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList)
 {
-	if (mSelectedInstances.empty()) return;
+	auto selectedInstances = mGizmo.GetSelectedInstances();
 
-	for (auto& selected : mSelectedInstances)
+	if (selectedInstances.empty()) return;
+
+	for (auto& selected : selectedInstances)
 	{
 		if (selected.renderItem == nullptr ||
 			selected.instanceIndex == UINT_MAX)
@@ -2753,402 +2830,4 @@ ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMod
 
 	const auto& litPso = mLayerPSOs[(int)RenderLayer::Opaque][(int)mode];
 	return litPso.Get();
-}
-
-bool SceneRenderer::BeginGizmoDrag(int vx, int vy)
-{
-	InstanceData* selectedInstance = GetPrimarySelectedInstance();
-	if (selectedInstance == nullptr) return false;
-
-	GizmoAxis pickedAxis = PickGizmoAxis(vx, vy);
-	if (pickedAxis == GizmoAxis::None) return false;
-
-	auto& instance = mSelectedInstances[0].renderItem->Instances[mSelectedInstances[0].instanceIndex];
-	XMFLOAT3 objectPosF = { instance.World._41, instance.World._42, instance.World._43 };
-	XMVECTOR objectPosW = XMLoadFloat3(&objectPosF);
-	XMVECTOR axisW = GetGizmoAxisVector(pickedAxis);
-
-	// 카메라 forward를 월드 공간으로 구한다.
-	XMMATRIX V = mCamera.GetView();
-	XMVECTOR detView = XMMatrixDeterminant(V);
-	XMMATRIX invView = XMMatrixInverse(&detView, V);
-	XMVECTOR cameraForwardW = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), invView);
-	cameraForwardW = XMVector3Normalize(cameraForwardW);
-
-	XMVECTOR planeNormal = BuildDragPlaneNormal(axisW, cameraForwardW);
-
-	XMVECTOR dragPlane = MakePlaneFromPointNormal(objectPosW, planeNormal);
-
-	XMVECTOR rayOriginW, rayDirW;
-	BuildWorldRayFromViewport(vx, vy, rayOriginW, rayDirW);
-
-	XMVECTOR startHitW;
-	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, startHitW)) return false;
-
-	mGizmo.Dragging = true;
-	mGizmo.ActiveAxis = pickedAxis;
-
-	DirectX::XMStoreFloat3(&mGizmo.StartObjectPosW, objectPosW);
-	DirectX::XMStoreFloat3(&mGizmo.StartHitPosW, startHitW);
-	DirectX::XMStoreFloat3(&mGizmo.DragAxisW, axisW);
-	DirectX::XMStoreFloat4(&mGizmo.DragPlane, dragPlane);
-
-	return true;
-}
-
-void SceneRenderer::Pick(int vx, int vy)
-{
-	if (!mCamera.IsReady()) return;
-
-	// ray를 월드공간으로 변환.
-	XMVECTOR worldRayOrigin, worldRayDir;
-	BuildWorldRayFromViewport(vx, vy, worldRayOrigin, worldRayDir);
-
-	std::vector<SelectedInstance> candidates;
-
-	auto checkLayers = { RenderLayer::Opaque, RenderLayer::SkinnedOpaque, RenderLayer::TessLand, RenderLayer::MultiTextureBlend, RenderLayer::AlphaTestOpaque, RenderLayer::GeoSphereLOD, RenderLayer::GeoExplode, RenderLayer::LineToCylinder, RenderLayer::Waves };
-	for (auto Layer : checkLayers)
-	{
-		for (auto ri : mRenderItemLayer[(int)Layer])
-		{
-			if (ri == nullptr) continue;
-			if (ri->Visible == false) continue;
-
-			for (UINT instanceIndex = 0; instanceIndex < ri->Instances.size(); instanceIndex++)
-			{
-				auto& instance = ri->Instances[instanceIndex];
-				if (instance.visible == false) continue;
-				if (instance.FrustumVisible == false) continue;
-
-				XMMATRIX W = XMLoadFloat4x4(&instance.World);
-				BoundingBox worldBounds;
-				instance.Bounds.Transform(worldBounds, W);
-
-				float boundT = 0.0f;
-				// 광선이 메시의 바운딩 박스와 교차하는지 확인
-				if (worldBounds.Intersects(worldRayOrigin, worldRayDir, boundT))
-				{
-					candidates.push_back(SelectedInstance{ ri, instanceIndex, boundT });
-				}
-			}
-		}
-	}
-
-	std::sort(candidates.begin(), candidates.end(),
-		[](const SelectedInstance& a, const SelectedInstance& b)
-		{
-			return a.BoundHitDistW < b.BoundHitDistW;
-		});
-
-	SelectedInstance selectedRenderItem;
-	float closestDistW = FLT_MAX;
-
-	// 2차: 후보에 대해서만 실제 triangle test
-	for (const SelectedInstance& c : candidates)
-	{
-		// 이미 찾은 실제 hit보다 Bounds 진입점이 더 뒤면 더 볼 필요 없음
-		if (c.BoundHitDistW > closestDistW) break;
-
-		auto& instance = c.renderItem->Instances[c.instanceIndex];
-
-		XMMATRIX W = XMLoadFloat4x4(&instance.World);
-		XMVECTOR detW = XMMatrixDeterminant(W);
-		XMMATRIX invWorld = XMMatrixInverse(&detW, W);
-
-		XMVECTOR localRayOrigin = XMVector3TransformCoord(worldRayOrigin, invWorld);
-		XMVECTOR localRayDir = XMVector3TransformNormal(worldRayDir, invWorld);
-		localRayDir = XMVector3Normalize(localRayDir);
-
-		auto vertices = reinterpret_cast<Vertex*>(c.renderItem->Geo->VertexBufferCPU->GetBufferPointer());
-		void* indexData = c.renderItem->Geo->IndexBufferCPU->GetBufferPointer();
-
-		auto GetIndex = [&](UINT indexLocation) -> UINT
-			{
-				if (c.renderItem->Geo->IndexFormat == DXGI_FORMAT_R16_UINT)
-				{
-					auto indices16 = reinterpret_cast<std::uint16_t*>(indexData);
-					return static_cast<UINT>(indices16[indexLocation]);
-				}
-				else
-				{
-					auto indices32 = reinterpret_cast<std::uint32_t*>(indexData);
-					return indices32[indexLocation];
-				}
-			};
-
-		UINT triCount = c.renderItem->IndexCount / 3;
-
-		for (UINT i = 0; i < triCount; ++i)
-		{
-			auto ri = c.renderItem;
-			UINT indexBase = ri->StartIndexLocation + i * 3;
-			UINT i0 = GetIndex(indexBase + 0) + ri->BaseVertexLocation;
-			UINT i1 = GetIndex(indexBase + 1) + ri->BaseVertexLocation;
-			UINT i2 = GetIndex(indexBase + 2) + ri->BaseVertexLocation;
-
-			XMVECTOR v0 = XMLoadFloat3(&vertices[i0].Position);
-			XMVECTOR v1 = XMLoadFloat3(&vertices[i1].Position);
-			XMVECTOR v2 = XMLoadFloat3(&vertices[i2].Position);
-
-			float triT = 0.0f;
-			if (TriangleTests::Intersects(localRayOrigin, localRayDir, v0, v1, v2, triT))
-			{
-				XMVECTOR hitLocal = localRayOrigin + localRayDir * triT;
-				XMVECTOR hitWorld = XMVector3TransformCoord(hitLocal, W);
-				float distW = XMVectorGetX(XMVector3Length(hitWorld - worldRayOrigin));
-
-				if (distW < closestDistW)
-				{
-					closestDistW = distW;
-					selectedRenderItem.renderItem = ri;
-					selectedRenderItem.instanceIndex = c.instanceIndex;
-				}
-			}
-		}
-	}
-
-	if (selectedRenderItem.renderItem != nullptr && selectedRenderItem.instanceIndex != UINT_MAX)
-		mSelectedInstances.push_back(selectedRenderItem);
-}
-
-void SceneRenderer::ClearSelectedInstance()
-{
-	mSelectedInstances.clear();
-}
-
-void SceneRenderer::UpdateGizmoDrag(int vx, int vy)
-{
-	if (!mGizmo.Dragging) return;
-	if (mGizmo.ActiveAxis == GizmoAxis::None) return;
-
-	InstanceData* selectedInstance = GetPrimarySelectedInstance();
-	if (selectedInstance == nullptr)
-	{
-		EndGizmoDrag();
-		return;
-	}
-
-	XMVECTOR rayOriginW, rayDirW;
-	BuildWorldRayFromViewport(vx, vy, rayOriginW, rayDirW);
-
-	XMVECTOR dragPlane = XMLoadFloat4(&mGizmo.DragPlane);
-	XMVECTOR currentHitW;
-	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, currentHitW)) return;
-
-	XMVECTOR startHitW = XMLoadFloat3(&mGizmo.StartHitPosW);
-	XMVECTOR startObjectPosW = XMLoadFloat3(&mGizmo.StartObjectPosW);
-	XMVECTOR axisW = XMLoadFloat3(&mGizmo.DragAxisW);
-	axisW = XMVector3Normalize(axisW);
-
-	// 마우스가 drag plane 위에서 움직인 월드 이동량
-	XMVECTOR deltaW = currentHitW - startHitW;
-
-	// 이동량을 선택 축 방향으로 투영
-	float moveAmount = XMVectorGetX(XMVector3Dot(deltaW, axisW));
-
-	// 오브젝트 시작 위치 + 축 방향 이동량
-	XMVECTOR newObjectPosW = startObjectPosW + axisW * moveAmount;
-
-	XMFLOAT3 newPosF;
-	XMStoreFloat3(&newPosF, newObjectPosW);
-
-	SetSelectedObjectPositionW(newPosF);
-}
-
-void SceneRenderer::EndGizmoDrag()
-{
-	mGizmo.Dragging = false;
-	mGizmo.ActiveAxis = GizmoAxis::None;
-}
-
-void SceneRenderer::BuildWorldRayFromViewport(int sx, int sy, DirectX::XMVECTOR& rayOriginW, DirectX::XMVECTOR& rayDirW) const
-{
-	XMFLOAT4X4 P = mCamera.GetProj4x4f();
-
-	// Viewport 로컬 좌표를 뷰 공간 좌표로 변환
-	float vx = (+2.0f * sx / mViewportWidth - 1.0f) / P(0, 0);
-	float vy = (-2.0f * sy / mViewportHeight + 1.0f) / P(1, 1);
-
-	// 뷰 공간에서 Ray 생성.
-	XMVECTOR rayOriginV = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
-	XMVECTOR rayDirV = XMVectorSet(vx, vy, 1.0f, 0.0f);
-
-	XMMATRIX invView = mCamera.GetInvView();
-
-	// ray를 월드공간으로 변환.
-	rayOriginW = XMVector3TransformCoord(rayOriginV, invView);
-	rayDirW = XMVector3TransformNormal(rayDirV, invView);
-	rayDirW = XMVector3Normalize(rayDirW);
-}
-
-InstanceData* SceneRenderer::GetPrimarySelectedInstance()
-{
-	if (mSelectedInstances.empty())
-		return nullptr;
-
-	auto& selected = mSelectedInstances[0];
-
-	if (selected.renderItem == nullptr)
-		return nullptr;
-
-	if (selected.instanceIndex == UINT_MAX)
-		return nullptr;
-
-	if (selected.instanceIndex >= selected.renderItem->Instances.size())
-		return nullptr;
-
-	return &selected.renderItem->Instances[selected.instanceIndex];
-}
-
-GizmoAxis SceneRenderer::PickGizmoAxis(int sx, int sy)
-{
-	if (mGizmoRI == nullptr) return GizmoAxis::None;
-	if (mGizmoRI->Visible == false) return GizmoAxis::None;
-	if (mGizmoRI->Instances.size() < 3) return GizmoAxis::None;
-
-	XMVECTOR rayOriginW, rayDirW;
-	BuildWorldRayFromViewport(sx, sy, rayOriginW, rayDirW);
-
-	GizmoAxis pickedAxis = GizmoAxis::None;
-	float closestDistW = FLT_MAX;
-
-	for (UINT i = 0; i < 3; i++)
-	{
-		auto& instance = mGizmoRI->Instances[i];
-		if (instance.visible == false) continue;
-
-		XMMATRIX W = XMLoadFloat4x4(&instance.World);
-		BoundingBox gizmoBounds;
-		instance.Bounds.Transform(gizmoBounds, W);
-
-		float boundT = 0.0f;
-		if (gizmoBounds.Intersects(rayOriginW, rayDirW, boundT))
-		{
-			if (boundT < closestDistW)
-			{
-				closestDistW = boundT;
-				pickedAxis = static_cast<GizmoAxis>(i + 1);
-			}
-		}
-	}
-
-	return pickedAxis;
-}
-
-DirectX::XMVECTOR SceneRenderer::GetGizmoAxisVector(GizmoAxis axis) const
-{
-	switch (axis)
-	{
-	case GizmoAxis::X:
-		return XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-
-	case GizmoAxis::Y:
-		return XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-	case GizmoAxis::Z:
-		return XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-
-	default:
-		return XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	}
-}
-
-DirectX::XMVECTOR SceneRenderer::BuildDragPlaneNormal(DirectX::XMVECTOR axisW, DirectX::XMVECTOR cameraForwardW) const
-{
-	axisW = XMVector3Normalize(axisW);
-	cameraForwardW = XMVector3Normalize(cameraForwardW);
-
-	// cameraForward를 axis에 수직인 방향으로 투영.
-	// 결과 normal은 axis와 수직이다.
-	// 따라서 이 normal을 가진 plane은 axis를 포함한다.
-	XMVECTOR n =
-		cameraForwardW -
-		axisW * XMVectorGetX(XMVector3Dot(cameraForwardW, axisW));
-
-	float lenSq = XMVectorGetX(XMVector3LengthSq(n));
-
-	if (lenSq < 1e-6f)
-	{
-		// 카메라 방향과 축이 거의 평행할 때 fallback.
-		XMVECTOR fallback = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-		if (fabsf(XMVectorGetX(XMVector3Dot(fallback, axisW))) > 0.9f)
-			fallback = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-
-		n = fallback - axisW * XMVectorGetX(XMVector3Dot(fallback, axisW));
-	}
-
-	return XMVector3Normalize(n);
-}
-
-DirectX::XMVECTOR SceneRenderer::MakePlaneFromPointNormal(DirectX::XMVECTOR pointW, DirectX::XMVECTOR normalW) const
-{
-	normalW = XMVector3Normalize(normalW);
-
-	float d = -XMVectorGetX(XMVector3Dot(normalW, pointW));
-
-	return XMVectorSet(
-		XMVectorGetX(normalW),
-		XMVectorGetY(normalW),
-		XMVectorGetZ(normalW),
-		d);
-}
-
-bool SceneRenderer::IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTOR rayDirW, DirectX::XMVECTOR plane, DirectX::XMVECTOR& hitPointW) const
-{
-	XMVECTOR n = XMVectorSet(
-		XMVectorGetX(plane),
-		XMVectorGetY(plane),
-		XMVectorGetZ(plane),
-		0.0f);
-
-	float d = XMVectorGetW(plane);
-
-	float denom = XMVectorGetX(XMVector3Dot(n, rayDirW));
-
-	if (fabsf(denom) < 1e-6f) return false;
-
-	//교차거리 계산
-	float t = -(XMVectorGetX(XMVector3Dot(n, rayOriginW)) + d) / denom;
-
-	if (t < 0.0f) return false;
-
-	hitPointW = rayOriginW + rayDirW * t;
-	return true;
-}
-
-void SceneRenderer::SetSelectedObjectPositionW(const DirectX::XMFLOAT3& posW)
-{
-	InstanceData* instance = GetPrimarySelectedInstance();
-
-	if (instance == nullptr) return;
-
-	instance->World._41 = posW.x;
-	instance->World._42 = posW.y;
-	instance->World._43 = posW.z;
-
-	XMMATRIX W = XMLoadFloat4x4(&instance->World);
-	XMStoreFloat4x4(&instance->WorldInvTranspose, MathHelper::InverseTranspose(W));
-}
-
-float SceneRenderer::CalcGizmoAxisLength(const DirectX::XMFLOAT3& pivotW) const
-{
-	XMVECTOR eye = mCamera.GetPosition();
-	XMVECTOR pivot = XMLoadFloat3(&pivotW);
-
-	float dist = XMVectorGetX(XMVector3Length(pivot - eye));
-
-	XMFLOAT4X4 P = mCamera.GetProj4x4f();
-
-	// P(1,1) = cot(fovY / 2)
-	// 화면 높이 전체에 해당하는 월드 길이 = 2 * dist * tan(fovY / 2)
-	// tan(fovY / 2) = 1 / P(1,1)
-	float worldScreenHeight = 2.0f * dist / P(1, 1);
-
-	float desiredPixelLength = 50.0f;
-	float axisLength = worldScreenHeight * (desiredPixelLength / static_cast<float>(mViewportHeight));
-
-	axisLength = std::clamp(axisLength, 0.5f, 10.0f);
-
-	return axisLength;
 }
