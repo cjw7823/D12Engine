@@ -61,7 +61,7 @@ bool Gizmo::BeginGizmoDrag(int vx, int vy)
 
 void Gizmo::Pick(int vx, int vy, std::vector<RenderItem*> RenderItemLayer[])
 {
-	if (!mCamera->IsReady()) return;
+	if (!mCamera || !mCamera->IsReady()) return;
 	mSelectedInstances.clear();
 
 	// ray를 월드공간으로 변환.

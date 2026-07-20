@@ -21,8 +21,6 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 
 	mColorFormat = colorFormat;
 	mDepthFormat = depthFormat;
-
-	mTimestampDescriptorHandle = context.AllocateRtvDescriptor();
 	
 	mWaves = std::make_unique<GpuWaves>(
 		context.GetDevice(),
@@ -341,6 +339,59 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 
 void SceneRenderer::ReadbackTimestampData(int frameResourceIndex)
 {
+	if (mTimestampReadbackBuffer == nullptr)
+		return;
+
+	if (mGpuTimestampFrequency == 0)
+		return;
+
+	// 아직 이 frame resource slot으로 한 번도 Draw/Resolve가 끝난 적 없으면 읽을 값 없음.
+	//if (mCurrFrameResource->FenceValue == 0)
+	//	return;
+
+	const UINT queryCountPerFrame = 4;
+	const UINT baseQuery = frameResourceIndex * queryCountPerFrame;
+
+	const UINT fullStartIndex = baseQuery + 0;
+	const UINT fullEndIndex = baseQuery + 1;
+	const UINT sceneStartIndex = baseQuery + 2;
+	const UINT sceneEndIndex = baseQuery + 3;
+
+	const UINT64 readStart = sizeof(UINT64) * baseQuery;
+	const UINT64 readEnd = sizeof(UINT64) * (baseQuery + queryCountPerFrame);
+
+	D3D12_RANGE readRange = {};
+	readRange.Begin = readStart;
+	readRange.End = readEnd;
+
+	UINT64* mappedData = nullptr;
+
+	ThrowIfFailed(mTimestampReadbackBuffer->Map(
+		0,
+		&readRange,
+		reinterpret_cast<void**>(&mappedData)));
+
+	const UINT64 fullStart = mappedData[fullStartIndex];
+	const UINT64 fullEnd = mappedData[fullEndIndex];
+	const UINT64 sceneStart = mappedData[sceneStartIndex];
+	const UINT64 sceneEnd = mappedData[sceneEndIndex];
+
+	mTimestampReadbackBuffer->Unmap(0, nullptr);
+
+	// 첫 몇 프레임 또는 query 누락 방어.
+	if (fullEnd > fullStart)
+	{
+		mFullGpuMs =
+			double(fullEnd - fullStart) * 1000.0 /
+			double(mGpuTimestampFrequency);
+	}
+
+	if (sceneEnd > sceneStart)
+	{
+		mSceneGpuMs =
+			double(sceneEnd - sceneStart) * 1000.0 /
+			double(mGpuTimestampFrequency);
+	}
 }
 
 void SceneRenderer::LoadTextures(D3D12Context& context)
@@ -668,6 +719,9 @@ void SceneRenderer::BuildRootSignature_Default(D3D12Context& context)
 	CD3DX12_DESCRIPTOR_RANGE treeArrayTable;
 	treeArrayTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 3); //t0, space3
 
+	// Perfomance TIP:
+	// 루트 파라미터를 갱신 빈도(커맨드 리스트에서 Set되는 빈도) 순으로 배치 (자주 바뀌는 것 → 덜 바뀌는 것)
+	// 드라이버 구현에 따라 효과는 다르지만 일반적으로 권장되는 패턴
 	std::array<CD3DX12_ROOT_PARAMETER, 8> slotRootParameter{};
 	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
 	slotRootParameter[1].InitAsConstants(1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location

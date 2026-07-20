@@ -49,12 +49,6 @@
     <Filter Include="Renderer\DirectX12\Util">
       <UniqueIdentifier>{5736995c-112f-479f-9d22-10166b325cc8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="이전 항목%28빌드x%29">
-      <UniqueIdentifier>{1d1ae2b9-ee03-4be6-94bc-2347f6507f4d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="이전 항목%28빌드x%29\App_">
-      <UniqueIdentifier>{14f4b72a-8760-4fce-ab71-3f95fd1a93e1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="EngineCore\InputSystem">
       <UniqueIdentifier>{6851cebe-d474-44a8-aecf-15cbd7ccb723}</UniqueIdentifier>
     </Filter>
@@ -218,12 +212,6 @@
     <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>External\DDSTextureLoader</Filter>
     </ClInclude>
-    <ClInclude Include="Dx12App.h">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderApp.h">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </ClInclude>
     <ClInclude Include="EngineCore\DxException.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
@@ -311,9 +299,6 @@
     <ClInclude Include="Renderer\DirectX12\D3D12Util.h">
       <Filter>Renderer\DirectX12\Util</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\TextureLoader_Blocking.h">
-      <Filter>이전 항목%28빌드x%29</Filter>
-    </ClInclude>
     <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h">
       <Filter>EngineCore\InputSystem</Filter>
     </ClInclude>
@@ -369,30 +354,6 @@
     </None>
     <None Include="Resource\Shaders\Outline.hlsl">
       <Filter>Shaders</Filter>
-    </None>
-    <None Include="Dx12App.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp_Geometry.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp_Gizmo.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp_Input.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp_Pipeline.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="RenderApp_Resources.cpp">
-      <Filter>이전 항목%28빌드x%29\App_</Filter>
-    </None>
-    <None Include="EngineCore\TextureLoader_Blocking.cpp">
-      <Filter>이전 항목%28빌드x%29</Filter>
     </None>
   </ItemGroup>
 </Project>

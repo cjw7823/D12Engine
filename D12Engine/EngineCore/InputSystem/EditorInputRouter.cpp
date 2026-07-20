@@ -47,9 +47,12 @@ void EditorInputRouter::Route(
     {
         mGameViewHandler->ProcessMouseInput(input, gameView);
     }
-    else if (sceneView.IsHovered &&
+    else if (sceneView.IsFocused &&
         mSceneViewHandler)
     {
+        static int i = 0;
+        std::string s = std::to_string(i++);
+        OutputDebugStringA(s.c_str());
         mSceneViewHandler->ProcessMouseInput(input, sceneView);
     }
 

@@ -33,6 +33,7 @@ public:
 
     // 포커스를 잃었을 때 입력 상태 초기화.
     void Reset();
+    void ResetMouseMotion();
 
     void OnKeyDown(WPARAM key);
     void OnKeyUp(WPARAM key);
@@ -41,6 +42,7 @@ public:
     void OnMouseButtonUp(MouseButton button);
 
     void OnMouseMove(int x, int y);
+    void OnMouseDelta(int x, int y);
     void OnMouseWheel(int delta);
 
     bool IsKeyDown(int key) const;

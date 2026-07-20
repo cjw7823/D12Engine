@@ -177,7 +177,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <None Include="Dx12App.cpp" />
     <ClCompile Include="Editor\EditorApplication.cpp" />
     <ClCompile Include="Editor\EditorLayer.cpp" />
     <ClCompile Include="Editor\Gizmo.cpp" />
@@ -191,17 +190,10 @@
     <ClCompile Include="EngineCore\MathHelper.cpp" />
     <ClCompile Include="EngineCore\Scene.cpp" />
     <ClCompile Include="EngineCore\SkinnedData.cpp" />
-    <None Include="EngineCore\TextureLoader_Blocking.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <None Include="RenderApp.cpp" />
-    <None Include="RenderApp_Geometry.cpp" />
-    <None Include="RenderApp_Gizmo.cpp" />
-    <None Include="RenderApp_Input.cpp" />
-    <None Include="RenderApp_Pipeline.cpp" />
-    <None Include="RenderApp_Resources.cpp" />
     <ClCompile Include="Renderer\Assets\TextureManager.cpp" />
     <ClCompile Include="Renderer\DirectX12\BlurFilter.cpp" />
     <ClCompile Include="EngineCore\Camera.cpp" />
@@ -225,7 +217,6 @@
     <ClInclude Include="..\IMGUI\core\imstb_rectpack.h" />
     <ClInclude Include="..\IMGUI\core\imstb_textedit.h" />
     <ClInclude Include="..\IMGUI\core\imstb_truetype.h" />
-    <ClInclude Include="Dx12App.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
     <ClInclude Include="Editor\ImGuiLayer.h" />
@@ -244,11 +235,9 @@
     <ClInclude Include="EngineCore\SceneObject.h" />
     <ClInclude Include="EngineCore\SkinnedData.h" />
     <ClInclude Include="EngineCore\StringUtil.h" />
-    <ClInclude Include="EngineCore\TextureLoader_Blocking.h" />
     <ClInclude Include="EngineCore\Transform.h" />
     <ClInclude Include="EngineCore\WinHandle.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="RenderApp.h" />
     <ClInclude Include="Renderer\Assets\TextureDesc.h" />
     <ClInclude Include="Renderer\Assets\TextureManager.h" />
     <ClInclude Include="Renderer\DirectX12\BlurFilter.h" />

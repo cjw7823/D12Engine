@@ -26,12 +26,12 @@ void SceneViewPanel::OnImGuiRender()
 
     if (mTextureId != 0)
     {
-        // Imageê°€ í•˜ë‚˜ì˜ ImGui Itemìœ¼ë¡œ ë“±ë¡
+        // Image°¡ ÇÏ³ªÀÇ ImGui ItemÀ¸·Î µî·Ï
         ImGui::Image(mTextureId, availableSize);
     }
     else
     {
-        // í…ìŠ¤ì²˜ê°€ ì—†ì–´ë„ Scene View ì˜ì—­ì„ ImGui Itemìœ¼ë¡œ ë“±ë¡í•œë‹¤.
+        // ÅØ½ºÃ³°¡ ¾ø¾îµµ Scene View ¿µ¿ªÀ» ImGui ItemÀ¸·Î µî·ÏÇÑ´Ù.
         ImGui::Dummy(availableSize);
 
         const ImVec2 min = ImGui::GetItemRectMin();
@@ -45,7 +45,7 @@ void SceneViewPanel::OnImGuiRender()
             "Scene render target is not ready.");
     }
 
-    // ë°˜ë“œì‹œ Image ë˜ëŠ” Dummy í˜¸ì¶œ ì´í›„ ì‹¤í–‰
+    // ¹İµå½Ã Image ¶Ç´Â Dummy È£Ãâ ÀÌÈÄ ½ÇÇà
     UpdateInputState();
 
     ImGui::End();
@@ -53,11 +53,11 @@ void SceneViewPanel::OnImGuiRender()
 
 void SceneViewPanel::UpdateInputState()
 {
-    // í˜„ì¬ ë§ˆì§€ë§‰ìœ¼ë¡œ ê·¸ë¦° Item, ì¦‰ Image ë˜ëŠ” Dummyì˜ ì‹¤ì œ ì˜ì—­
+    // ÇöÀç ¸¶Áö¸·À¸·Î ±×¸° Item, Áï Image ¶Ç´Â DummyÀÇ ½ÇÁ¦ ¿µ¿ª
     mInputState.Min = ImGui::GetItemRectMin();
     mInputState.Max = ImGui::GetItemRectMax();
 
-    // ì „ì²´ Scene View ìœˆë„ìš°ê°€ ì•„ë‹ˆë¼ ì‹¤ì œ ì´ë¯¸ì§€ ì˜ì—­ë§Œ ê²€ì‚¬
+    // ÀüÃ¼ Scene View À©µµ¿ì°¡ ¾Æ´Ï¶ó ½ÇÁ¦ ÀÌ¹ÌÁö ¿µ¿ª¸¸ °Ë»ç
     mInputState.IsHovered = ImGui::IsItemHovered();
 
     mInputState.IsFocused =

@@ -29,6 +29,12 @@ void InputSystem::Reset()
     mHasMousePosition = false;
 }
 
+void InputSystem::ResetMouseMotion()
+{
+    mMouseDelta = {};
+    mHasMousePosition = false;
+}
+
 void InputSystem::OnKeyDown(WPARAM key)
 {
 #ifdef _DEBUG
@@ -98,6 +104,12 @@ void InputSystem::OnMouseMove(int x, int y)
     mMouseDelta.y += newPosition.y - mMousePosition.y;
 
     mMousePosition = newPosition;
+}
+
+void InputSystem::OnMouseDelta(int x, int y)
+{
+    mMouseDelta.x += x;
+    mMouseDelta.y += y;
 }
 
 void InputSystem::OnMouseWheel(int delta)

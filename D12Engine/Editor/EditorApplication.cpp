@@ -47,6 +47,15 @@ bool EditorApplication::Initialize()
 			mSceneRenderTarget.Resize(mD3D12Context, mApplicationWidth, mApplicationHeight);
 			mSceneRenderer.ChangeMsaa(mD3D12Context);
 		});
+	mSceneViewInputHandler.RegisterRelativeMouseCallbacks(
+		[this](const EditorPanelInputState& viewport)
+		{
+			BeginRelativeMouseMode(viewport);
+		},
+		[this]()
+		{
+			EndRelativeMouseMode();
+		});
 	mSceneViewInputHandler.SetScene(&mActiveScene);
 
 	if (!mImGuiLayer.Initialize(mhMainWnd, mD3D12Context))
@@ -125,6 +134,8 @@ bool EditorApplication::InitMainWindow()
 
 void EditorApplication::Tick()
 {
+	CalculateFrameStats();
+
 	ImTextureID sceneTextureId = static_cast<ImTextureID>(mSceneRenderTarget.GetSceneViewSRVGpu().ptr);
 	mEditorLayer.SetSceneViewTexture(sceneTextureId);
 
@@ -183,6 +194,87 @@ void EditorApplication::RouteEditorInput()
 		mEditorLayer.GetGameViewPanel().GetInputState(),
 		capture,
 		mEditorLayer.IsPlayMode());
+}
+
+void EditorApplication::BeginRelativeMouseMode(const EditorPanelInputState& viewport)
+{
+	if (mRelativeMouseMode)
+		return;
+
+	mRelativeMouseMode = true;
+
+	// 드래그 종료 시 복구할 위치
+	::GetCursorPos(&mSavedCursorPosition);
+
+	// 씬 뷰 중앙 기준.
+	mMouseAnchorScreen =
+	{
+		static_cast<LONG>((viewport.Min.x + viewport.Max.x) * 0.5f),
+		static_cast<LONG>((viewport.Min.y + viewport.Max.y) * 0.5f)
+	};
+
+	//마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
+	::SetCapture(mhMainWnd);
+
+	// ShowCursor는 내부 카운터 방식이므로 실제로 숨겨질 때까지 감소
+	while (::ShowCursor(FALSE) >= 0)
+	{
+	}
+
+	::SetCursorPos(mMouseAnchorScreen.x, mMouseAnchorScreen.y);
+
+	mInputSystem.ResetMouseMotion();
+}
+
+void EditorApplication::EndRelativeMouseMode()
+{
+	if (!mRelativeMouseMode)
+		return;
+
+	mRelativeMouseMode = false;
+
+	if (::GetCapture() == mhMainWnd)
+		::ReleaseCapture();
+
+	// 드래그 시작 전 위치로 복원
+	::SetCursorPos(mSavedCursorPosition.x, mSavedCursorPosition.y);
+
+	// 실제로 표시 상태가 될 때까지 카운터 증가
+	while (::ShowCursor(TRUE) < 0)
+	{
+	}
+
+	mInputSystem.ResetMouseMotion();
+}
+
+void EditorApplication::CalculateFrameStats()
+{
+	static int frameCount = 0;
+	static double timeElapsed = 0.0;
+
+	frameCount++;
+
+	double currTime = mSceneRenderer.mTimer.TotalTime();
+	double elapsedTime = currTime - timeElapsed;
+
+	if (elapsedTime >= 1.0)
+	{
+		float fps = static_cast<float>(frameCount / elapsedTime);
+		float mspf = 1000.0f / fps;
+
+		std::wstring fpsStr = std::to_wstring(fps);
+		std::wstring mspfStr = std::to_wstring(mspf);
+
+		std::wstring windowText =
+			mMainWndCaption +
+			L" fps: " + fpsStr +
+			L" mspf: " + mspfStr;
+
+		SetWindowText(mhMainWnd, windowText.c_str());
+
+		frameCount = 0;
+		timeElapsed = currTime;
+	}
 }
 
 int EditorApplication::Run()
@@ -276,34 +368,51 @@ LRESULT EditorApplication::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		break;
 
 	case WM_LBUTTONDOWN:
-		::SetCapture(mhMainWnd); //마우스 커서가 창 밖으로 나가도 마우스 메시지 유지.
 		mInputSystem.OnMouseButtonDown(MouseButton::Left);
 		return 0;
 	case WM_LBUTTONUP:
-		ReleaseCapture();
 		mInputSystem.OnMouseButtonUp(MouseButton::Left);
 		return 0;
 	case WM_RBUTTONDOWN:
-		::SetCapture(mhMainWnd);
 		mInputSystem.OnMouseButtonDown(MouseButton::Right);
 		return 0;
 	case WM_RBUTTONUP:
-		ReleaseCapture();
 		mInputSystem.OnMouseButtonUp(MouseButton::Right);
 		return 0;
 	case WM_MBUTTONDOWN:
-		::SetCapture(mhMainWnd);
 		mInputSystem.OnMouseButtonDown(MouseButton::Middle);
 		return 0;
 	case WM_MBUTTONUP:
-		ReleaseCapture();
 		mInputSystem.OnMouseButtonUp(MouseButton::Middle);
 		return 0;
 
 	case WM_MOUSEMOVE:
+	{
 		//클라이언트 좌표
-		mInputSystem.OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		const int x = GET_X_LPARAM(lParam);
+		const int y = GET_Y_LPARAM(lParam);
+
+		if (!mRelativeMouseMode)
+		{
+			mInputSystem.OnMouseMove(x, y);
+			return 0;
+		}
+
+		POINT position{ x, y };
+		::ClientToScreen(hWnd, &position);
+
+		const int deltaX = position.x - mMouseAnchorScreen.x;
+		const int deltaY = position.y - mMouseAnchorScreen.y;
+
+		if (deltaX != 0 || deltaY != 0)
+		{
+			mInputSystem.OnMouseDelta(deltaX, deltaY);
+			::SetCursorPos(mMouseAnchorScreen.x, mMouseAnchorScreen.y);
+		}
+
 		return 0;
+	}
+
 	case WM_MOUSEWHEEL:
 	{
 		//스크린 좌표 -> 클라이언트 좌표 변경

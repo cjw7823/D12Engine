@@ -88,6 +88,7 @@ private:
 
 class SceneRenderer
 {
+	friend class EditorApplication;
 public:
 	SceneRenderer() = default;
 	SceneRenderer(const SceneRenderer&) = delete;
@@ -101,6 +102,7 @@ public:
 	void Tick(D3D12Context& context, D3D12RenderTarget& renderTarget, const Scene& scene);
 	
 	float AspectRatio() const;
+	bool IsInitialized() const { return mInitialized; }
 
 	//For Input
 	void SetRenderSetting(SceneRenderMode mode);
@@ -154,6 +156,9 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
 	float GetHillsHeight(float x, float z) const;
+
+	[[deprecated("ObjectCB is Closed.")]]
+	void UpdateObjectCBs(const GameTimer& gt);
 
 	void UpdateSkinnedCBs();
 	void UpdateMainPassCB();
@@ -229,7 +234,6 @@ private:
 	//GPU Timestamp¸¦ À§ÇÑ qury heap
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> mTimestampQueryHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mTimestampReadbackBuffer = nullptr;
-	D3D12DescriptorHandle mTimestampDescriptorHandle{};
 	UINT64 mGpuTimestampFrequency = 0;
 
 	//For Directional Light

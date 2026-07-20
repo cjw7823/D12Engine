@@ -28,7 +28,7 @@ struct GizmoState
 	DirectX::XMFLOAT4 DragPlane = { 0.0f, 1.0f, 0.0f, 0.0f };
 };
 
-//ì¶”í›„ ì”¬ë·° ì¡°ì‘ íŒ¨ë„ë¡œ ìŠ¹ê²© ì˜ˆì •.
+//ÃßÈÄ ¾Àºä Á¶ÀÛ ÆĞ³Î·Î ½Â°İ ¿¹Á¤.
 class Gizmo
 {
 public:

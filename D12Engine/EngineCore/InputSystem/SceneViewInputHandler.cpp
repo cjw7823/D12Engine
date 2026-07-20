@@ -12,7 +12,7 @@ void SceneViewInputHandler::ProcessMouseInput(
     const InputSystem& input,
     const EditorPanelInputState& viewport)
 {
-    if (!viewport.IsHovered) return;
+    //if (!viewport.IsHovered) return;
     if (!viewport.IsFocused) return;
 
     const POINT mousePosition = input.GetMousePosition(); //클라이언트 좌표
@@ -22,6 +22,7 @@ void SceneViewInputHandler::ProcessMouseInput(
     const int localY = (int)viewport.MouseLocal.y;
 
     Gizmo& gizmo = mSceneRenderer.mGizmo;
+
     if (input.IsMousePressed(MouseButton::Left))
     {
         if (!gizmo.BeginGizmoDrag(localX, localY)) //내부에서 기즈모 클릭 검사.
@@ -40,9 +41,28 @@ void SceneViewInputHandler::ProcessMouseInput(
         if (gizmo.IsGizmoDragging()) gizmo.UpdateGizmoDrag(localX, localY);
     }
 
-    if (input.IsMouseDown(MouseButton::Right))
+    if (input.IsMousePressed(MouseButton::Right))
     {
-        mSceneRenderer.RotateCamera(mouseDelta);
+        mCameraDragging = true;
+
+        if (mBeginRelativeMouseCallback)
+            mBeginRelativeMouseCallback(viewport);
+    }
+
+    if (mCameraDragging && input.IsMouseDown(MouseButton::Right))
+    {
+        mSceneRenderer.RotateCamera(input.GetMouseDelta());
+    }
+
+    if (input.IsMouseReleased(MouseButton::Right))
+    {
+        if (mCameraDragging)
+        {
+            mCameraDragging = false;
+
+            if (mEndRelativeMouseCallback)
+                mEndRelativeMouseCallback();
+        }
     }
 
     const int wheelDelta = input.GetMouseWheelDelta();

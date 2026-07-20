@@ -47,6 +47,13 @@ protected:
 	bool InitMainWindow();
 	void Tick();
 	void RouteEditorInput();
+
+	//For Input System
+	void BeginRelativeMouseMode(const EditorPanelInputState& viewport);
+	void EndRelativeMouseMode();
+
+	void CalculateFrameStats();
+
 private:
 
 private:
@@ -76,4 +83,7 @@ private:
 	EditorInputRouter mEditorInputRouter;
 	GlobalInputHandler mGlobalInputHandler;
 	SceneViewInputHandler mSceneViewInputHandler;
+	bool mRelativeMouseMode = false;
+	POINT mSavedCursorPosition{};
+	POINT mMouseAnchorScreen{};
 };
