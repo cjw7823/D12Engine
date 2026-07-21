@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include "Editor/SceneViewPanel.h"
+#include "Editor/ConsolePanel.h"
 
 #include "Renderer/DirectX12/SceneRenderer.h"
 
@@ -27,7 +28,6 @@ private:
     void DrawContentBrowser();
     void DrawHierarchy();
     void DrawInspector();
-    void DrawConsole();
 
 private:
     std::filesystem::path mResourcesRoot = std::filesystem::current_path() / "Resource";
@@ -35,6 +35,7 @@ private:
     std::filesystem::path mSelectedAssetPath;
 
     SceneViewPanel mSceneViewPanel;
+    ConsolePanel mConsolePanel;
 
     bool mShowSceneView = true;
     bool mShowContentBrowser = true;

@@ -73,6 +73,9 @@
     <Filter Include="External\DDSTextureLoader">
       <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Editor\Logger">
+      <UniqueIdentifier>{a9596a83-2a00-4a39-ac07-ea9f84442459}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -180,6 +183,8 @@
     <ClCompile Include="Editor\Gizmo.cpp">
       <Filter>Editor\Viewport</Filter>
     </ClCompile>
+    <ClCompile Include="EngineCore\Logger\Logger.cpp" />
+    <ClCompile Include="Editor\ConsolePanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -323,6 +328,9 @@
     <ClInclude Include="Editor\Gizmo.h">
       <Filter>Editor\Viewport</Filter>
     </ClInclude>
+    <ClInclude Include="EngineCore\Logger\LogMessage.h" />
+    <ClInclude Include="EngineCore\Logger\Logger.h" />
+    <ClInclude Include="Editor\ConsolePanel.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">

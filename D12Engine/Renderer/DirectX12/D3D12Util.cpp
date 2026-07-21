@@ -2,6 +2,7 @@
 #include "D3D12Util.h"
 #include "EngineCore/DxException.h"
 #include "EngineCore/StringUtil.h"
+#include "EngineCore/Logger/Logger.h"
 #include "MACRO.h"
 
 using namespace Microsoft::WRL;
@@ -34,7 +35,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> D3D12Util::CompileShader(const std::wstring& fi
 		&errors));
 
 	if (errors != nullptr)
-		OutputDebugStringA((char*)errors->GetBufferPointer());
+		Logger::Error((char*)errors->GetBufferPointer());
 
 	return byteCode;
 }

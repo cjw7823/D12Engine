@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "InputSystem.h"
+
+#include "EngineCore/Logger/Logger.h"
+
 #include <algorithm>
 
 void InputSystem::BeginFrame()
@@ -40,7 +43,7 @@ void InputSystem::OnKeyDown(WPARAM key)
 #ifdef _DEBUG
     std::wstring s(1, static_cast<wchar_t>(key));
     s = L"Key Down : " + s + L"\n";
-    OutputDebugStringW(s.c_str());
+    Logger::Info(s);
 #endif
 
     if (!IsValidKey(key))

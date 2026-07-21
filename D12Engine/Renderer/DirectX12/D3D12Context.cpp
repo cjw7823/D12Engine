@@ -2,6 +2,8 @@
 #include "D3D12Context.h"
 #include "MACRO.h"
 
+#include "EngineCore/Logger/Logger.h"
+
 using namespace Microsoft::WRL;
 
 D3D12Context::D3D12Context()
@@ -56,8 +58,7 @@ bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc
 			msg += L"Msaa Level " + std::to_wstring(MsaaOption::kMsaaSampleCandidates[i]) + L"\n";
 		}
 	}
-
-	OutputDebugStringW(msg.c_str());
+	Logger::Info(msg);
 
 #ifdef DX12_ENABLE_DEBUG_LAYER
 	LogAdapters();
@@ -631,7 +632,7 @@ void D3D12Context::LogAdapters()
 		text += desc.Description;
 		text += L"\n";
 
-		OutputDebugString(text.c_str());
+		Logger::Info(text);
 		adapterList.push_back(adapter);
 		i++;
 	}
@@ -656,7 +657,7 @@ void D3D12Context::LogAdapterOutputs(IDXGIAdapter* adapter)
 		text += desc.DeviceName;
 		text += L"\n\n";
 
-		OutputDebugString(text.c_str());
+		Logger::Info(text);
 		LogOutputDisplayModes(output, mDesc.RenderTargetFormat);
 		ReleaseCom(output);
 		i++;
@@ -680,7 +681,7 @@ void D3D12Context::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format
 			L" Height: " + std::to_wstring(x.Height) +
 			L" Refresh Rate: " + std::to_wstring(n) + L"/" + std::to_wstring(d) + L"\n";
 
-		OutputDebugString(text.c_str());
+		Logger::Info(text);
 	}
 }
 

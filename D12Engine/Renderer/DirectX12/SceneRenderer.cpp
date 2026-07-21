@@ -4,6 +4,8 @@
 #include "D3D12Context.h"
 #include "EngineCore/GameTimer.h"
 #include "EngineCore/Scene.h"
+#include "EngineCore/Logger/Logger.h"
+
 #include "Renderer/DirectX12/MACRO.h"
 #include "Renderer/DirectX12/GeometryGenerator.h"
 #include "Renderer/DirectX12/RenderData.h"
@@ -442,7 +444,7 @@ void SceneRenderer::LoadTextures(D3D12Context& context)
 	std::wstring s = L"Texture Load elapsed : "
 		+ std::to_wstring(elapsedMs)
 		+ L" ms\n";
-	OutputDebugString(s.c_str());
+	Logger::Info(s);
 }
 
 void SceneRenderer::BuildDescriptorHeaps(D3D12Context& context)
@@ -753,7 +755,7 @@ void SceneRenderer::BuildRootSignature_Default(D3D12Context& context)
 		errorBlob.GetAddressOf()));
 
 	if (errorBlob != nullptr)
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		Logger::Error((char*)errorBlob->GetBufferPointer());
 
 	ThrowIfFailed(context.GetDevice()->CreateRootSignature(
 		0,
@@ -782,7 +784,7 @@ void SceneRenderer::BuildRootSignature_DepthComplexity(D3D12Context& context)
 		errorBlob.GetAddressOf()));
 
 	if (errorBlob != nullptr)
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		Logger::Error((char*)errorBlob->GetBufferPointer());
 
 	ThrowIfFailed(context.GetDevice()->CreateRootSignature(
 		0,
@@ -824,7 +826,7 @@ void SceneRenderer::BuildRootSignature_PostProcess(D3D12Context& context)
 		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf()));
 
 	if (errorBlob != nullptr)
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		Logger::Error((char*)errorBlob->GetBufferPointer());
 
 	ThrowIfFailed(context.GetDevice()->CreateRootSignature(
 		0,
@@ -858,7 +860,7 @@ void SceneRenderer::BuildRootSignature_Waves(D3D12Context& context)
 	ThrowIfFailed(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf()));
 
 	if (errorBlob != nullptr)
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		Logger::Error((char*)errorBlob->GetBufferPointer());
 
 	ThrowIfFailed(context.GetDevice()->CreateRootSignature(
 		0,
@@ -1015,7 +1017,7 @@ void SceneRenderer::BuildShadersAndInputLayout()
 #endif
 	s += std::to_wstring(elapsedMs) + L" ms\n";
 
-	OutputDebugString(s.c_str());
+	Logger::Info(s);
 
 	mInputLayout =
 	{

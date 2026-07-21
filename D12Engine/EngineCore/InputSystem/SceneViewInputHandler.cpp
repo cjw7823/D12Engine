@@ -12,7 +12,7 @@ void SceneViewInputHandler::ProcessMouseInput(
     const InputSystem& input,
     const EditorPanelInputState& viewport)
 {
-    //if (!viewport.IsHovered) return;
+    if (!viewport.IsHovered) return;
     if (!viewport.IsFocused) return;
 
     const POINT mousePosition = input.GetMousePosition(); //클라이언트 좌표

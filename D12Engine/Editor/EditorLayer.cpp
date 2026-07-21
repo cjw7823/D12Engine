@@ -34,7 +34,7 @@ void EditorLayer::DrawEditorUI()
 		DrawInspector();
 
 	if (mShowConsole)
-		DrawConsole();
+		mConsolePanel.OnImGuiRender();
 
 	if (mShowDemoWindow)
 		ImGui::ShowDemoWindow(&mShowDemoWindow);
@@ -273,17 +273,6 @@ void EditorLayer::DrawInspector()
 	{
 		ImGui::TextDisabled("No asset selected.");
 	}
-
-	ImGui::End();
-}
-
-void EditorLayer::DrawConsole()
-{
-	ImGui::Begin("Console", &mShowConsole);
-
-	ImGui::Text("[Info] Editor initialized.");
-	ImGui::Text("[Info] Docking enabled.");
-	ImGui::Text("[Info] Content Browser ready.");
 
 	ImGui::End();
 }

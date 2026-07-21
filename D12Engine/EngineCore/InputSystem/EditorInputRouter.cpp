@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "EditorInputRouter.h"
+#include "EngineCore/Logger/Logger.h"
 
 void EditorInputRouter::SetGlobalHandler(IEditorInputHandler* handler)
 {
@@ -50,9 +51,6 @@ void EditorInputRouter::Route(
     else if (sceneView.IsFocused &&
         mSceneViewHandler)
     {
-        static int i = 0;
-        std::string s = std::to_string(i++);
-        OutputDebugStringA(s.c_str());
         mSceneViewHandler->ProcessMouseInput(input, sceneView);
     }
 
