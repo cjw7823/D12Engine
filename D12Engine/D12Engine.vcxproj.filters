@@ -183,8 +183,12 @@
     <ClCompile Include="Editor\Gizmo.cpp">
       <Filter>Editor\Viewport</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Logger\Logger.cpp" />
-    <ClCompile Include="Editor\ConsolePanel.cpp" />
+    <ClCompile Include="EngineCore\Logger\Logger.cpp">
+      <Filter>Editor\Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\ConsolePanel.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -328,9 +332,15 @@
     <ClInclude Include="Editor\Gizmo.h">
       <Filter>Editor\Viewport</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Logger\LogMessage.h" />
-    <ClInclude Include="EngineCore\Logger\Logger.h" />
-    <ClInclude Include="Editor\ConsolePanel.h" />
+    <ClInclude Include="EngineCore\Logger\Logger.h">
+      <Filter>Editor\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Logger\LogMessage.h">
+      <Filter>Editor\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\ConsolePanel.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">

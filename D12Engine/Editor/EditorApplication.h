@@ -63,17 +63,24 @@ private:
 
 	std::wstring mMainWndCaption = L"Direct3D 12 App";
 	std::wstring mWndClassName = L"MainWnd";
-	int mApplicationWidth = 1200;
+	int mApplicationWidth = 1600;
 	int mApplicationHeight = 900;
 
 	D3D12Context mD3D12Context;
-
-	ImGuiLayer mImGuiLayer;
-	EditorLayer mEditorLayer;
-
-	Scene mActiveScene;
-	SceneRenderer mSceneRenderer;
 	D3D12RenderTarget mSceneRenderTarget;
+	ImGuiLayer mImGuiLayer;
+
+	// 의존 대상이므로 가장 먼저 선언
+	Scene mActiveScene;
+
+	// mActiveScene을 참조
+	SceneRenderer mSceneRenderer;
+
+	// mSceneRenderer를 참조. For InputSystem
+	SceneViewInputHandler mSceneViewInputHandler;
+
+	// mActiveScene을 참조
+	EditorLayer mEditorLayer;
 
 	//For Massage Proc
 	bool mAppPaused = false;
@@ -82,7 +89,6 @@ private:
 	InputSystem mInputSystem;
 	EditorInputRouter mEditorInputRouter;
 	GlobalInputHandler mGlobalInputHandler;
-	SceneViewInputHandler mSceneViewInputHandler;
 	bool mRelativeMouseMode = false;
 	POINT mSavedCursorPosition{};
 	POINT mMouseAnchorScreen{};

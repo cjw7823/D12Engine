@@ -3,17 +3,24 @@
 #include <string>
 #include <cstdint>
 #include "Transform.h"
+#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Assets/TextureDesc.h"
 
 using SceneObjectID = std::uint64_t;
+
+struct RenderInstanceBinding
+{
+    RenderItem* RenderData = nullptr;
+    UINT InstanceIndex = UINT_MAX;
+    Material* MaterialData = nullptr;
+};
 
 struct SceneObject
 {
 	SceneObjectID Id = 0;
 	std::wstring Name = L"오브젝트";
 
-	Transform TransformData;
+    TransformComponent Transform;
 
-	// 나중에 Mesh / Material 시스템이 생기면 추가.
-	// uint32_t MeshId = InvalidMeshId;
-	// uint32_t MaterialId = InvalidMaterialId;
+    std::vector<RenderInstanceBinding> RenderBindings;
 };

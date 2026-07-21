@@ -3,6 +3,10 @@
 #include "Renderer/DirectX12/D3D12Util.h"
 #include "EngineCore/StringUtil.h"
 
+EditorLayer::EditorLayer(Scene& scene) : mScene(scene)
+{
+}
+
 void EditorLayer::Initialize()
 {
 }
@@ -36,8 +40,8 @@ void EditorLayer::DrawEditorUI()
 	if (mShowConsole)
 		mConsolePanel.OnImGuiRender();
 
-	if (mShowDemoWindow)
-		ImGui::ShowDemoWindow(&mShowDemoWindow);
+	if (mHelpWindow)
+		DrawHelper();
 }
 
 void EditorLayer::DrawMainDockSpace()
@@ -98,8 +102,13 @@ void EditorLayer::DrawMainMenuBar()
 			ImGui::MenuItem("Hierarchy", nullptr, &mShowHierarchy);
 			ImGui::MenuItem("Inspector", nullptr, &mShowInspector);
 			ImGui::MenuItem("Console", nullptr, &mShowConsole);
-			ImGui::Separator();
-			ImGui::MenuItem("ImGui Demo", nullptr, &mShowDemoWindow);
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			ImGui::MenuItem(WideToUtf8(L"조작키").c_str(), nullptr, &mHelpWindow);
 
 			ImGui::EndMenu();
 		}
@@ -274,5 +283,198 @@ void EditorLayer::DrawInspector()
 		ImGui::TextDisabled("No asset selected.");
 	}
 
+	ImGui::End();
+}
+
+void EditorLayer::DrawHelper()
+{
+	if (!mHelpWindow)
+		return;
+
+	const std::string windowTitle = WideToUtf8(L"조작키");
+
+	ImGui::SetNextWindowSize(ImVec2(620.0f, 560.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSizeConstraints(
+		ImVec2(320.0f, 240.0f),
+		ImVec2(FLT_MAX, FLT_MAX));
+
+	if (!ImGui::Begin(windowTitle.c_str(), &mHelpWindow))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"%s",
+		WideToUtf8(
+			L"씬 뷰가 포커스된 상태에서 마우스와 키보드 입력을 사용할 수 있습니다.")
+		.c_str());
+
+	ImGui::Separator();
+
+	/*
+	 * 창의 높이가 작아졌을 때 전체 도움말을 세로로 스크롤할 수 있게 한다.
+	 */
+	if (ImGui::BeginChild(
+		"HelperScrollingRegion",
+		ImVec2(0.0f, 0.0f),
+		ImGuiChildFlags_None,
+		ImGuiWindowFlags_AlwaysVerticalScrollbar))
+	{
+		const ImGuiTableFlags tableFlags =
+			ImGuiTableFlags_Borders |
+			ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_SizingStretchProp;
+
+		/*
+		 * key는 호출 중에만 사용되므로 const char*로 받을 수 있다.
+		 * description은 UTF-8로 변환한 뒤 현재 열 너비에 맞춰 자동 줄바꿈한다.
+		 */
+		auto DrawShortcut =
+			[](const char* key, const std::wstring& description)
+			{
+				const std::string utf8Description = WideToUtf8(description);
+
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::AlignTextToFramePadding();
+				ImGui::TextUnformatted(key);
+
+				ImGui::TableSetColumnIndex(1);
+
+				/*
+				 * 현재 테이블 열의 남은 가로 영역을 줄바꿈 너비로 사용한다.
+				 */
+				ImGui::PushTextWrapPos(ImGui::GetCursorPosX() +
+					ImGui::GetContentRegionAvail().x);
+
+				ImGui::TextUnformatted(utf8Description.c_str());
+
+				ImGui::PopTextWrapPos();
+			};
+
+		auto SetupTableColumns = []()
+			{
+				ImGui::TableSetupColumn(
+					WideToUtf8(L"입력").c_str(),
+					ImGuiTableColumnFlags_WidthFixed,
+					145.0f);
+
+				ImGui::TableSetupColumn(
+					WideToUtf8(L"기능").c_str(),
+					ImGuiTableColumnFlags_WidthStretch);
+
+				ImGui::TableHeadersRow();
+			};
+
+		if (ImGui::CollapsingHeader(WideToUtf8(L"마우스 조작").c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::BeginTable("MouseInputTable", 2, tableFlags))
+			{
+				SetupTableColumns();
+
+				DrawShortcut(
+					WideToUtf8(L"마우스 왼쪽 클릭").c_str(),
+					L"오브젝트를 선택합니다. 기즈모 위를 클릭한 경우에는 "
+					L"오브젝트 대신 해당 기즈모 축을 선택합니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"마우스 왼쪽 드래그").c_str(),
+					L"선택한 기즈모 축을 따라 오브젝트를 이동합니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"마우스 오른쪽 드래그").c_str(),
+					L"마우스 상대 이동량을 사용하여 카메라 시점을 회전합니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"마우스 휠").c_str(),
+					L"카메라를 확대하거나 축소합니다.");
+
+				ImGui::EndTable();
+			}
+		}
+
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader(
+			WideToUtf8(L"카메라 이동").c_str(),
+			ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::BeginTable(
+				"CameraInputTable",
+				2,
+				tableFlags))
+			{
+				SetupTableColumns();
+
+				DrawShortcut("W", L"카메라 전진");
+				DrawShortcut("S", L"카메라 후진");
+				DrawShortcut("A", L"카메라 왼쪽 이동");
+				DrawShortcut("D", L"카메라 오른쪽 이동");
+				DrawShortcut("Q", L"카메라 아래쪽 이동");
+				DrawShortcut("E", L"카메라 위쪽 이동");
+
+				ImGui::EndTable();
+			}
+		}
+
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader(
+			WideToUtf8(L"렌더링 설정").c_str(),
+			ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::BeginTable(
+				"RenderInputTable",
+				2,
+				tableFlags))
+			{
+				SetupTableColumns();
+
+				DrawShortcut("1", L"일반 라이팅 렌더링 모드로 변경");
+				DrawShortcut("2", L"와이어프레임 렌더링 모드로 변경");
+				DrawShortcut("3", L"깊이 복잡도 시각화 모드로 변경");
+				DrawShortcut("4", L"버텍스 노멀 시각화 모드로 변경");
+				DrawShortcut("5", L"소벨 외곽선 효과 활성화 또는 비활성화");
+				DrawShortcut("6", L"블러 적용 횟수를 다음 단계로 변경");
+				DrawShortcut("7", L"MSAA 설정을 다음 옵션으로 변경");
+
+				ImGui::EndTable();
+			}
+		}
+
+		ImGui::Spacing();
+
+		if (ImGui::CollapsingHeader(
+			WideToUtf8(L"태양 방향 조작").c_str(),
+			ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (ImGui::BeginTable("SunInputTable", 2, tableFlags))
+			{
+				SetupTableColumns();
+
+				DrawShortcut(
+					WideToUtf8(L"왼쪽 방향키").c_str(),
+					L"태양을 왼쪽 방향으로 회전합니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"오른쪽 방향키").c_str(),
+					L"태양을 오른쪽 방향으로 회전합니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"위쪽 방향키").c_str(),
+					L"태양의 수직 회전 각도를 감소시킵니다.");
+
+				DrawShortcut(
+					WideToUtf8(L"아래쪽 방향키").c_str(),
+					L"태양의 수직 회전 각도를 증가시킵니다.");
+
+				ImGui::EndTable();
+			}
+		}
+	}
+
+	ImGui::EndChild();
 	ImGui::End();
 }

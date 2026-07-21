@@ -49,7 +49,6 @@ struct InstanceData
 	bool visible = true;			//사용자가 숨김.
 	bool FrustumVisible = true;		//프레임 컬링 결과
 
-	DirectX::BoundingBox Bounds;
 	UINT GpuInstanceIndex = UINT_MAX;
 };
 
@@ -216,15 +215,18 @@ struct RenderItem
 	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
 	float GridSpatialStep = 1.0f;
 
-	UINT StartInstanceLocation = 0;
-	UINT VisibleInstanceCount = 0;
-	std::vector<InstanceData> Instances;
-
 	//스킨이 있는 경우만 유효
 	UINT SkinnedCBIndex = -1;
 
 	//애니메이션이 없는 RI는 nullptr로 둔다.
 	SkinnedModelInstance* SkinnedModelInstance = nullptr;
+
+	DirectX::BoundingBox LocalBounds;
+
+	//For Instancing
+	UINT StartInstanceLocation = 0;
+	UINT VisibleInstanceCount = 0;
+	std::vector<InstanceData> Instances;
 };
 
 struct SelectedInstance

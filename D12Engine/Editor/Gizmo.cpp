@@ -86,7 +86,7 @@ void Gizmo::Pick(int vx, int vy, std::vector<RenderItem*> RenderItemLayer[])
 
 				XMMATRIX W = XMLoadFloat4x4(&instance.World);
 				BoundingBox worldBounds;
-				instance.Bounds.Transform(worldBounds, W);
+				ri->LocalBounds.Transform(worldBounds, W);
 
 				float boundT = 0.0f;
 				// 광선이 메시의 바운딩 박스와 교차하는지 확인
@@ -396,7 +396,7 @@ GizmoAxis Gizmo::PickGizmoAxis(int sx, int sy)
 
 		XMMATRIX W = XMLoadFloat4x4(&instance.World);
 		BoundingBox gizmoBounds;
-		instance.Bounds.Transform(gizmoBounds, W);
+		mGizmoRI->LocalBounds.Transform(gizmoBounds, W);
 
 		float boundT = 0.0f;
 		if (gizmoBounds.Intersects(rayOriginW, rayDirW, boundT))

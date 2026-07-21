@@ -40,12 +40,6 @@ void InputSystem::ResetMouseMotion()
 
 void InputSystem::OnKeyDown(WPARAM key)
 {
-#ifdef _DEBUG
-    std::wstring s(1, static_cast<wchar_t>(key));
-    s = L"Key Down : " + s + L"\n";
-    Logger::Info(s);
-#endif
-
     if (!IsValidKey(key))
         return;
 
@@ -53,7 +47,14 @@ void InputSystem::OnKeyDown(WPARAM key)
 
     // 자동 반복 WM_KEYDOWN은 Pressed로 다시 처리하지 않는다.
     if (!mKeyDown[index])
+    {
+#ifdef _DEBUG
+        std::wstring s(1, static_cast<wchar_t>(key));
+        s = L"Key Pressed : " + s + L"\n";
+        Logger::Info(s);
+#endif
         mKeyPressed[index] = true;
+    }
 
     mKeyDown[index] = true;
 }

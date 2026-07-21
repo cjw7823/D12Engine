@@ -14,6 +14,9 @@
 
 #include "EngineCore/LoadM3d.h"
 #include "EngineCore/Camera.h"
+#include "EngineCore/Scene.h"
+#include "EngineCore/SceneObject.h"
+#include "EngineCore/Transform.h"
 
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 #include "Renderer/DirectX12/FrameResource.h"
@@ -90,6 +93,7 @@ class SceneRenderer
 {
 	friend class EditorApplication;
 public:
+	SceneRenderer(Scene& scene);
 	SceneRenderer() = default;
 	SceneRenderer(const SceneRenderer&) = delete;
 	SceneRenderer& operator=(const SceneRenderer&) = delete;
@@ -150,6 +154,20 @@ private:
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
 	void BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex);
+	RenderItem* CreateRenderItem(const char* GeoName,
+		const char* submeshName,
+		D3D12_PRIMITIVE_TOPOLOGY topology,
+		std::vector<RenderLayer> layer,
+		bool InMirror = false);
+	InstanceData& AddInstance(
+		RenderItem* renderItem,
+		const char* matName,
+		const wchar_t* objectName,
+		const TransformComponent& transform,
+		bool RegisterSceneObject = true);
+	void FinalizeRenderItem(
+		RenderItem* renderItem,
+		UINT& nextInstanceBufferIndex);
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
 
@@ -177,6 +195,17 @@ private:
 	void CreateQueryHeap(D3D12Context& context);
 
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
+
+	SceneObject& RegisterSceneObject(
+		const std::wstring& name,
+		RenderItem& renderItem,
+		std::uint32_t instanceIndex);
+
+	Material* FindMaterialByIndex(
+		std::uint32_t materialIndex);
+
+	TransformComponent DecomposeTransform(
+		const DirectX::XMFLOAT4X4& world) const;
 
 public:
 	//For Gizmo / Selected Instances
@@ -220,7 +249,6 @@ private:
 	std::unique_ptr<SobelFilter> mSobelFilter;
 
 	RenderItem* mMirror = nullptr;
-	std::vector<RenderItem*> excludeRI_InMirror;
 	RenderItem* mSkull = nullptr;
 	RenderItem* mSkullMirror = nullptr;
 	RenderItem* mSkullShadow = nullptr;
@@ -262,4 +290,6 @@ private:
 	Camera mCamera;
 
 	GameTimer mTimer;
+
+	Scene& mScene;
 };

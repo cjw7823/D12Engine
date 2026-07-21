@@ -14,7 +14,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return EditorApplication::GetApp()->MsgProc(hWnd, msg, wParam, lParam);
 }
 
-EditorApplication::EditorApplication(HINSTANCE hInstance) : mSceneViewInputHandler(mSceneRenderer)
+EditorApplication::EditorApplication(HINSTANCE hInstance) :
+	mActiveScene(),
+	mSceneRenderer(mActiveScene),
+	mSceneViewInputHandler(mSceneRenderer),
+	mEditorLayer(mActiveScene)
 {
 	assert(mApp == nullptr);
 	mApp = this;
@@ -56,7 +60,6 @@ bool EditorApplication::Initialize()
 		{
 			EndRelativeMouseMode();
 		});
-	mSceneViewInputHandler.SetScene(&mActiveScene);
 
 	if (!mImGuiLayer.Initialize(mhMainWnd, mD3D12Context))
 		return false;

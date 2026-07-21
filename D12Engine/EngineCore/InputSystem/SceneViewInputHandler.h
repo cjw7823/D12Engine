@@ -17,8 +17,6 @@ public:
 
     explicit SceneViewInputHandler(SceneRenderer& sceneRenderer);
 
-    void SetScene(Scene* scene) { mScene = scene; }
-
     void RegistCallback_ChangeMsaaOption(ChangeMsaaOptionCallback func)
     {
         mChangeMsaaOptionCallback = std::move(func);
@@ -40,7 +38,6 @@ public:
 
 private:
     SceneRenderer& mSceneRenderer;
-    Scene* mScene = nullptr;
     ChangeMsaaOptionCallback mChangeMsaaOptionCallback;
     BeginRelativeMouseCallback mBeginRelativeMouseCallback;
     EndRelativeMouseCallback mEndRelativeMouseCallback;

@@ -11,6 +11,8 @@
 class EditorLayer
 {
 public:
+    explicit EditorLayer(Scene& scene);
+
     void Initialize();
     void OnImGuiRender();
 
@@ -29,6 +31,8 @@ private:
     void DrawHierarchy();
     void DrawInspector();
 
+    void DrawHelper();
+
 private:
     std::filesystem::path mResourcesRoot = std::filesystem::current_path() / "Resource";
     std::filesystem::path mCurrentDirectory = mResourcesRoot;
@@ -42,7 +46,9 @@ private:
     bool mShowHierarchy = true;
     bool mShowInspector = true;
     bool mShowConsole = true;
-    bool mShowDemoWindow = false;
+    bool mHelpWindow = true;
 
     bool mIsPlay = false;
+
+    Scene& mScene;
 };

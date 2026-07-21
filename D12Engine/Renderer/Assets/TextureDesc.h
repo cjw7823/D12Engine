@@ -4,6 +4,7 @@
 #include "EngineCore/MathHelper.h"
 #include <cstdint>
 #include <limits>
+#include <filesystem>
 
 enum class TextureColorSpace
 {
