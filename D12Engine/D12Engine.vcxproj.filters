@@ -61,20 +61,23 @@
     <Filter Include="External">
       <UniqueIdentifier>{e5684643-d082-405c-a931-67868dba2cd6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External\IMGUI">
-      <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\IMGUI\backends">
-      <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\IMGUI\core">
-      <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="External\DDSTextureLoader">
       <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Editor\Logger">
       <UniqueIdentifier>{a9596a83-2a00-4a39-ac07-ea9f84442459}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ImGui">
+      <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ImGui\backends">
+      <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ImGui\core">
+      <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="External\ufbx">
+      <UniqueIdentifier>{39aaaf98-f1bd-4223-a94a-0bf260bcd88a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -82,25 +85,25 @@
       <Filter>PCH</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\core\imgui.cpp">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\core\imgui_demo.cpp">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\core\imgui_draw.cpp">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\core\imgui_tables.cpp">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\core\imgui_widgets.cpp">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\backends\imgui_impl_dx12.cpp">
-      <Filter>External\IMGUI\backends</Filter>
+      <Filter>External\ImGui\backends</Filter>
     </ClCompile>
     <ClCompile Include="..\IMGUI\backends\imgui_impl_win32.cpp">
-      <Filter>External\IMGUI\backends</Filter>
+      <Filter>External\ImGui\backends</Filter>
     </ClCompile>
     <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>External\DDSTextureLoader</Filter>
@@ -189,34 +192,37 @@
     <ClCompile Include="Editor\ConsolePanel.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="..\ufbx\ufbx.c">
+      <Filter>External\ufbx</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>PCH</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imconfig.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imgui.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imgui_internal.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imstb_rectpack.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imstb_textedit.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\core\imstb_truetype.h">
-      <Filter>External\IMGUI\core</Filter>
+      <Filter>External\ImGui\core</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\backends\imgui_impl_dx12.h">
-      <Filter>External\IMGUI\backends</Filter>
+      <Filter>External\ImGui\backends</Filter>
     </ClInclude>
     <ClInclude Include="..\IMGUI\backends\imgui_impl_win32.h">
-      <Filter>External\IMGUI\backends</Filter>
+      <Filter>External\ImGui\backends</Filter>
     </ClInclude>
     <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>External\DDSTextureLoader</Filter>
@@ -341,6 +347,9 @@
     <ClInclude Include="Editor\ConsolePanel.h">
       <Filter>Editor</Filter>
     </ClInclude>
+    <ClInclude Include="..\ufbx\ufbx.h">
+      <Filter>External\ufbx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resource\Shaders\Default.hlsl">
@@ -373,5 +382,8 @@
     <None Include="Resource\Shaders\Outline.hlsl">
       <Filter>Shaders</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="imgui.ini" />
   </ItemGroup>
 </Project>

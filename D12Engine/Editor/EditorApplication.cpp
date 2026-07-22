@@ -332,6 +332,7 @@ LRESULT EditorApplication::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		{
 			mAppPaused = true;
 			mInputSystem.Reset();
+			EndRelativeMouseMode();
 		}
 		else
 			mAppPaused = false;

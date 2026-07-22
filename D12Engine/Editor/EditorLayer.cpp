@@ -1,7 +1,14 @@
 #include "pch.h"
 #include "EditorLayer.h"
-#include "Renderer/DirectX12/D3D12Util.h"
+
+#include "EngineCore/Scene.h"
+#include "EngineCore/SceneObject.h"
 #include "EngineCore/StringUtil.h"
+
+#include "Renderer/DirectX12/D3D12Util.h"
+#include "Renderer/DirectX12/RenderData.h"
+
+#include <unordered_set>
 
 EditorLayer::EditorLayer(Scene& scene) : mScene(scene)
 {
@@ -237,53 +244,221 @@ void EditorLayer::DrawContentBrowser()
 
 void EditorLayer::DrawHierarchy()
 {
-	ImGui::Begin("Hierarchy", &mShowHierarchy);
+	if (!ImGui::Begin("Hierarchy",&mShowHierarchy))
+	{
+		ImGui::End();
+		return;
+	}
 
-	ImGui::Text("Scene Objects");
+	const SceneObjectID selectedObjectId = mScene.GetSelectedObjectID();
+	const auto& objects = mScene.GetObjects();
 
-	ImGui::Separator();
+	for (const auto& object : objects)
+	{
+		if (!object) continue;
 
-	ImGui::Selectable("Camera");
-	ImGui::Selectable("Directional Light");
-	ImGui::Selectable("Cube");
-	ImGui::Selectable("Sphere");
+		ImGui::PushID(reinterpret_cast<void*>(
+			static_cast<std::uintptr_t>(object->Id)));
 
-	//for (auto& object : scene.GetObjects())
-	//{
-	//	ImGui::Selectable(object.Name.c_str());
-	//}
+		const bool selected = object->Id == selectedObjectId;
+		const std::string objectName = WideToUtf8(object->Name);
+
+		if (ImGui::Selectable(
+			objectName.c_str(),
+			selected,
+			ImGuiSelectableFlags_SpanAllColumns))
+		{
+			mScene.SelectObject(object->Id);
+		}
+
+		if (selected)
+		{
+			ImGui::SetItemDefaultFocus();
+		}
+
+		ImGui::PopID();
+	}
+
+	//하이어라키 빈 공간을 클릭하면 선택 해제.
+	if (ImGui::IsWindowHovered() &&
+		ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+		!ImGui::IsAnyItemHovered())
+	{
+		mScene.ClearSelection();
+	}
 
 	ImGui::End();
 }
 
 void EditorLayer::DrawInspector()
 {
-	ImGui::Begin("Inspector", &mShowInspector);
-
-	if (!mSelectedAssetPath.empty())
+	if (!ImGui::Begin("Inspector", &mShowInspector))
 	{
-		ImGui::Text("Selected Asset");
-		ImGui::Separator();
-
-		ImGui::Text("Name:");
-		ImGui::TextWrapped("%s", PathToUtf8(mSelectedAssetPath.filename()).c_str());
-
-		ImGui::Text("Path:");
-		ImGui::TextWrapped("%s", PathToUtf8(mSelectedAssetPath).c_str());
-
-		if (std::filesystem::exists(mSelectedAssetPath) &&
-			std::filesystem::is_regular_file(mSelectedAssetPath))
-		{
-			auto size = std::filesystem::file_size(mSelectedAssetPath);
-			ImGui::Text("Size: %llu bytes", static_cast<unsigned long long>(size));
-		}
+		ImGui::End();
+		return;
 	}
-	else
+
+	SceneObject* selectedObject = mScene.GetSelectedObject();
+
+	if (!selectedObject)
 	{
-		ImGui::TextDisabled("No asset selected.");
+		ImGui::TextDisabled(
+			"%s",
+			WideToUtf8(
+				L"선택된 오브젝트가 없습니다.")
+			.c_str());
+
+		ImGui::End();
+		return;
 	}
+
+	ImGui::Text("%s", WideToUtf8(selectedObject->Name).c_str());
+
+	ImGui::TextDisabled(
+		"ID: %llu",
+		static_cast<unsigned long long>(
+			selectedObject->Id));
+
+	ImGui::Separator();
+
+	DrawTransformInspector(*selectedObject);
+
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+
+	DrawMaterialInspector(*selectedObject);
 
 	ImGui::End();
+}
+
+void EditorLayer::DrawTransformInspector(SceneObject& object)
+{
+	if (!ImGui::CollapsingHeader(
+		"Transform",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	bool changed = false;
+
+	changed |= ImGui::DragFloat3(
+		WideToUtf8(L"위치").c_str(),
+		&object.Transform.Position.x,
+		0.1f);
+
+	changed |= ImGui::DragFloat3(
+		WideToUtf8(L"회전").c_str(),
+		&object.Transform.Rotation.x,
+		0.5f);
+
+	changed |= ImGui::DragFloat3(
+		WideToUtf8(L"크기").c_str(),
+		&object.Transform.Scale.x,
+		0.01f);
+
+	if (changed)
+	{
+		object.TransformDirty = true;
+	}
+}
+
+void EditorLayer::DrawMaterialInspector(SceneObject& object)
+{
+	if (!ImGui::CollapsingHeader(
+		"Material",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	if (object.RenderBindings.empty())
+	{
+		ImGui::TextDisabled(
+			"%s",
+			WideToUtf8(
+				L"렌더 바인딩이 없습니다.")
+			.c_str());
+
+		return;
+	}
+
+	std::unordered_set<Material*> drawnMaterials;
+
+	bool materialFound = false;
+
+	for (const RenderInstanceBinding& binding :
+		object.RenderBindings)
+	{
+		Material* material =
+			binding.MaterialData;
+
+		if (!material)
+			continue;
+
+		/*
+		 * 여러 서브메시가 같은 Material을 공유하면
+		 * Inspector에 한 번만 출력.
+		 */
+		if (!drawnMaterials.insert(material).second)
+			continue;
+
+		materialFound = true;
+
+		ImGui::PushID(material);
+
+		const ImGuiTreeNodeFlags flags =
+			object.RenderBindings.size() == 1
+			? ImGuiTreeNodeFlags_DefaultOpen
+			: ImGuiTreeNodeFlags_None;
+
+		if (ImGui::CollapsingHeader(
+			material->Name.c_str(),
+			flags))
+		{
+			bool changed = false;
+
+			changed |= ImGui::ColorEdit4(
+				WideToUtf8(L"기본 색상").c_str(),
+				&material->DiffuseAlbedo.x);
+
+			changed |= ImGui::DragFloat3(
+				"Fresnel R0",
+				&material->FresnelR0.x,
+				0.001f,
+				0.0f,
+				1.0f);
+
+			changed |= ImGui::SliderFloat(
+				WideToUtf8(L"거칠기").c_str(),
+				&material->Roughness,
+				0.0f,
+				1.0f);
+
+			ImGui::TextDisabled(
+				"%s: %u",
+				WideToUtf8(L"재질 버퍼 인덱스").c_str(),
+				material->MatBufferIndex);
+
+			if (changed)
+			{
+				material->NumFramesDirty =
+					RenderConfig::NumFrameResources;
+			}
+		}
+
+		ImGui::PopID();
+	}
+
+	if (!materialFound)
+	{
+		ImGui::TextDisabled(
+			"%s",
+			WideToUtf8(
+				L"연결된 재질이 없습니다.")
+			.c_str());
+	}
 }
 
 void EditorLayer::DrawHelper()

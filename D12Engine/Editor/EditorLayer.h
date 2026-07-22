@@ -30,6 +30,8 @@ private:
     void DrawContentBrowser();
     void DrawHierarchy();
     void DrawInspector();
+    void DrawTransformInspector(SceneObject& object);
+    void DrawMaterialInspector(SceneObject& object);
 
     void DrawHelper();
 

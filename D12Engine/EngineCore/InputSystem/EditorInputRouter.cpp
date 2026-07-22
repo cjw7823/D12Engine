@@ -48,7 +48,7 @@ void EditorInputRouter::Route(
     {
         mGameViewHandler->ProcessMouseInput(input, gameView);
     }
-    else if (sceneView.IsFocused &&
+    else if (sceneView.IsHovered &&
         mSceneViewHandler)
     {
         mSceneViewHandler->ProcessMouseInput(input, sceneView);

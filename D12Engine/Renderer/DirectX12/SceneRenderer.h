@@ -196,16 +196,7 @@ private:
 
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
 
-	SceneObject& RegisterSceneObject(
-		const std::wstring& name,
-		RenderItem& renderItem,
-		std::uint32_t instanceIndex);
-
-	Material* FindMaterialByIndex(
-		std::uint32_t materialIndex);
-
-	TransformComponent DecomposeTransform(
-		const DirectX::XMFLOAT4X4& world) const;
+	void SyncSceneObjectTransforms();
 
 public:
 	//For Gizmo / Selected Instances

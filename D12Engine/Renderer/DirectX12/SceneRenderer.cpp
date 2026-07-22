@@ -161,6 +161,8 @@ void SceneRenderer::Update(const Scene& scene, float deltaTime)
 	if (!mInitialized) return;
 
 	mCamera.UpdateViewMatrix();
+
+	SyncSceneObjectTransforms();
 	mGizmo.Update(&mCamera, mViewportWidth, mViewportHeight);
 
 	// 이 시점이면 이 FrameResource slot의 이전 GPU 작업은 완료됨.
@@ -2740,112 +2742,36 @@ ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMod
 	return litPso.Get();
 }
 
-SceneObject& SceneRenderer::RegisterSceneObject(const std::wstring& name, RenderItem& renderItem, std::uint32_t instanceIndex)
+void SceneRenderer::SyncSceneObjectTransforms()
 {
-	assert(instanceIndex < renderItem.Instances.size());
-
-	InstanceData& instance =
-		renderItem.Instances[instanceIndex];
-
-	SceneObject& sceneObject =
-		mScene.CreateObject(name);
-
-	//sceneObject.RenderBindings = DecomposeTransform(instance.World);
-
-	sceneObject.RenderBindings.push_back(
-		{
-			&renderItem,
-			instanceIndex,
-			FindMaterialByIndex(instance.MaterialIndex)
-		});
-
-	return sceneObject;
-}
-
-Material* SceneRenderer::FindMaterialByIndex(std::uint32_t materialIndex)
-{
-	for (auto& [name, material] : mMaterials)
+	for (const auto& object : mScene.GetObjects())
 	{
-		if (material &&
-			material->MatBufferIndex == materialIndex)
+		if (!object) continue;
+
+		if (!object->TransformDirty) continue;
+
+		const XMMATRIX world = object->Transform.GetWorldMatrix();
+
+		const XMMATRIX worldInvTranspose = MathHelper::InverseTranspose(world);
+
+		for (const RenderInstanceBinding& binding : object->RenderBindings)
 		{
-			return material.get();
+			RenderItem* renderItem = binding.RenderData;
+
+			if (!renderItem) continue;
+
+			if (binding.InstanceIndex >= renderItem->Instances.size())
+			{
+				assert(false && "SceneObject RenderBinding index is invalid.");
+				continue;
+			}
+
+			InstanceData& instance = renderItem->Instances[binding.InstanceIndex];
+
+			XMStoreFloat4x4(&instance.World, world);
+			XMStoreFloat4x4(&instance.WorldInvTranspose, worldInvTranspose);
 		}
+
+		object->TransformDirty = false;
 	}
-
-	return nullptr;
-}
-
-TransformComponent SceneRenderer::DecomposeTransform(
-	const DirectX::XMFLOAT4X4& world) const
-{
-	using namespace DirectX;
-
-	TransformComponent result;
-
-	XMVECTOR scale;
-	XMVECTOR rotationQuaternion;
-	XMVECTOR translation;
-
-	const XMMATRIX worldMatrix = XMLoadFloat4x4(&world);
-
-	if (!XMMatrixDecompose(
-		&scale,
-		&rotationQuaternion,
-		&translation,
-		worldMatrix))
-	{
-		return result;
-	}
-
-	XMStoreFloat3(&result.Scale, scale);
-	XMStoreFloat3(&result.Position,	translation);
-
-	XMFLOAT4 quaternion;
-	XMStoreFloat4(&quaternion, rotationQuaternion);
-
-	const float sinPitch =
-		2.0f *
-		(quaternion.w * quaternion.x -
-			quaternion.y * quaternion.z);
-
-	float pitch;
-
-	if (std::abs(sinPitch) >= 1.0f)
-	{
-		pitch = std::copysign(
-			XM_PIDIV2,
-			sinPitch);
-	}
-	else
-	{
-		pitch = std::asin(sinPitch);
-	}
-
-	const float yaw = std::atan2(
-		2.0f *
-		(quaternion.w * quaternion.y +
-			quaternion.z * quaternion.x),
-		1.0f -
-		2.0f *
-		(quaternion.x * quaternion.x +
-			quaternion.y * quaternion.y));
-
-	const float roll = std::atan2(
-		2.0f *
-		(quaternion.w * quaternion.z +
-			quaternion.x * quaternion.y),
-		1.0f -
-		2.0f *
-		(quaternion.z * quaternion.z +
-			quaternion.x * quaternion.x));
-
-	result.Rotation =
-	{
-		XMConvertToDegrees(pitch),
-		XMConvertToDegrees(yaw),
-		XMConvertToDegrees(roll)
-	};
-
-	return result;
 }

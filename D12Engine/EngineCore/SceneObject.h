@@ -23,4 +23,7 @@ struct SceneObject
     TransformComponent Transform;
 
     std::vector<RenderInstanceBinding> RenderBindings;
+
+    //인스펙터에서 Transform 수정 시 사용.
+    bool TransformDirty = true;
 };
