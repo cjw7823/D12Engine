@@ -1,17 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="PCH">
-      <UniqueIdentifier>{a7182016-9710-4b1c-a56c-fb028896ebd1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="App">
       <UniqueIdentifier>{820d1915-4c7a-49b1-a6b8-1639e006fb01}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{948ab57d-363f-4d14-ba88-936a43859abd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders\PostProcess">
-      <UniqueIdentifier>{50039c30-1030-4417-90f6-bc36884e6f49}</UniqueIdentifier>
     </Filter>
     <Filter Include="Editor">
       <UniqueIdentifier>{9fb66804-9e75-458f-9113-5fa8f723c9a3}</UniqueIdentifier>
@@ -25,88 +16,79 @@
     <Filter Include="EngineCore">
       <UniqueIdentifier>{667a2648-0d4b-4b31-9ab0-89529412c771}</UniqueIdentifier>
     </Filter>
-    <Filter Include="EngineCore\Windows">
-      <UniqueIdentifier>{9fbc0760-aa18-4a07-a3b2-feb0db66f5eb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="EngineCore\Animation">
       <UniqueIdentifier>{5c8b0eca-cd57-4336-b86d-46e6085c2d78}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\DirectX12\Rendering">
-      <UniqueIdentifier>{a529fe07-133c-4ba0-994f-9db1fb87a627}</UniqueIdentifier>
+    <Filter Include="Editor\Gizmo">
+      <UniqueIdentifier>{08e542c1-1c5d-43d1-800d-7e4182cfa572}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\DirectX12\Rendering\GPGPU">
-      <UniqueIdentifier>{88c78b53-2e5f-4f35-8837-5981cede80b5}</UniqueIdentifier>
+    <Filter Include="Editor\Panels">
+      <UniqueIdentifier>{0ae12184-45d3-4159-a6d9-ec00f689bdde}</UniqueIdentifier>
     </Filter>
-    <Filter Include="EngineCore\Scene">
-      <UniqueIdentifier>{c4aa0e5d-acb1-40ec-9002-34f3fa234a77}</UniqueIdentifier>
+    <Filter Include="Editor\Input">
+      <UniqueIdentifier>{8b6085eb-6b9b-49c5-87e2-af4513c7588a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\Assets">
-      <UniqueIdentifier>{8f199f98-f8a3-4b2c-b50a-4caf6f8f4dfc}</UniqueIdentifier>
+    <Filter Include="AssetPipeline">
+      <UniqueIdentifier>{289a83a2-0aa4-4abe-abe6-f36facc25d52}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\DirectX12\Desc">
-      <UniqueIdentifier>{c35d1f0f-36c4-44fc-b663-1609eca90b27}</UniqueIdentifier>
+    <Filter Include="=========">
+      <UniqueIdentifier>{7d5cac8d-d1ea-4e81-a48d-a3d06a483145}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\DirectX12\Util">
-      <UniqueIdentifier>{5736995c-112f-479f-9d22-10166b325cc8}</UniqueIdentifier>
+    <Filter Include="=========\PCH">
+      <UniqueIdentifier>{a7182016-9710-4b1c-a56c-fb028896ebd1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="EngineCore\InputSystem">
-      <UniqueIdentifier>{6851cebe-d474-44a8-aecf-15cbd7ccb723}</UniqueIdentifier>
+    <Filter Include="=========\Shader">
+      <UniqueIdentifier>{9e4720cb-07ae-4081-8f8a-c9c88554d40c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="EngineCore\Scene\Camera">
-      <UniqueIdentifier>{1b076a3f-a606-46c5-a718-a88de1811240}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Editor\Viewport">
-      <UniqueIdentifier>{186d68ba-8f9e-4285-ad95-2eada9525758}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External">
+    <Filter Include="=========\ThirdParty">
       <UniqueIdentifier>{e5684643-d082-405c-a931-67868dba2cd6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External\DDSTextureLoader">
+    <Filter Include="=========\ThirdParty\DDSTextureLoader">
       <UniqueIdentifier>{f9b0a217-e990-442c-bcc8-94ee8acd7bf2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Editor\Logger">
-      <UniqueIdentifier>{a9596a83-2a00-4a39-ac07-ea9f84442459}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="External\ImGui">
+    <Filter Include="=========\ThirdParty\ImGui">
       <UniqueIdentifier>{f65e9977-8631-4249-b698-6c2b42122fd4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External\ImGui\backends">
+    <Filter Include="=========\ThirdParty\ImGui\backends">
       <UniqueIdentifier>{24aab90a-66ba-4d1a-aac9-9b7a4a70dfbd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External\ImGui\core">
+    <Filter Include="=========\ThirdParty\ImGui\core">
       <UniqueIdentifier>{e3402efe-5578-40e4-85d4-415fe2218e9e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="External\ufbx">
+    <Filter Include="=========\ThirdParty\ufbx">
       <UniqueIdentifier>{39aaaf98-f1bd-4223-a94a-0bf260bcd88a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Input">
+      <UniqueIdentifier>{6851cebe-d474-44a8-aecf-15cbd7ccb723}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Logging">
+      <UniqueIdentifier>{a9596a83-2a00-4a39-ac07-ea9f84442459}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Math">
+      <UniqueIdentifier>{1f50cada-c307-4ae8-9fe9-e6204755d8f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Platform">
+      <UniqueIdentifier>{eff47340-038c-49bc-a7e3-8aa4603972e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Platform\Windows">
+      <UniqueIdentifier>{39667109-d903-4e2f-b056-66a01ab48e26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EngineCore\Scene">
+      <UniqueIdentifier>{d910df74-2a63-4235-900c-b73385f5bfa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AssetPipeline\Importers">
+      <UniqueIdentifier>{58ecf1f4-3dab-4667-9e0e-361277f3a4a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Resources">
+      <UniqueIdentifier>{8f199f98-f8a3-4b2c-b50a-4caf6f8f4dfc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\DirectX12\Effects">
+      <UniqueIdentifier>{89f310e9-743f-449a-8cad-fe81d606b674}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
-      <Filter>PCH</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui.cpp">
-      <Filter>External\ImGui\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_demo.cpp">
-      <Filter>External\ImGui\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_draw.cpp">
-      <Filter>External\ImGui\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_tables.cpp">
-      <Filter>External\ImGui\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_widgets.cpp">
-      <Filter>External\ImGui\core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\backends\imgui_impl_dx12.cpp">
-      <Filter>External\ImGui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\IMGUI\backends\imgui_impl_win32.cpp">
-      <Filter>External\ImGui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
-      <Filter>External\DDSTextureLoader</Filter>
+      <Filter>=========\PCH</Filter>
     </ClCompile>
     <ClCompile Include="D12Engine.cpp">
       <Filter>App</Filter>
@@ -114,123 +96,207 @@
     <ClCompile Include="Editor\EditorLayer.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\D3D12Context.cpp">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClCompile>
     <ClCompile Include="Editor\EditorApplication.cpp">
       <Filter>Editor</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\LoadM3d.cpp">
-      <Filter>EngineCore\Animation</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\SkinnedData.cpp">
-      <Filter>EngineCore\Animation</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\MathHelper.cpp">
-      <Filter>EngineCore</Filter>
     </ClCompile>
     <ClCompile Include="Editor\ImGuiLayer.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\BlurFilter.cpp">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
+    <ClCompile Include="..\ThirdParty\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>=========\ThirdParty\DDSTextureLoader</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\GpuWaves.cpp">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui.cpp">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\SobelFilter.cpp">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_demo.cpp">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\FrameResource.cpp">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_draw.cpp">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Scene.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_tables.cpp">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_widgets.cpp">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\IMGUI\backends\imgui_impl_dx12.cpp">
+      <Filter>=========\ThirdParty\ImGui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\IMGUI\backends\imgui_impl_win32.cpp">
+      <Filter>=========\ThirdParty\ImGui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\ufbx\ufbx.c">
+      <Filter>=========\ThirdParty\ufbx</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Gizmo\Gizmo.cpp">
+      <Filter>Editor\Gizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Panels\SceneViewPanel.cpp">
+      <Filter>Editor\Panels</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Panels\ConsolePanel.cpp">
+      <Filter>Editor\Panels</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Input\SceneViewInputHandler.cpp">
+      <Filter>Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Input\EditorInputRouter.cpp">
+      <Filter>Editor\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Animation\SkinnedData.cpp">
+      <Filter>EngineCore\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp">
+      <Filter>EngineCore\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Input\InputSystem.cpp">
+      <Filter>EngineCore\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Logging\Logger.cpp">
+      <Filter>EngineCore\Logging</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Math\MathHelper.cpp">
+      <Filter>EngineCore\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Scene\Scene.cpp">
       <Filter>EngineCore\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp">
+    <ClCompile Include="EngineCore\Camera.cpp">
+      <Filter>EngineCore</Filter>
+    </ClCompile>
+    <ClCompile Include="AssetPipeline\Importers\LoadM3d.cpp">
+      <Filter>AssetPipeline\Importers</Filter>
+    </ClCompile>
+    <ClCompile Include="AssetPipeline\Importers\FbxImporter.cpp">
+      <Filter>AssetPipeline\Importers</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Resources\TextureManager.cpp">
+      <Filter>Renderer\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\D3D12Context.cpp">
       <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\D3D12RenderTarget.cpp">
       <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\SceneViewPanel.cpp">
-      <Filter>Editor</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Assets\TextureManager.cpp">
-      <Filter>Renderer\Assets</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp">
-      <Filter>EngineCore\InputSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp">
-      <Filter>EngineCore\InputSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp">
-      <Filter>EngineCore\InputSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp">
-      <Filter>EngineCore\InputSystem</Filter>
+    <ClCompile Include="Renderer\DirectX12\FrameResource.cpp">
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Camera.cpp">
-      <Filter>EngineCore\Scene\Camera</Filter>
+    <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp">
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\Gizmo.cpp">
-      <Filter>Editor\Viewport</Filter>
+    <ClCompile Include="Renderer\DirectX12\Effects\BlurFilter.cpp">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Logger\Logger.cpp">
-      <Filter>Editor\Logger</Filter>
+    <ClCompile Include="Renderer\DirectX12\Effects\GpuWaves.cpp">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\ConsolePanel.cpp">
-      <Filter>Editor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ufbx\ufbx.c">
-      <Filter>External\ufbx</Filter>
+    <ClCompile Include="Renderer\DirectX12\Effects\SobelFilter.cpp">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
-      <Filter>PCH</Filter>
+      <Filter>=========\PCH</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imconfig.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="Editor\EditorLayer.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imgui.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="Editor\EditorApplication.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imgui_internal.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="Editor\ImGuiLayer.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imstb_rectpack.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="..\ThirdParty\DDSTextureLoader\DDSTextureLoader12.h">
+      <Filter>=========\ThirdParty\DDSTextureLoader</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imstb_textedit.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_textedit.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\core\imstb_truetype.h">
-      <Filter>External\ImGui\core</Filter>
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_truetype.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\backends\imgui_impl_dx12.h">
-      <Filter>External\ImGui\backends</Filter>
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imconfig.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\IMGUI\backends\imgui_impl_win32.h">
-      <Filter>External\ImGui\backends</Filter>
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imgui.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h">
-      <Filter>External\DDSTextureLoader</Filter>
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imgui_internal.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\DxException.h">
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_rectpack.h">
+      <Filter>=========\ThirdParty\ImGui\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\IMGUI\backends\imgui_impl_dx12.h">
+      <Filter>=========\ThirdParty\ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\IMGUI\backends\imgui_impl_win32.h">
+      <Filter>=========\ThirdParty\ImGui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\ufbx\ufbx.h">
+      <Filter>=========\ThirdParty\ufbx</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Gizmo\Gizmo.h">
+      <Filter>Editor\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Panels\SceneViewPanel.h">
+      <Filter>Editor\Panels</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Panels\ConsolePanel.h">
+      <Filter>Editor\Panels</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Input\SceneViewInputHandler.h">
+      <Filter>Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Input\EditorInputRouter.h">
+      <Filter>Editor\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Animation\SkinnedData.h">
+      <Filter>EngineCore\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Input\InputSystem.h">
+      <Filter>EngineCore\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Input\GlobalInputHandler.h">
+      <Filter>EngineCore\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Logging\LogMessage.h">
+      <Filter>EngineCore\Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Logging\Logger.h">
+      <Filter>EngineCore\Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Math\MathHelper.h">
+      <Filter>EngineCore\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Platform\Windows\WinHandle.h">
+      <Filter>EngineCore\Platform\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Scene\SceneObject.h">
+      <Filter>EngineCore\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Scene\Transform.h">
+      <Filter>EngineCore\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Scene\Scene.h">
+      <Filter>EngineCore\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Camera.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\MsaaOption.h">
+    <ClInclude Include="EngineCore\GameTimer.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\RenderConfig.h">
@@ -239,151 +305,67 @@
     <ClInclude Include="EngineCore\StringUtil.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
+    <ClInclude Include="AssetPipeline\Importers\LoadM3d.h">
+      <Filter>AssetPipeline\Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="AssetPipeline\Importers\FbxImporter.h">
+      <Filter>AssetPipeline\Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Resources\TextureDesc.h">
+      <Filter>Renderer\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Resources\TextureManager.h">
+      <Filter>Renderer\Resources</Filter>
+    </ClInclude>
     <ClInclude Include="Renderer\DirectX12\D3D12Context.h">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClInclude>
-    <ClInclude Include="Editor\EditorLayer.h">
-      <Filter>Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Editor\EditorApplication.h">
-      <Filter>Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\WinHandle.h">
-      <Filter>EngineCore\Windows</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\LoadM3d.h">
-      <Filter>EngineCore\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\SkinnedData.h">
-      <Filter>EngineCore\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\MathHelper.h">
-      <Filter>EngineCore</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\GameTimer.h">
-      <Filter>EngineCore</Filter>
-    </ClInclude>
-    <ClInclude Include="Editor\ImGuiLayer.h">
-      <Filter>Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\BlurFilter.h">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\GpuWaves.h">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\SobelFilter.h">
-      <Filter>Renderer\DirectX12\Rendering\GPGPU</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\FrameResource.h">
-      <Filter>Renderer\DirectX12\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\Transform.h">
-      <Filter>EngineCore\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\SceneObject.h">
-      <Filter>EngineCore\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\Scene.h">
-      <Filter>EngineCore\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\SceneRenderer.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\D3D12RenderTarget.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\SceneViewPanel.h">
-      <Filter>Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Assets\TextureManager.h">
-      <Filter>Renderer\Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Assets\TextureDesc.h">
-      <Filter>Renderer\Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\RenderData.h">
-      <Filter>Renderer\DirectX12\Desc</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\MACRO.h">
-      <Filter>Renderer\DirectX12\Desc</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
-      <Filter>Renderer\DirectX12\Util</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\DirectX12\D3D12Util.h">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h">
-      <Filter>EngineCore\InputSystem</Filter>
+    <ClInclude Include="Renderer\DirectX12\DxException.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h">
-      <Filter>EngineCore\InputSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\InputSystem\InputSystem.h">
-      <Filter>EngineCore\InputSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h">
-      <Filter>EngineCore\InputSystem</Filter>
+    <ClInclude Include="Renderer\DirectX12\FrameResource.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\GeometryGenerator.h">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\MACRO.h">
+      <Filter>Renderer\DirectX12</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\MsaaOption.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h">
-      <Filter>Renderer\DirectX12\Util</Filter>
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Camera.h">
-      <Filter>EngineCore\Scene\Camera</Filter>
+    <ClInclude Include="Renderer\DirectX12\RenderData.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\Gizmo.h">
-      <Filter>Editor\Viewport</Filter>
+    <ClInclude Include="Renderer\DirectX12\SceneRenderer.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Logger\Logger.h">
-      <Filter>Editor\Logger</Filter>
+    <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
+      <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Logger\LogMessage.h">
-      <Filter>Editor\Logger</Filter>
+    <ClInclude Include="Renderer\DirectX12\Effects\SobelFilter.h">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\ConsolePanel.h">
-      <Filter>Editor</Filter>
+    <ClInclude Include="Renderer\DirectX12\Effects\BlurFilter.h">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="..\ufbx\ufbx.h">
-      <Filter>External\ufbx</Filter>
+    <ClInclude Include="Renderer\DirectX12\Effects\GpuWaves.h">
+      <Filter>Renderer\DirectX12\Effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resource\Shaders\Default.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\DepthComplexity.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\LightingUtil.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\WaveSim.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\Task_GS.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\TreeBillboard.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\Blur.hlsl">
-      <Filter>Shaders\PostProcess</Filter>
-    </None>
-    <None Include="Resource\Shaders\Sobel.hlsl">
-      <Filter>Shaders\PostProcess</Filter>
-    </None>
-    <None Include="Resource\Shaders\Tessellation.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Resource\Shaders\Outline.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="imgui.ini" />
+    <CopyFileToFolders Include="imgui.ini">
+      <Filter>=========</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

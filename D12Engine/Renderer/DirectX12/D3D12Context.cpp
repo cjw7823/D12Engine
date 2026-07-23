@@ -2,7 +2,7 @@
 #include "D3D12Context.h"
 #include "MACRO.h"
 
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Logging/Logger.h"
 
 using namespace Microsoft::WRL;
 
@@ -74,15 +74,22 @@ bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc
 	if (!mFenceEvent.Get())
 		ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 
+	mInitialized = true;
 	return true;
+}
+
+bool D3D12Context::IsInitialized() const
+{
+	return mInitialized;
 }
 
 void D3D12Context::Shutdown()
 {
+	mInitialized = false;
+
 	FlushCommandQueue();
 
 	//comptr들이지만 명시적 해제.
-
 	for (auto& buffer : mSwapChainBuffer)
 		buffer.Reset();
 

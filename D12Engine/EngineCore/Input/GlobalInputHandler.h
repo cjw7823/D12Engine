@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EditorInputRouter.h"
+#include "Editor/Input/EditorInputRouter.h"
 
 class GlobalInputHandler final : public IEditorInputHandler
 {

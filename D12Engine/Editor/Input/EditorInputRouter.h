@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "InputSystem.h"
+#include "EngineCore/Input/InputSystem.h"
 
 struct EditorPanelInputState
 {

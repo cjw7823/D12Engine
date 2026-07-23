@@ -12,8 +12,9 @@
 #include <dxgi1_5.h>				//For DXGI Interfaces
 
 #include "EngineCore/RenderConfig.h"
-#include "EngineCore/WinHandle.h"
-#include "EngineCore/MsaaOption.h"
+#include "EngineCore/Platform/Windows/WinHandle.h"
+
+#include "Renderer/DirectX12/MsaaOption.h"
 
 struct D3D12FrameContext
 {
@@ -76,6 +77,7 @@ public:
     D3D12Context& operator=(const D3D12Context&) = delete;
 
     bool Initialize(HWND hwnd, int width, int height, D3D12ContextDesc desc = {});
+    bool IsInitialized() const;
     void Shutdown();
 
     void ResizeSwapChain(int width, int height);
@@ -158,6 +160,8 @@ public:
     MsaaOption mMsaaOption{ 0 };
 
 private:
+    bool mInitialized = false;
+
     HWND mhWnd = nullptr;
     int mClientWidth = 1;
     int mClientHeight = 1;

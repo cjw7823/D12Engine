@@ -12,20 +12,21 @@
 
 #include "DirectX-Headers/d3dx12.h"
 
-#include "EngineCore/LoadM3d.h"
+#include "AssetPipeline/Importers/LoadM3d.h"
+
 #include "EngineCore/Camera.h"
-#include "EngineCore/Scene.h"
-#include "EngineCore/SceneObject.h"
-#include "EngineCore/Transform.h"
+#include "EngineCore/Scene/Scene.h"
+#include "EngineCore/Scene/SceneObject.h"
+#include "EngineCore/Scene/Transform.h"
 
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 #include "Renderer/DirectX12/FrameResource.h"
-#include "Renderer/DirectX12/GpuWaves.h"
-#include "Renderer/DirectX12/BlurFilter.h"
-#include "Renderer/DirectX12/SobelFilter.h"
-#include "Renderer/Assets/TextureManager.h"
+#include "Renderer/DirectX12/Effects/GpuWaves.h"
+#include "Renderer/DirectX12/Effects/BlurFilter.h"
+#include "Renderer/DirectX12/Effects/SobelFilter.h"
+#include "Renderer/Resources/TextureManager.h"
 
-#include "Editor/Gizmo.h"
+#include "Editor/Gizmo/Gizmo.h"
 
 class D3D12Context;
 class Scene;
@@ -148,12 +149,14 @@ private:
 	void BuildTreeBillboardGeometry(D3D12Context& context);
 	void BuildCylinderWithoutTopGeometry(D3D12Context& context);
 	void BuildBrickWallGeometry(D3D12Context& context);
+	void BuildFBXGeometry(D3D12Context& context);
 
 	void BuildRenderItems();
 	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
 	void BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex);
+	void BuildRenderItems_FBX(UINT& InstanceBufferIndex);
 	RenderItem* CreateRenderItem(const char* GeoName,
 		const char* submeshName,
 		D3D12_PRIMITIVE_TOPOLOGY topology,
@@ -269,9 +272,11 @@ private:
 	UINT mInstanceCount = 0;
 	UINT mVisibleInstanceCount = 0;
 
+	//For FBX Animation
+
+
 	//For Animation
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
-	SkinnedData mSkinnedInfo;
 	std::vector<M3DLoader::M3dMaterial> mSkinnedMats;
 	std::vector<std::wstring> mSkinnedTexturePaths;
 	std::vector<std::wstring> mSkinnedNormalTexturePaths;

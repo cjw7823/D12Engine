@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Renderer/DirectX12/D3D12Context.h"
-#include "EngineCore/MathHelper.h"
+#include "EngineCore/Math/MathHelper.h"
 #include <cstdint>
 #include <limits>
 #include <filesystem>

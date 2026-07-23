@@ -2,7 +2,7 @@
 #include "SceneViewInputHandler.h"
 
 #include "Renderer/DirectX12/SceneRenderer.h"
-#include "EngineCore/Scene.h"
+#include "EngineCore/Scene/Scene.h"
 
 SceneViewInputHandler::SceneViewInputHandler(SceneRenderer& sceneRenderer) : mSceneRenderer(sceneRenderer)
 {

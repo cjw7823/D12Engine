@@ -1,8 +1,8 @@
 #pragma once
 
 #include "DirectX-Headers/d3dx12.h"
-#include "EngineCore/MathHelper.h"
-#include "EngineCore/SkinnedData.h"
+#include "EngineCore/Math/MathHelper.h"
+#include "EngineCore/Animation/SkinnedData.h"
 
 #include <stdint.h>
 #include <string>
@@ -285,7 +285,7 @@ private:
 
 struct SkinnedModelInstance
 {
-	SkinnedData* skinnedInfo = nullptr;
+	SkinnedData skinnedInfo;
 	std::vector<DirectX::XMFLOAT4X4> finalTransforms;
 	std::string clipName;
 	float timePos = 0.0f;
@@ -296,9 +296,9 @@ struct SkinnedModelInstance
 	{
 		timePos += dt;
 
-		if (timePos > skinnedInfo->GetClipEndTime(clipName))
+		if (timePos > skinnedInfo.GetClipEndTime(clipName))
 			timePos = 0.0f;
 
-		skinnedInfo->GetFinalTransforms(clipName, timePos, finalTransforms);
+		skinnedInfo.GetFinalTransforms(clipName, timePos, finalTransforms);
 	}
 };

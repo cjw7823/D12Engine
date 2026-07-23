@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "EditorApplication.h"
-#include "Renderer/Assets/TextureManager.h"
+#include "Renderer/Resources/TextureManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -343,7 +343,7 @@ LRESULT EditorApplication::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		// SetWindowPos 등의 API호출로도 발생.
 		mApplicationWidth = LOWORD(lParam);
 		mApplicationHeight = HIWORD(lParam);
-		if (mD3D12Context.GetDevice() && wParam != SIZE_MINIMIZED && !mResizing)
+		if (mD3D12Context.IsInitialized() && wParam != SIZE_MINIMIZED && !mResizing)
 			mD3D12Context.ResizeSwapChain(mApplicationWidth, mApplicationHeight);
 		return 0;
 
@@ -354,7 +354,8 @@ LRESULT EditorApplication::MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 	case WM_EXITSIZEMOVE:
 		mResizing = false;
 		mAppPaused = false;
-		mD3D12Context.ResizeSwapChain(mApplicationWidth, mApplicationHeight);
+		if (mD3D12Context.IsInitialized())
+			mD3D12Context.ResizeSwapChain(mApplicationWidth, mApplicationHeight);
 		return 0;
 	case WM_GETMINMAXINFO:
 		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 200;

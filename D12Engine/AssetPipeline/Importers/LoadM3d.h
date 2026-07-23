@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SkinnedData.h"
+#include "EngineCore/Animation/SkinnedData.h"
 #include <fstream>
 
 class M3DLoader

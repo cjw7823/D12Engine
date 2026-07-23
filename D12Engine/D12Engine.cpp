@@ -5,7 +5,7 @@
 #endif
 
 #include "Editor/EditorApplication.h"
-#include "EngineCore/DxException.h"
+#include "Renderer/DirectX12/DxException.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")

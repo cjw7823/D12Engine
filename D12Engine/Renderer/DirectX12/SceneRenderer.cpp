@@ -3,13 +3,15 @@
 
 #include "D3D12Context.h"
 #include "EngineCore/GameTimer.h"
-#include "EngineCore/Scene.h"
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Scene/Scene.h"
+#include "EngineCore/Logging/Logger.h"
 
 #include "Renderer/DirectX12/MACRO.h"
 #include "Renderer/DirectX12/GeometryGenerator.h"
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/DirectX12/PipelineStateFactory.h"
+
+#include "AssetPipeline/Importers/FbxImporter.h"
 
 #include <filesystem>
 #include <cassert>
@@ -1077,6 +1079,7 @@ void SceneRenderer::BuildGeometry(D3D12Context& context)
 	BuildTreeBillboardGeometry(context);
 	BuildCylinderWithoutTopGeometry(context);
 	BuildBrickWallGeometry(context);
+	BuildFBXGeometry(context);
 }
 
 void SceneRenderer::BuildShapeGeometry(D3D12Context& context)
@@ -1529,6 +1532,57 @@ void SceneRenderer::BuildBrickWallGeometry(D3D12Context& context)
 	mGeometries[geo->Name] = std::move(geo);
 }
 
+void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
+{
+	MeshData fbxData = FbxImporter::ImportStaticMesh("Resource/Models/Dismissing Gesture.fbx");
+
+	const UINT vbByteSize = static_cast<UINT>(fbxData.Vertices.size() * sizeof(Vertex));
+	const UINT ibByteSize = static_cast<UINT>(fbxData.Indices32.size() *
+			sizeof(std::uint32_t));
+
+	auto geometry = std::make_unique<MeshGeometry>();
+	geometry->Name = "fbxPreviewGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, geometry->VertexBufferCPU.GetAddressOf()));
+	CopyMemory(geometry->VertexBufferCPU->GetBufferPointer(), fbxData.Vertices.data(), vbByteSize);
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, geometry->IndexBufferCPU.GetAddressOf()));
+	CopyMemory(geometry->IndexBufferCPU->GetBufferPointer(), fbxData.Indices32.data(), ibByteSize);
+
+	geometry->VertexBufferGPU =	D3D12Util::CreateDefaultBuffer(
+		context.GetDevice(),
+		context.GetCommandList(),
+		fbxData.Vertices.data(),
+		vbByteSize,
+		geometry->VertexBufferUploader);
+
+	geometry->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(
+		context.GetDevice(),
+		context.GetCommandList(),
+		fbxData.Indices32.data(),
+		ibByteSize,
+		geometry->IndexBufferUploader);
+
+	geometry->VertexByteStride = sizeof(Vertex);
+	geometry->VertexBufferByteSize = vbByteSize;
+	geometry->IndexFormat = DXGI_FORMAT_R32_UINT;
+	geometry->IndexBufferByteSize = ibByteSize;
+
+	SubmeshGeometry submesh;
+	submesh.IndexCount = static_cast<UINT>(fbxData.Indices32.size());
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
+	submesh.VertexCount = static_cast<UINT>(fbxData.Vertices.size());
+
+	DirectX::BoundingBox::CreateFromPoints(
+		submesh.Bounds,
+		fbxData.Vertices.size(),
+		&fbxData.Vertices.front().Position,
+		sizeof(Vertex));
+
+	geometry->DrawArgs["all"] = submesh;
+	mGeometries[geometry->Name] = std::move(geometry);
+}
+
 void SceneRenderer::BuildRenderItems()
 {
 	UINT StartInstanceLocation = 0;
@@ -1536,10 +1590,11 @@ void SceneRenderer::BuildRenderItems()
 	BuildRenderItems_InMirror(StartInstanceLocation);
 	BuildRenderItems_Gizmo(StartInstanceLocation);
 	BuildRenderItems_SkinnedModel(StartInstanceLocation);
+	BuildRenderItems_FBX(StartInstanceLocation);
 
 	mInstanceCount = StartInstanceLocation;
 
-#ifndef NDEBUG
+#if defined(DEBUG) || defined(_DEBUG)
 	UINT expectedStartLocation = 0;
 	for (const auto& renderItem : mAllRenderItems)
 	{
@@ -1849,6 +1904,27 @@ void SceneRenderer::BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex)
 		ri->SkinnedModelInstance = mSkinnedModelInstance.get();
 		FinalizeRenderItem(ri, InstanceBufferIndex);
 	}
+}
+
+void SceneRenderer::BuildRenderItems_FBX(UINT& InstanceBufferIndex)
+{
+	RenderItem* fbxRenderItem =	CreateRenderItem("fbxPreviewGeo", "all",
+		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+		{ RenderLayer::Opaque });
+
+	TransformComponent transform;
+
+	// Importer에서 단위를 1m로 통일했으므로
+	// 우선 추가 Scale 없이 렌더링합니다.
+	transform.Position = { 5.0f, 0.0f, 0.0f };
+	transform.Rotation = { 0.0f, 180.0f, 0.0f };
+	transform.Scale = { 0.03f, 0.03f, 0.03f };
+
+	AddInstance(fbxRenderItem, "defaultMat", L"FBX 미리보기", transform);
+
+	//fbxRenderItem->SkinnedCBIndex = 1;
+	//fbxRenderItem->SkinnedModelInstance = mSkinnedModelInstance.get();
+	FinalizeRenderItem(fbxRenderItem, InstanceBufferIndex);
 }
 
 RenderItem* SceneRenderer::CreateRenderItem(const char* GeoName, const char* submeshName, D3D12_PRIMITIVE_TOPOLOGY topology, std::vector<RenderLayer> layer, bool InMirror)
@@ -2314,14 +2390,13 @@ void SceneRenderer::LoadSkinnedModel_dx12ex(D3D12Context& context)
 	std::vector<M3DLoader::SkinnedVertex> vertices;
 	std::vector<std::uint16_t> indices;
 
+	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
 	M3DLoader m3dLoader;
 	std::vector<M3DLoader::Subset> skinnedSubsets;
 	m3dLoader.LoadM3d("Resource\\Models\\soldier.m3d", vertices, indices,
-		skinnedSubsets, mSkinnedMats, mSkinnedInfo);
+		skinnedSubsets, mSkinnedMats, mSkinnedModelInstance->skinnedInfo);
 
-	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
-	mSkinnedModelInstance->skinnedInfo = &mSkinnedInfo;
-	mSkinnedModelInstance->finalTransforms.resize(mSkinnedInfo.BoneCount());
+	mSkinnedModelInstance->finalTransforms.resize(mSkinnedModelInstance->skinnedInfo.BoneCount());
 	mSkinnedModelInstance->clipName = "Take1";
 	mSkinnedModelInstance->timePos = 0.0f;
 

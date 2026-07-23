@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Logging/Logger.h"
 
 #include <mutex>
 #include <vector>

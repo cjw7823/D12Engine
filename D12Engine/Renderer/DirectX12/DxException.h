@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include <string>
 #include <comdef.h>
-#include "StringUtil.h"
+#include "EngineCore/StringUtil.h"
 
 class DxException
 {

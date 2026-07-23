@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "Transform.h"
 #include "Renderer/DirectX12/RenderData.h"
-#include "Renderer/Assets/TextureDesc.h"
+#include "Renderer/Resources/TextureDesc.h"
 
 using SceneObjectID = std::uint64_t;
 

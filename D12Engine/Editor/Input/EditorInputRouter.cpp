@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "EditorInputRouter.h"
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Logging/Logger.h"
 
 void EditorInputRouter::SetGlobalHandler(IEditorInputHandler* handler)
 {

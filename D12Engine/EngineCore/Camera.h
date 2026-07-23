@@ -1,7 +1,8 @@
 #pragma once
 
 #include <DirectXMath.h>
-#include "EngineCore/MathHelper.h"
+
+#include "EngineCore/Math/MathHelper.h"
 
 class Camera
 {

@@ -9,16 +9,16 @@
 
 #include "Editor/EditorLayer.h"
 #include "Editor/ImGuiLayer.h"
+#include "Editor/Input/EditorInputRouter.h"
+#include "Editor/Input/SceneViewInputHandler.h"
 
 #include "Renderer/DirectX12/D3D12Context.h"
 #include "Renderer/DirectX12/SceneRenderer.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 
-#include "EngineCore/Scene.h"
-#include "EngineCore/InputSystem/InputSystem.h"
-#include "EngineCore/InputSystem/EditorInputRouter.h"
-#include "EngineCore/InputSystem/GlobalInputHandler.h"
-#include "EngineCore/InputSystem/SceneViewInputHandler.h"
+#include "EngineCore/Scene/Scene.h"
+#include "EngineCore/Input/InputSystem.h"
+#include "EngineCore/Input/GlobalInputHandler.h"
 
 /*
 	EditorApplication

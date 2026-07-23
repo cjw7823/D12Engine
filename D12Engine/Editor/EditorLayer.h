@@ -1,8 +1,8 @@
 #pragma once
 
 #include <filesystem>
-#include "Editor/SceneViewPanel.h"
-#include "Editor/ConsolePanel.h"
+#include "Editor/Panels/SceneViewPanel.h"
+#include "Editor/Panels/ConsolePanel.h"
 
 #include "Renderer/DirectX12/SceneRenderer.h"
 

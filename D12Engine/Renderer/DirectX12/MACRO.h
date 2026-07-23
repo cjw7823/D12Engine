@@ -1,8 +1,10 @@
 #pragma once
 
 #include <Windows.h>
+
 #include "EngineCore/StringUtil.h"
-#include "EngineCore/DxException.h"
+
+#include "Renderer/DirectX12/DxException.h"
 
 #ifndef ReleaseCom
 #define ReleaseCom(x) { if(x) { x->Release(); x = 0; } }

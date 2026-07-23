@@ -105,7 +105,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)IMGUI\core;$(solutiondir)IMGUI\backends;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)\ThirdParty;$(solutiondir)\ThirdParty\IMGUI\core;$(solutiondir)\ThirdParty\IMGUI\backends;$(ProjectDir);$(solutiondir)\ThirdParty\ufbx;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,7 +130,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)IMGUI\core;$(solutiondir)IMGUI\backends;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(solutiondir);$(solutiondir)\ThirdParty;$(solutiondir)\ThirdParty\IMGUI\core;$(solutiondir)\ThirdParty\IMGUI\backends;$(ProjectDir);$(solutiondir)\ThirdParty\ufbx;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,173 +141,137 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\DDSTextureLoader\DDSTextureLoader12.cpp">
+    <ClCompile Include="..\ThirdParty\DDSTextureLoader\DDSTextureLoader12.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\backends\imgui_impl_dx12.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\backends\imgui_impl_dx12.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\backends\imgui_impl_win32.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\backends\imgui_impl_win32.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_demo.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_demo.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_draw.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_draw.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_tables.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_tables.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\IMGUI\core\imgui_widgets.cpp">
+    <ClCompile Include="..\ThirdParty\IMGUI\core\imgui_widgets.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\ufbx\ufbx.c">
+    <ClCompile Include="..\ThirdParty\ufbx\ufbx.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="AssetPipeline\Importers\FbxImporter.cpp" />
+    <ClCompile Include="AssetPipeline\Importers\LoadM3d.cpp" />
     <ClCompile Include="D12Engine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Editor\ConsolePanel.cpp" />
     <ClCompile Include="Editor\EditorApplication.cpp" />
     <ClCompile Include="Editor\EditorLayer.cpp" />
-    <ClCompile Include="Editor\Gizmo.cpp" />
+    <ClCompile Include="Editor\Gizmo\Gizmo.cpp" />
     <ClCompile Include="Editor\ImGuiLayer.cpp" />
-    <ClCompile Include="EngineCore\Logger\Logger.cpp" />
-    <ClCompile Include="Editor\SceneViewPanel.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\EditorInputRouter.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\GlobalInputHandler.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\InputSystem.cpp" />
-    <ClCompile Include="EngineCore\InputSystem\SceneViewInputHandler.cpp" />
-    <ClCompile Include="EngineCore\LoadM3d.cpp" />
-    <ClCompile Include="EngineCore\MathHelper.cpp" />
-    <ClCompile Include="EngineCore\Scene.cpp" />
-    <ClCompile Include="EngineCore\SkinnedData.cpp" />
+    <ClCompile Include="Editor\Input\EditorInputRouter.cpp" />
+    <ClCompile Include="Editor\Input\SceneViewInputHandler.cpp" />
+    <ClCompile Include="Editor\Panels\ConsolePanel.cpp" />
+    <ClCompile Include="Editor\Panels\SceneViewPanel.cpp" />
+    <ClCompile Include="EngineCore\Animation\SkinnedData.cpp" />
+    <ClCompile Include="EngineCore\Camera.cpp" />
+    <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp" />
+    <ClCompile Include="EngineCore\Input\InputSystem.cpp" />
+    <ClCompile Include="EngineCore\Logging\Logger.cpp" />
+    <ClCompile Include="EngineCore\Math\MathHelper.cpp" />
+    <ClCompile Include="EngineCore\Scene\Scene.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Renderer\Assets\TextureManager.cpp" />
-    <ClCompile Include="Renderer\DirectX12\BlurFilter.cpp" />
-    <ClCompile Include="EngineCore\Camera.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12Context.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12RenderTarget.cpp" />
     <ClCompile Include="Renderer\DirectX12\D3D12Util.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Effects\BlurFilter.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Effects\GpuWaves.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Effects\SobelFilter.cpp" />
     <ClCompile Include="Renderer\DirectX12\FrameResource.cpp" />
     <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp" />
-    <ClCompile Include="Renderer\DirectX12\GpuWaves.cpp" />
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp" />
     <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp" />
-    <ClCompile Include="Renderer\DirectX12\SobelFilter.cpp" />
+    <ClCompile Include="Renderer\Resources\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\DDSTextureLoader\DDSTextureLoader12.h" />
-    <ClInclude Include="..\IMGUI\backends\imgui_impl_dx12.h" />
-    <ClInclude Include="..\IMGUI\backends\imgui_impl_win32.h" />
-    <ClInclude Include="..\IMGUI\core\imconfig.h" />
-    <ClInclude Include="..\IMGUI\core\imgui.h" />
-    <ClInclude Include="..\IMGUI\core\imgui_internal.h" />
-    <ClInclude Include="..\IMGUI\core\imstb_rectpack.h" />
-    <ClInclude Include="..\IMGUI\core\imstb_textedit.h" />
-    <ClInclude Include="..\IMGUI\core\imstb_truetype.h" />
-    <ClInclude Include="..\ufbx\ufbx.h" />
-    <ClInclude Include="Editor\ConsolePanel.h" />
+    <ClInclude Include="..\ThirdParty\DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\backends\imgui_impl_win32.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imconfig.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imgui.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imgui_internal.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_rectpack.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_textedit.h" />
+    <ClInclude Include="..\ThirdParty\IMGUI\core\imstb_truetype.h" />
+    <ClInclude Include="..\ThirdParty\ufbx\ufbx.h" />
+    <ClInclude Include="AssetPipeline\Importers\FbxImporter.h" />
+    <ClInclude Include="AssetPipeline\Importers\LoadM3d.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
+    <ClInclude Include="Editor\Gizmo\Gizmo.h" />
     <ClInclude Include="Editor\ImGuiLayer.h" />
-    <ClInclude Include="EngineCore\Logger\Logger.h" />
-    <ClInclude Include="EngineCore\Logger\LogMessage.h" />
-    <ClInclude Include="Editor\SceneViewPanel.h" />
-    <ClInclude Include="EngineCore\DxException.h" />
-    <ClInclude Include="EngineCore\GameTimer.h" />
-    <ClInclude Include="EngineCore\InputSystem\EditorInputRouter.h" />
-    <ClInclude Include="EngineCore\InputSystem\GlobalInputHandler.h" />
-    <ClInclude Include="EngineCore\InputSystem\InputSystem.h" />
-    <ClInclude Include="EngineCore\InputSystem\SceneViewInputHandler.h" />
-    <ClInclude Include="EngineCore\LoadM3d.h" />
-    <ClInclude Include="EngineCore\MathHelper.h" />
-    <ClInclude Include="EngineCore\MsaaOption.h" />
-    <ClInclude Include="EngineCore\RenderConfig.h" />
-    <ClInclude Include="EngineCore\Scene.h" />
-    <ClInclude Include="EngineCore\SceneObject.h" />
-    <ClInclude Include="EngineCore\SkinnedData.h" />
-    <ClInclude Include="EngineCore\StringUtil.h" />
-    <ClInclude Include="EngineCore\Transform.h" />
-    <ClInclude Include="EngineCore\WinHandle.h" />
-    <ClInclude Include="pch.h" />
-    <ClInclude Include="Renderer\Assets\TextureDesc.h" />
-    <ClInclude Include="Renderer\Assets\TextureManager.h" />
-    <ClInclude Include="Renderer\DirectX12\BlurFilter.h" />
+    <ClInclude Include="Editor\Input\EditorInputRouter.h" />
+    <ClInclude Include="Editor\Input\SceneViewInputHandler.h" />
+    <ClInclude Include="Editor\Panels\ConsolePanel.h" />
+    <ClInclude Include="Editor\Panels\SceneViewPanel.h" />
+    <ClInclude Include="EngineCore\Animation\SkinnedData.h" />
     <ClInclude Include="EngineCore\Camera.h" />
+    <ClInclude Include="EngineCore\GameTimer.h" />
+    <ClInclude Include="EngineCore\Input\GlobalInputHandler.h" />
+    <ClInclude Include="EngineCore\Input\InputSystem.h" />
+    <ClInclude Include="EngineCore\Logging\Logger.h" />
+    <ClInclude Include="EngineCore\Logging\LogMessage.h" />
+    <ClInclude Include="EngineCore\Math\MathHelper.h" />
+    <ClInclude Include="EngineCore\Platform\Windows\WinHandle.h" />
+    <ClInclude Include="EngineCore\RenderConfig.h" />
+    <ClInclude Include="EngineCore\Scene\Scene.h" />
+    <ClInclude Include="EngineCore\Scene\SceneObject.h" />
+    <ClInclude Include="EngineCore\Scene\Transform.h" />
+    <ClInclude Include="EngineCore\StringUtil.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12Context.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12RenderTarget.h" />
     <ClInclude Include="Renderer\DirectX12\D3D12Util.h" />
+    <ClInclude Include="Renderer\DirectX12\DxException.h" />
+    <ClInclude Include="Renderer\DirectX12\Effects\BlurFilter.h" />
+    <ClInclude Include="Renderer\DirectX12\Effects\GpuWaves.h" />
+    <ClInclude Include="Renderer\DirectX12\Effects\SobelFilter.h" />
     <ClInclude Include="Renderer\DirectX12\FrameResource.h" />
     <ClInclude Include="Renderer\DirectX12\GeometryGenerator.h" />
-    <ClInclude Include="Editor\Gizmo.h" />
-    <ClInclude Include="Renderer\DirectX12\GpuWaves.h" />
     <ClInclude Include="Renderer\DirectX12\MACRO.h" />
+    <ClInclude Include="Renderer\DirectX12\MsaaOption.h" />
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h" />
     <ClInclude Include="Renderer\DirectX12\RenderData.h" />
     <ClInclude Include="Renderer\DirectX12\SceneRenderer.h" />
-    <ClInclude Include="Renderer\DirectX12\SobelFilter.h" />
     <ClInclude Include="Renderer\DirectX12\UploadBuffer.h" />
+    <ClInclude Include="Renderer\Resources\TextureDesc.h" />
+    <ClInclude Include="Renderer\Resources\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="imgui.ini">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <None Include="Resource\Shaders\LightingUtil.hlsli">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Default.hlsl">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\WaveSim.hlsl">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\DepthComplexity.hlsl">
-      <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\Resource\Shaders</DestinationFolders>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Blur.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Resource\Shaders\Task_GS.hlsl">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Resource\Shaders\TreeBillboard.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Sobel.hlsl">
-      <FileType>Document</FileType>
-    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -603,16 +567,6 @@
       <DependsOn>@(ShaderInclude)</DependsOn>
       <Defines>$(SkinnedDefines)</Defines>
     </ShaderCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Tessellation.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resource\Shaders\Outline.hlsl">
-      <FileType>Document</FileType>
-    </None>
   </ItemGroup>
   <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
     <MakeDir Directories="$(ShaderDir)" />

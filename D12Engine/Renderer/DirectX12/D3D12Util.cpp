@@ -1,8 +1,10 @@
 #include "pch.h"
 #include "D3D12Util.h"
-#include "EngineCore/DxException.h"
+
+#include "Renderer/DirectX12/DxException.h"
+
 #include "EngineCore/StringUtil.h"
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Logging/Logger.h"
 #include "MACRO.h"
 
 using namespace Microsoft::WRL;

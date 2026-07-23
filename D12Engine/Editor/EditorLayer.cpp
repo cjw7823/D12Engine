@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "EditorLayer.h"
 
-#include "EngineCore/Scene.h"
-#include "EngineCore/SceneObject.h"
+#include "EngineCore/Scene/Scene.h"
+#include "EngineCore/Scene/SceneObject.h"
 #include "EngineCore/StringUtil.h"
 
 #include "Renderer/DirectX12/D3D12Util.h"

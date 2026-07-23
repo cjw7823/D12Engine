@@ -1,7 +1,7 @@
 #pragma once
 
 #include "imgui.h"
-#include "EngineCore/InputSystem/EditorInputRouter.h"
+#include "Editor/Input/EditorInputRouter.h"
 
 class SceneViewPanel
 {
