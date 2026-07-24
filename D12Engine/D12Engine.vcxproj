@@ -191,7 +191,7 @@
     <ClCompile Include="Editor\Input\SceneViewInputHandler.cpp" />
     <ClCompile Include="Editor\Panels\ConsolePanel.cpp" />
     <ClCompile Include="Editor\Panels\SceneViewPanel.cpp" />
-    <ClCompile Include="EngineCore\Animation\SkinnedData.cpp" />
+    <ClCompile Include="EngineCore\Animation\SkeletalMesh.cpp" />
     <ClCompile Include="EngineCore\Camera.cpp" />
     <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp" />
     <ClCompile Include="EngineCore\Input\InputSystem.cpp" />
@@ -211,6 +211,7 @@
     <ClCompile Include="Renderer\DirectX12\FrameResource.cpp" />
     <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp" />
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp" />
+    <ClCompile Include="Renderer\DirectX12\RenderData.cpp" />
     <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp" />
     <ClCompile Include="Renderer\Resources\TextureManager.cpp" />
   </ItemGroup>
@@ -227,6 +228,7 @@
     <ClInclude Include="..\ThirdParty\ufbx\ufbx.h" />
     <ClInclude Include="AssetPipeline\Importers\FbxImporter.h" />
     <ClInclude Include="AssetPipeline\Importers\LoadM3d.h" />
+    <ClInclude Include="EngineCore\Animation\SkeletalMesh.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
     <ClInclude Include="Editor\Gizmo\Gizmo.h" />
@@ -235,7 +237,6 @@
     <ClInclude Include="Editor\Input\SceneViewInputHandler.h" />
     <ClInclude Include="Editor\Panels\ConsolePanel.h" />
     <ClInclude Include="Editor\Panels\SceneViewPanel.h" />
-    <ClInclude Include="EngineCore\Animation\SkinnedData.h" />
     <ClInclude Include="EngineCore\Camera.h" />
     <ClInclude Include="EngineCore\GameTimer.h" />
     <ClInclude Include="EngineCore\Input\GlobalInputHandler.h" />

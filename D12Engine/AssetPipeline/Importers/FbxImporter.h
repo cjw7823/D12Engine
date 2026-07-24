@@ -5,6 +5,8 @@
 
 #include "Renderer/DirectX12/RenderData.h"
 
+#include "EngineCore/Animation/skeletalMesh.h"
+
 struct ufbx_scene;
 
 class FbxImporter
@@ -22,8 +24,19 @@ public:
     [[nodiscard]]
     static MeshData ImportStaticMesh(const std::filesystem::path& filePath);
     [[nodiscard]]
-    static MeshData ImportSkeletalMesh(const std::filesystem::path& filePath);
+    static SkeletalMesh ImportSkeletalMesh(const std::filesystem::path& filePath);
+
+private:
     [[nodiscard]]
     static ScenePtr LoadScene(const std::filesystem::path& filePath);
     static void PrintSceneInfo(const ufbx_scene& scene);
+
+    [[nodiscard]]
+    static SkeletonAsset BuildSkeletonAsset(const ufbx_scene& scene, std::unordered_map<std::uint32_t, JointIndex>& outNodeIdToJointIndex);
+
+    [[nodiscard]]
+    static std::vector<SkeletalSubmesh> BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex);
+
+    [[nodiscard]]
+    static std::unordered_map<std::string, AnimationClip> ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skeleton, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex);
 };

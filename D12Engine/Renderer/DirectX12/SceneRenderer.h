@@ -273,7 +273,7 @@ private:
 	UINT mVisibleInstanceCount = 0;
 
 	//For FBX Animation
-
+	std::unordered_map<std::string, SkeletalMesh> mSkeletalMeshes;
 
 	//For Animation
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;

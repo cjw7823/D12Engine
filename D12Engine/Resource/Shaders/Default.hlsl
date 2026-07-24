@@ -94,7 +94,7 @@ struct VertexIn
     float3 Tangent : TANGENT;
     float2 TexC : TEXCOORD;
 #ifdef SKINNED
-    float3 BoneWeights : WEIGHTS;
+    float4 BoneWeights : WEIGHTS;
     uint4 BoneIndices : BONEINDICES;
 #endif
 };
@@ -144,7 +144,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     weights[0] = vin.BoneWeights.x;
     weights[1] = vin.BoneWeights.y;
     weights[2] = vin.BoneWeights.z;
-    weights[3] = 1.0f - weights[0] - weights[1] - weights[2];
+    weights[3] = vin.BoneWeights.w;
 
     float3 posL = float3(0.0f, 0.0f, 0.0f);
     float3 normalL = float3(0.0f, 0.0f, 0.0f);

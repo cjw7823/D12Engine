@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace
 {
@@ -39,6 +41,30 @@ namespace
             static_cast<float>(value.x),
             static_cast<float>(value.y)
         };
+    }
+    
+    DirectX::XMFLOAT4X4 ToFloat4x4(const ufbx_matrix& value)
+    {
+        return DirectX::XMFLOAT4X4(
+            static_cast<float>(value.cols[0].x),
+            static_cast<float>(value.cols[0].y),
+            static_cast<float>(value.cols[0].z),
+            0.0f,
+
+            static_cast<float>(value.cols[1].x),
+            static_cast<float>(value.cols[1].y),
+            static_cast<float>(value.cols[1].z),
+            0.0f,
+
+            static_cast<float>(value.cols[2].x),
+            static_cast<float>(value.cols[2].y),
+            static_cast<float>(value.cols[2].z),
+            0.0f,
+
+            static_cast<float>(value.cols[3].x),
+            static_cast<float>(value.cols[3].y),
+            static_cast<float>(value.cols[3].z),
+            1.0f);
     }
 }
 
@@ -77,14 +103,14 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
         const ufbx_matrix& geometryToWorld = node->geometry_to_world;
         const ufbx_matrix normalMatrix = ufbx_matrix_for_normals(&geometryToWorld);
 
-        //fbxx의 face는 삼각형만이 아님. 주의.
+        //fbx의 face는 삼각형만이 아님. 주의.
         std::vector<std::uint32_t> triangleIndices(mesh->max_face_triangles * 3);
         for (std::size_t faceIndex = 0; faceIndex < mesh->faces.count; ++faceIndex)
         {
             const ufbx_face face = mesh->faces.data[faceIndex];
             if (face.num_indices < 3) continue;
 
-            // FBX의 hole face는 렌더링하지 않습니다.
+            // FBX의 hole face는 렌더링 X
             if (faceIndex < mesh->face_hole.count && mesh->face_hole.data[faceIndex])
                 continue;
 
@@ -95,7 +121,7 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
                 face);
 
             const std::size_t indexCount = static_cast<std::size_t>(triangleCount) * 3;
-            for (std::size_t i = 0; i < indexCount; ++i)
+            for (std::size_t i = 0; i < indexCount; i++)
             {
                 const std::uint32_t meshIndex = triangleIndices[i];
 
@@ -130,7 +156,7 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
                     texCoord = ufbx_get_vertex_vec2(&mesh->vertex_uv, meshIndex);
                 }
 
-                Vertex vertex;
+                Vertex vertex{};
                 vertex.Position = ToFloat3(position);
                 vertex.Normal = ToFloat3(normal);
                 vertex.TangentU = ToFloat3(tangent);
@@ -153,49 +179,18 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
     return result;
 }
 
-struct ImpoertedBone
-{
-    const ufbx_node* Node = nullptr;
-    const ufbx_skin_cluster* Cluster = nullptr;
-
-    int ParentIndex = -1;
-};
-
-std::unordered_map<std::uint32_t, std::uint32_t> nodeIdtoBoneIndex;
-MeshData FbxImporter::ImportSkeletalMesh(const std::filesystem::path& filePath)
+SkeletalMesh FbxImporter::ImportSkeletalMesh(const std::filesystem::path& filePath)
 {
     ScenePtr scene = LoadScene(filePath);
-    MeshData result;
-    SkinnedData skinnedInfo;
-    for (const ufbx_node* node : scene->nodes)
-    {
-        const ufbx_mesh* mesh = node->mesh;
 
-        if (mesh->skin_deformers.count == 0)
-        {
-            //정적 메시
-        }
-        else if (mesh->skin_deformers.count == 1) //현재는 한개만.
-        {
-            const ufbx_skin_deformer* skin = mesh->skin_deformers[0];
+    std::unordered_map<std::uint32_t, JointIndex> nodeIdToJointIndex;
+    SkeletonAsset skeleton = BuildSkeletonAsset(*scene, nodeIdToJointIndex);
 
-            /*
-                mesh
-                 └─ skin_deformers[0]
-                     ├─ clusters[]
-                     │   ├─ bone_node
-                     │   └─ geometry_to_bone
-                     ├─ vertices[]
-                     └─ weights[]
-            */
-            for (const ufbx_skin_cluster* cluster : skin->clusters)
-            {
-                const ufbx_node* boneNode = cluster->bone_node;
-            }
-        }
-    }
+    std::vector<SkeletalSubmesh> submeshes= BuildSkeletalSubmeshes(*scene, nodeIdToJointIndex);
 
-    return result;
+    std::unordered_map<std::string, AnimationClip> anims = ImportAnimations(*scene, skeleton, nodeIdToJointIndex);
+
+    return SkeletalMesh{ std::move(skeleton), std::move(submeshes), std::move(anims) };
 }
 
 FbxImporter::ScenePtr FbxImporter::LoadScene(
@@ -318,4 +313,544 @@ void FbxImporter::PrintSceneInfo(const ufbx_scene& scene)
     oss << "===============================\n\n";
 
     Logger::Info(oss.str());
+}
+
+SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unordered_map<std::uint32_t, JointIndex>& outNodeIdToJointIndex)
+{
+    outNodeIdToJointIndex.clear();
+
+    SkeletonAsset skeleton;
+
+    //서브메시 순회하며 노드 id 수집
+    std::unordered_set<std::uint32_t> requiredSkeletonNodeIds;
+    for (const ufbx_node* node : scene.nodes)
+    {
+        if (node == nullptr || node->mesh == nullptr) continue;
+
+        const ufbx_mesh* mesh = node->mesh;
+        if (mesh->skin_deformers.count == 0) continue;
+        if (mesh->skin_deformers.count != 1)
+        {
+            throw DxException(
+                E_NOTIMPL,
+                L"Only one skin deformer per mesh is supported.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        ufbx_skin_deformer* skin = mesh->skin_deformers[0]; // 서브메시 한개
+        /*
+            mesh
+                └─ skin_deformers[0]
+                    ├─ clusters[]
+                    │   ├─ bone_node
+                    │   └─ geometry_to_bone
+                    ├─ vertices[]
+                    └─ weights[]
+
+            bone node들 탐색.
+        */
+        for (const ufbx_skin_cluster* cluster : skin->clusters)
+        {
+            if (cluster == nullptr || cluster->bone_node == nullptr)
+            {
+                throw DxException(
+                    E_FAIL,
+                    L"Skin contains an invalid cluster.",
+                    AnsiToWString(__FILE__),
+                    __LINE__);
+            }
+
+            const ufbx_node* jointNode = cluster->bone_node;
+            while (jointNode != nullptr)
+            {
+                requiredSkeletonNodeIds.insert(jointNode->typed_id);
+                jointNode = jointNode->parent;
+            }
+        }
+    }
+
+    if (requiredSkeletonNodeIds.empty())
+    {
+        throw DxException(
+            E_FAIL,
+            L"FBX contains no skinned mesh or skeleton.",
+            AnsiToWString(__FILE__),
+            __LINE__);
+    }
+
+    //Joint를 ufbx노드 순서대로.
+    for (const ufbx_node* node : scene.nodes)
+    {
+        if (node == nullptr || !requiredSkeletonNodeIds.count(node->typed_id)) continue;
+
+        const JointIndex jointIndex = static_cast<JointIndex>(skeleton.Joints.size());
+
+        outNodeIdToJointIndex.emplace(node->typed_id, jointIndex);
+
+        SkeletonJoint joint;
+        joint.Name.assign(node->name.data, node->name.length);
+        skeleton.NameToJoint.emplace(joint.Name, jointIndex);
+        skeleton.Joints.push_back(std::move(joint));
+    }
+
+    //joint들의 parent와 bind local transform 채우기
+    for (const ufbx_node* node : scene.nodes)
+    {
+        if (node == nullptr) continue;
+
+        const auto jointIt = outNodeIdToJointIndex.find(node->typed_id);
+        if (jointIt == outNodeIdToJointIndex.end()) continue;
+
+        SkeletonJoint& joint = skeleton.Joints[jointIt->second];
+
+        if (node->parent != nullptr)
+        {
+            const auto parentIt = outNodeIdToJointIndex.find(node->parent->typed_id);
+            if (parentIt != outNodeIdToJointIndex.end())
+            {
+                joint.Parent = parentIt->second;
+            }
+        }
+
+        const ufbx_transform& transform = node->local_transform;
+        joint.BindLocalTransform.Translation =
+        {
+            static_cast<float>(transform.translation.x),
+            static_cast<float>(transform.translation.y),
+            static_cast<float>(transform.translation.z)
+        };
+
+        joint.BindLocalTransform.Rotation =
+        {
+            static_cast<float>(transform.rotation.x),
+            static_cast<float>(transform.rotation.y),
+            static_cast<float>(transform.rotation.z),
+            static_cast<float>(transform.rotation.w)
+        };
+
+        joint.BindLocalTransform.Scale =
+        {
+            static_cast<float>(transform.scale.x),
+            static_cast<float>(transform.scale.y),
+            static_cast<float>(transform.scale.z)
+        };
+    }
+
+    //EvaluationOrder 생성
+    // 1. children 그래프 생성
+    std::vector<std::vector<JointIndex>> children(skeleton.Joints.size());
+    std::vector<JointIndex> roots;
+
+    for (JointIndex jointIndex = 0; jointIndex < skeleton.Joints.size(); jointIndex++)
+    {
+        const JointIndex parent = skeleton.Joints[jointIndex].Parent;
+
+        if (parent == InvalidJoint)
+        {
+            roots.push_back(jointIndex);
+        }
+        else
+        {
+            children[parent].push_back(jointIndex);
+        }
+    }
+
+    // 2. DFS
+    std::function<void(JointIndex)> visit =
+        [&](JointIndex jointIndex)
+        {
+            skeleton.EvaluationOrder.push_back(jointIndex);
+            for (JointIndex child : children[jointIndex])
+            {
+                visit(child);
+            }
+        };
+
+    for (JointIndex root : roots)
+    {
+        visit(root);
+    }
+
+    // 3. 검증
+    if (skeleton.EvaluationOrder.size() != skeleton.Joints.size())
+    {
+        throw DxException(
+            E_FAIL,
+            L"Skeleton hierarchy contains an invalid parent relationship or cycle.",
+            AnsiToWString(__FILE__),
+            __LINE__);
+    }
+
+    return skeleton;
+}
+
+std::vector<SkeletalSubmesh> FbxImporter::BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex)
+{
+    std::vector<SkeletalSubmesh> result;
+
+    for (const ufbx_node* node : scene.nodes)
+    {
+        if (node == nullptr || node->mesh == nullptr) continue;
+
+        const ufbx_mesh* mesh = node->mesh;
+
+        // 정적 메시는 제외
+        if (mesh->skin_deformers.count == 0) continue;
+        if (mesh->skin_deformers.count != 1)
+        {
+            throw DxException(
+                E_NOTIMPL,
+                L"Only one skin deformer per mesh is supported.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        const ufbx_skin_deformer* skin = mesh->skin_deformers[0];
+        if (skin == nullptr || skin->clusters.count == 0)
+        {
+            throw DxException(
+                E_FAIL,
+                L"Skinned mesh contains no valid skin clusters.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        if (!mesh->vertex_position.exists)
+        {
+            throw DxException(
+                E_FAIL,
+                L"Skinned mesh contains no vertex positions.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        SkeletalSubmesh submesh;
+        submesh.Name.assign(node->name.data, node->name.length);
+        if (submesh.Name.empty())
+        {
+            submesh.Name = "SkeletalSubmesh_" + std::to_string(node->typed_id);
+        }
+
+        // SkinBinding 생성
+        submesh.Skin.PaletteToSkeletonJoint.reserve(skin->clusters.count);
+        submesh.Skin.OffsetMatrices.reserve(skin->clusters.count);
+
+            //클러스터 순회
+        for (std::size_t clusterIndex = 0; clusterIndex < skin->clusters.count; clusterIndex++)
+        {
+            const ufbx_skin_cluster* cluster = skin->clusters[clusterIndex];
+            if (cluster == nullptr || cluster->bone_node == nullptr)
+            {
+                throw DxException(
+                    E_FAIL,
+                    L"Skin contains an invalid cluster.",
+                    AnsiToWString(__FILE__),
+                    __LINE__);
+            }
+
+            const auto jointIt = nodeIdToJointIndex.find(cluster->bone_node->typed_id);
+            if (jointIt == nodeIdToJointIndex.end())
+            {
+                throw DxException(
+                    E_FAIL,
+                    L"Skin cluster bone is not part of the skeleton.",
+                    AnsiToWString(__FILE__),
+                    __LINE__);
+            }
+
+            // cluster index == palette index
+            submesh.Skin.PaletteToSkeletonJoint.push_back(jointIt->second);
+            submesh.Skin.OffsetMatrices.push_back(ToFloat4x4(cluster->geometry_to_bone));
+        }
+
+        const std::size_t estimatedVertexCount = mesh->num_triangles * 3;
+        submesh.Vertices.reserve(estimatedVertexCount);
+        submesh.Indices.reserve(estimatedVertexCount);
+
+        //fbx의 face는 삼각형만이 아님. 주의.
+        std::vector<std::uint32_t> triangleIndices(mesh->max_face_triangles * 3);
+        for (std::size_t faceIndex = 0; faceIndex < mesh->faces.count; faceIndex++)
+        {
+            const ufbx_face face = mesh->faces[faceIndex];
+            if (face.num_indices < 3) continue;
+
+            // FBX의 hole face는 렌더링 X
+            if (faceIndex < mesh->face_hole.count && mesh->face_hole.data[faceIndex])
+                continue;
+
+            const std::uint32_t triangleCount = ufbx_triangulate_face(
+                triangleIndices.data(),
+                triangleIndices.size(),
+                mesh,
+                face);
+
+            const std::size_t indexCount = static_cast<std::size_t>(triangleCount) * 3;
+            for (std::size_t i = 0; i < indexCount; i++)
+            {
+                const std::uint32_t meshIndex = triangleIndices[i];
+                if (meshIndex >= mesh->vertex_indices.count)
+                {
+                    throw DxException(
+                        E_FAIL,
+                        L"Polygon vertex index is out of range.",
+                        AnsiToWString(__FILE__),
+                        __LINE__);
+                }
+
+                SkinnedVertex vertex{};
+
+                // geometry_to_bone과 같은 Mesh Geometry 공간 유지
+                const ufbx_vec3 position = ufbx_get_vertex_vec3(&mesh->vertex_position, meshIndex);
+                //ImportStaticMesh와 달리 월드행렬 곱하지 않음.
+                vertex.Position = ToFloat3(position);
+
+                // Normal
+                ufbx_vec3 normal = { 0.0, 1.0, 0.0 };
+                if (mesh->vertex_normal.exists)
+                {
+                    normal = ufbx_get_vertex_vec3(&mesh->vertex_normal, meshIndex);
+                    normal = ufbx_vec3_normalize(normal);
+                    vertex.Normal = ToFloat3(normal);
+                }
+
+                // Tangent
+                ufbx_vec3 tangent = { 1.0, 0.0, 0.0 };
+                if (mesh->vertex_tangent.exists)
+                {
+                    ufbx_vec3 tangent = ufbx_get_vertex_vec3(&mesh->vertex_tangent, meshIndex);
+                    tangent = ufbx_vec3_normalize(tangent);
+                    vertex.Tangent = ToFloat3(tangent);
+                }
+
+                // UV
+                ufbx_vec2 texCoord = { 0.0, 0.0 };
+                if (mesh->vertex_uv.exists)
+                {
+                    const ufbx_vec2 texCoord = ufbx_get_vertex_vec2(&mesh->vertex_uv, meshIndex);
+                    vertex.TexCoord = ToFloat2(texCoord);
+                }
+
+                // Polygon vertex index → Logical vertex index
+                const std::uint32_t logicalVertexIndex = mesh->vertex_indices[meshIndex];
+                if (logicalVertexIndex >= skin->vertices.count)
+                {
+                    throw DxException(
+                        E_FAIL,
+                        L"Skin logical vertex index is out of range.",
+                        AnsiToWString(__FILE__),
+                        __LINE__);
+                }
+
+                const ufbx_skin_vertex& skinVertex = skin->vertices[logicalVertexIndex];
+                struct Influence
+                {
+                    std::uint32_t PaletteIndex = 0;
+                    float Weight = 0.0f;
+                };
+
+                std::vector<Influence> influences;
+                influences.reserve(skinVertex.num_weights);
+                for (std::size_t influenceIndex = 0; influenceIndex < skinVertex.num_weights; influenceIndex++)
+                {
+                    const std::size_t weightIndex = skinVertex.weight_begin + influenceIndex;
+                    if (weightIndex >= skin->weights.count)
+                    {
+                        throw DxException(
+                            E_FAIL,
+                            L"Skin weight index is out of range.",
+                            AnsiToWString(__FILE__),
+                            __LINE__);
+                    }
+
+                    const ufbx_skin_weight& weight = skin->weights[weightIndex];
+                    if (weight.cluster_index >= skin->clusters.count)
+                    {
+                        throw DxException(
+                            E_FAIL,
+                            L"Skin cluster index is out of range.",
+                            AnsiToWString(__FILE__),
+                            __LINE__);
+                    }
+
+                    influences.push_back({ weight.cluster_index, (float)weight.weight });
+                }
+            
+                //여러 가중치 중 상위 4개만 사용.
+                std::sort(influences.begin(), influences.end(),
+                    [](const Influence& lhs, const Influence& rhs)
+                    {
+                        return lhs.Weight > rhs.Weight;
+                    });
+
+                const std::size_t influenceCount = std::min<std::size_t>(influences.size(), 4);
+                float weightSum = 0.0f;
+                for (std::size_t influenceIndex = 0; influenceIndex < influenceCount; influenceIndex++)
+                {
+                    const Influence& influence = influences[influenceIndex];
+
+                    vertex.PaletteJointIndices[influenceIndex] = influence.PaletteIndex;
+                    vertex.JointWeights[influenceIndex] = influence.Weight;
+                    weightSum += influence.Weight;
+                }
+
+                //가중치 합을 1로 정규화
+                if (weightSum > 0.0f)
+                {
+                    const float inverseWeightSum = 1.0f / weightSum;
+
+                    for (std::size_t influenceIndex = 0; influenceIndex < influenceCount; influenceIndex++)
+                    {
+                        vertex.JointWeights[influenceIndex] *= inverseWeightSum;
+                    }
+                }
+                else
+                {
+                    // 임시 정책: palette[0]에 완전히 바인딩
+                    vertex.PaletteJointIndices[0] = 0;
+                    vertex.JointWeights[0] = 1.0f;
+                }
+
+                const std::uint32_t newIndex = static_cast<std::uint32_t>(submesh.Vertices.size());
+
+                submesh.Vertices.push_back(vertex);
+                submesh.Indices.push_back(newIndex);
+            }
+        }
+
+        if (submesh.Vertices.empty() || submesh.Indices.empty())
+        {
+            throw DxException(
+                E_FAIL,
+                L"Skinned mesh contains no renderable triangles.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        result.push_back(std::move(submesh));
+    }
+
+    if (result.empty())
+    {
+        throw DxException(
+            E_FAIL,
+            L"FBX contains no supported skinned submeshes.",
+            AnsiToWString(__FILE__),
+            __LINE__);
+    }
+
+    return result;
+}
+
+std::unordered_map<std::string, AnimationClip>
+FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skeleton, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex)
+{
+    std::unordered_map<std::string, AnimationClip> animations;
+
+    for (const ufbx_anim_stack* stack : scene.anim_stacks)
+    {
+        if (stack == nullptr || stack->anim == nullptr) continue;
+
+        std::string clipName(stack->name.data, stack->name.length);
+
+        if (clipName.empty())
+            clipName = "Animation_" + std::to_string(stack->typed_id);
+
+        ufbx_bake_opts bakeOptions{};
+
+        // 키 시간을 0초부터 시작시킴
+        bakeOptions.trim_start_time = true;
+
+        // 일정 간격으로 샘플링
+        bakeOptions.resample_rate = 30.0;
+
+        ufbx_error error{};
+
+        ufbx_baked_anim* rawBakedAnim = ufbx_bake_anim(&scene, stack->anim, &bakeOptions, &error);
+
+        if (rawBakedAnim == nullptr)
+        {
+            char errorBuffer[2048]{};
+            ufbx_format_error(errorBuffer, sizeof(errorBuffer), &error);
+            throw DxException(
+                E_FAIL,
+                AnsiToWString(errorBuffer),
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        using BakedAnimPtr = std::unique_ptr<ufbx_baked_anim, decltype(&ufbx_free_baked_anim)>;
+        BakedAnimPtr bakedAnim(rawBakedAnim, &ufbx_free_baked_anim);
+
+        AnimationClip clip;
+        clip.StartTime = 0.0f;
+        clip.EndTime = (float)bakedAnim->playback_duration;
+        // JointIndex로 직접 접근할 수 있도록 Skeleton 크기로 생성
+        clip.JointAnimations.resize(skeleton.Joints.size());
+
+        for (const ufbx_baked_node& bakedNode : bakedAnim->nodes)
+        {
+            // ufbx node ID → 엔진 JointIndex
+            const auto jointIt = nodeIdToJointIndex.find(bakedNode.typed_id);
+
+            // 메시 노드, 카메라 등 Skeleton 외 노드는 무시
+            if (jointIt == nodeIdToJointIndex.end()) continue;
+
+            const JointIndex jointIndex = jointIt->second;
+            if (jointIndex >= clip.JointAnimations.size())
+            {
+                throw DxException(
+                    E_FAIL,
+                    L"Animation joint index is out of range.",
+                    AnsiToWString(__FILE__),
+                    __LINE__);
+            }
+
+            JointAnimation& jointAnimation = clip.JointAnimations[jointIndex];
+
+            // Translation
+            jointAnimation.TranslationKeys.reserve(bakedNode.translation_keys.count);
+
+            for (const ufbx_baked_vec3& sourceKey : bakedNode.translation_keys)
+            {
+                VectorKey key;
+                key.TimePos = static_cast<float>(sourceKey.time);
+                key.Value = { (float)sourceKey.value.x, (float)sourceKey.value.y, (float)sourceKey.value.z };
+                jointAnimation.TranslationKeys.push_back(key);
+            }
+
+            // Rotation
+            jointAnimation.RotationKeys.reserve(bakedNode.rotation_keys.count);
+
+            for (const ufbx_baked_quat& sourceKey : bakedNode.rotation_keys)
+            {
+                QuaternionKey key;
+                key.TimePos = static_cast<float>(sourceKey.time);
+                key.Value = { (float)sourceKey.value.x, (float)sourceKey.value.y, (float)sourceKey.value.z, (float)sourceKey.value.w };
+                jointAnimation.RotationKeys.push_back(key);
+            }
+
+            // Scale
+            jointAnimation.ScaleKeys.reserve(bakedNode.scale_keys.count);
+            for (const ufbx_baked_vec3& sourceKey : bakedNode.scale_keys)
+            {
+                VectorKey key;
+                key.TimePos = static_cast<float>(sourceKey.time);
+                key.Value = { (float)sourceKey.value.x, (float)sourceKey.value.y, (float)sourceKey.value.z };
+                jointAnimation.ScaleKeys.push_back(key);
+            }
+        }
+
+        const auto [it, inserted] = animations.emplace(clipName, std::move(clip));
+        if (!inserted)
+        {
+            throw DxException(
+                E_FAIL,
+                L"Duplicate animation clip name.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+    }
+
+    return animations;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EngineCore/Animation/SkinnedData.h"
+#include "EngineCore/Animation/SkeletalMesh.h"
 #include <fstream>
 
 class M3DLoader
@@ -53,12 +53,12 @@ public:
         std::vector<Subset>& subsets,
         std::vector<M3dMaterial>& mats);
 
-    bool LoadM3d(const std::string& filePath,
-        std::vector<SkinnedVertex>& vertices,
-        std::vector<uint16_t>& indices,
-        std::vector<Subset>& subsets,
-        std::vector<M3dMaterial>& mats,
-        SkinnedData& skinInfo);
+    //bool LoadM3d(const std::string& filePath,
+    //    std::vector<SkinnedVertex>& vertices,
+    //    std::vector<uint16_t>& indices,
+    //    std::vector<Subset>& subsets,
+    //    std::vector<M3dMaterial>& mats,
+    //    SkinnedData& skinInfo);
         
 private:
     void ReadMaterials(std::ifstream& fin, UINT numMaterials, std::vector<M3dMaterial>& mats);
@@ -67,7 +67,7 @@ private:
     void ReadSkinnedVertices(std::ifstream& fin, UINT numVertices, std::vector<SkinnedVertex>& vertices);
     void ReadTriangles(std::ifstream& fin, UINT numTriangles, std::vector<USHORT>& indices);
     void ReadBoneOffsets(std::ifstream& fin, UINT numBones, std::vector<DirectX::XMFLOAT4X4>& boneOffsets);
-    void ReadBoneHierarchy(std::ifstream& fin, UINT numBones, std::vector<int>& boneIndexToParentIndex);
+    void ReadBoneHierarchy(std::ifstream& fin, UINT numBones, std::vector<UINT>& boneIndexToParentIndex);
     void ReadAnimationClips(std::ifstream& fin, UINT numBones, UINT numAnimationClips, std::unordered_map<std::string, AnimationClip>& animations);
-    void ReadBoneKeyframes(std::ifstream& fin, UINT numBones, BoneAnimation& boneAnimation);
+    void ReadBoneKeyframes(std::ifstream& fin, UINT numBones, JointAnimation& boneAnimation);
 };

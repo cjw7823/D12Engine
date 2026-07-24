@@ -144,9 +144,6 @@
     <ClCompile Include="Editor\Input\EditorInputRouter.cpp">
       <Filter>Editor\Input</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Animation\SkinnedData.cpp">
-      <Filter>EngineCore\Animation</Filter>
-    </ClCompile>
     <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp">
       <Filter>EngineCore\Input</Filter>
     </ClCompile>
@@ -203,6 +200,12 @@
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\Effects\SobelFilter.cpp">
       <Filter>Renderer\DirectX12\Effects</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineCore\Animation\SkeletalMesh.cpp">
+      <Filter>EngineCore\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\RenderData.cpp">
+      <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -262,9 +265,6 @@
     </ClInclude>
     <ClInclude Include="Editor\Input\EditorInputRouter.h">
       <Filter>Editor\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="EngineCore\Animation\SkinnedData.h">
-      <Filter>EngineCore\Animation</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\Input\InputSystem.h">
       <Filter>EngineCore\Input</Filter>
@@ -361,6 +361,9 @@
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\Effects\GpuWaves.h">
       <Filter>Renderer\DirectX12\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineCore\Animation\SkeletalMesh.h">
+      <Filter>EngineCore\Animation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

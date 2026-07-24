@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "InputSystem.h"
 
-#include "EngineCore/Logger/Logger.h"
+#include "EngineCore/Logging/Logger.h"
 
 #include <algorithm>
 

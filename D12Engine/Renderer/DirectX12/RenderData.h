@@ -2,7 +2,7 @@
 
 #include "DirectX-Headers/d3dx12.h"
 #include "EngineCore/Math/MathHelper.h"
-#include "EngineCore/Animation/SkinnedData.h"
+#include "EngineCore/Animation/SkeletalMesh.h"
 
 #include <stdint.h>
 #include <string>
@@ -285,20 +285,17 @@ private:
 
 struct SkinnedModelInstance
 {
-	SkinnedData skinnedInfo;
-	std::vector<DirectX::XMFLOAT4X4> finalTransforms;
-	std::string clipName;
-	float timePos = 0.0f;
+	const SkeletalMesh* Asset = nullptr;
 
-	// 매 프레임 애니메이션 시간을 증가시키고, 현재 애니메이션 클립에 따라 각 본의 보간된 변환을 계산
-	// 이후 최종 본 행렬 배열을 SkinnedCB에 복사하고, vertex shader에서 이 행렬들을 사용해 스키닝
-	void UpdateSkinnedAnimation(float dt)
-	{
-		timePos += dt;
+	std::string ClipName;
+	float TimePos = 0.0f;
 
-		if (timePos > skinnedInfo.GetClipEndTime(clipName))
-			timePos = 0.0f;
+	// Skeleton JointIndex 기준 현재 Pose
+	std::vector<DirectX::XMFLOAT4X4> JointToRootTransforms;
 
-		skinnedInfo.GetFinalTransforms(clipName, timePos, finalTransforms);
-	}
+	// Submesh별 GPU Skin Palette
+	std::vector<std::vector<DirectX::XMFLOAT4X4>> SubmeshFinalTransforms;
+
+	void Initialize(const SkeletalMesh& asset, std::string clipName = {});
+	void UpdateAnimation(float deltaTime);
 };
