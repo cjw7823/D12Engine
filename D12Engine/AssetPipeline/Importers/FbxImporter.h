@@ -4,8 +4,7 @@
 #include <memory>
 
 #include "Renderer/DirectX12/RenderData.h"
-
-#include "EngineCore/Animation/skeletalMesh.h"
+#include "Renderer/DirectX12/Animation/skeletalMesh.h"
 
 struct ufbx_scene;
 

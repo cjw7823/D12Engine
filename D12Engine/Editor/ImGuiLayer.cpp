@@ -2,7 +2,7 @@
 #include "ImGuiLayer.h"
 
 #include "Renderer/DirectX12/D3D12Context.h"
-#include "EngineCore/RenderConfig.h"
+#include "EngineCore/GlobalConfig.h"
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -87,7 +87,7 @@ bool ImGuiLayer::Initialize(HWND hwnd, D3D12Context& context)
     ImGui_ImplDX12_InitInfo initInfo{};
     initInfo.Device = context.GetDevice();
     initInfo.CommandQueue = context.GetCommandQueue();
-    initInfo.NumFramesInFlight = RenderConfig::NumFrameResources;
+    initInfo.NumFramesInFlight = GlobalConfig::NumFrameResources;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
     initInfo.SrvDescriptorHeap = context.GetSrvUavHeap();

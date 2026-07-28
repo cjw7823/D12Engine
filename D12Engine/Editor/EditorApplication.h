@@ -15,8 +15,8 @@
 #include "Renderer/DirectX12/D3D12Context.h"
 #include "Renderer/DirectX12/SceneRenderer.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
+#include "Renderer/DirectX12/Scene/Scene.h"
 
-#include "EngineCore/Scene/Scene.h"
 #include "EngineCore/Input/InputSystem.h"
 #include "EngineCore/Input/GlobalInputHandler.h"
 

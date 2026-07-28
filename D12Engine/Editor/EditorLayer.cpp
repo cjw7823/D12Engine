@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "EditorLayer.h"
 
-#include "EngineCore/Scene/Scene.h"
-#include "EngineCore/Scene/SceneObject.h"
+#include "Renderer/DirectX12/Scene/Scene.h"
+#include "Renderer/DirectX12/Scene/SceneObject.h"
 #include "EngineCore/StringUtil.h"
 
 #include "Renderer/DirectX12/D3D12Util.h"
@@ -250,7 +250,7 @@ void EditorLayer::DrawHierarchy()
 		return;
 	}
 
-	const SceneObjectID selectedObjectId = mScene.GetSelectedObjectID();
+	const SceneObjectId selectedObjectId = mScene.GetSelectedObjectID();
 	const auto& objects = mScene.GetObjects();
 
 	for (const auto& object : objects)
@@ -358,107 +358,103 @@ void EditorLayer::DrawTransformInspector(SceneObject& object)
 		&object.Transform.Scale.x,
 		0.01f);
 
-	if (changed)
-	{
-		object.TransformDirty = true;
-	}
 }
 
 void EditorLayer::DrawMaterialInspector(SceneObject& object)
 {
-	if (!ImGui::CollapsingHeader(
-		"Material",
-		ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		return;
-	}
+	//if (!ImGui::CollapsingHeader(
+	//	"Material",
+	//	ImGuiTreeNodeFlags_DefaultOpen))
+	//{
+	//	return;
+	//}
 
-	if (object.RenderBindings.empty())
-	{
-		ImGui::TextDisabled(
-			"%s",
-			WideToUtf8(
-				L"렌더 바인딩이 없습니다.")
-			.c_str());
+	//if (object.RenderBindings.empty())
+	//{
+	//	ImGui::TextDisabled(
+	//		"%s",
+	//		WideToUtf8(
+	//			L"렌더 바인딩이 없습니다.")
+	//		.c_str());
 
-		return;
-	}
+	//	return;
+	//}
 
-	std::unordered_set<Material*> drawnMaterials;
+	//std::unordered_set<Material*> drawnMaterials;
 
-	bool materialFound = false;
+	//bool materialFound = false;
 
-	for (const RenderInstanceBinding& binding :
-		object.RenderBindings)
-	{
-		Material* material =
-			binding.MaterialData;
+	//for (const RenderInstanceBinding& binding :
+	//	object.RenderBindings)
+	//{
+	//	Material* material =
+	//		binding.MaterialData_GPU;
 
-		if (!material)
-			continue;
+	//	if (!material)
+	//		continue;
 
-		/*
-		 * 여러 서브메시가 같은 Material을 공유하면
-		 * Inspector에 한 번만 출력.
-		 */
-		if (!drawnMaterials.insert(material).second)
-			continue;
+	//	/*
+	//	 * 여러 서브메시가 같은 Material을 공유하면
+	//	 * Inspector에 한 번만 출력.
+	//	 */
+	//	if (!drawnMaterials.insert(material).second)
+	//		continue;
 
-		materialFound = true;
+	//	materialFound = true;
 
-		ImGui::PushID(material);
+	//	ImGui::PushID(material);
 
-		const ImGuiTreeNodeFlags flags =
-			object.RenderBindings.size() == 1
-			? ImGuiTreeNodeFlags_DefaultOpen
-			: ImGuiTreeNodeFlags_None;
+	//	const ImGuiTreeNodeFlags flags =
+	//		object.RenderBindings.size() == 1
+	//		? ImGuiTreeNodeFlags_DefaultOpen
+	//		: ImGuiTreeNodeFlags_None;
 
-		if (ImGui::CollapsingHeader(
-			material->Name.c_str(),
-			flags))
-		{
-			bool changed = false;
+	//	if (ImGui::CollapsingHeader(
+	//		material->Name.c_str(),
+	//		flags))
+	//	{
+	//		bool changed = false;
 
-			changed |= ImGui::ColorEdit4(
-				WideToUtf8(L"기본 색상").c_str(),
-				&material->DiffuseAlbedo.x);
+	//		changed |= ImGui::ColorEdit4(
+	//			WideToUtf8(L"기본 색상").c_str(),
+	//			&material->DiffuseAlbedo.x);
 
-			changed |= ImGui::DragFloat3(
-				"Fresnel R0",
-				&material->FresnelR0.x,
-				0.001f,
-				0.0f,
-				1.0f);
+	//		changed |= ImGui::DragFloat3(
+	//			"Fresnel R0",
+	//			&material->FresnelR0.x,
+	//			0.001f,
+	//			0.0f,
+	//			1.0f);
 
-			changed |= ImGui::SliderFloat(
-				WideToUtf8(L"거칠기").c_str(),
-				&material->Roughness,
-				0.0f,
-				1.0f);
+	//		changed |= ImGui::SliderFloat(
+	//			WideToUtf8(L"거칠기").c_str(),
+	//			&material->Roughness,
+	//			0.0f,
+	//			1.0f);
 
-			ImGui::TextDisabled(
-				"%s: %u",
-				WideToUtf8(L"재질 버퍼 인덱스").c_str(),
-				material->MatBufferIndex);
+	//		ImGui::TextDisabled(
+	//			"%s: %u",
+	//			WideToUtf8(L"재질 버퍼 인덱스").c_str(),
+	//			material->MatBufferIndex);
 
-			if (changed)
-			{
-				material->NumFramesDirty =
-					RenderConfig::NumFrameResources;
-			}
-		}
+	//		if (changed)
+	//		{
+	//			material->NumFramesDirty =
+	//				GlobalConfig::NumFrameResources;
+	//		}
+	//	}
 
-		ImGui::PopID();
-	}
+	//	ImGui::PopID();
+	//}
 
-	if (!materialFound)
-	{
-		ImGui::TextDisabled(
-			"%s",
-			WideToUtf8(
-				L"연결된 재질이 없습니다.")
-			.c_str());
-	}
+	//if (!materialFound)
+	//{
+	//	ImGui::TextDisabled(
+	//		"%s",
+	//		WideToUtf8(
+	//			L"연결된 재질이 없습니다.")
+	//		.c_str());
+	//}
 }
 
 void EditorLayer::DrawHelper()

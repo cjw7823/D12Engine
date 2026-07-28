@@ -20,7 +20,7 @@ public:
 	//std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	std::unique_ptr<UploadBuffer<SkinnedConstants>> SkinnedCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
-	std::unique_ptr<UploadBuffer<MaterialData>> MaterialBuffer = nullptr;
+	std::unique_ptr<UploadBuffer<MaterialData_GPU>> MaterialBuffer = nullptr;
 
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 

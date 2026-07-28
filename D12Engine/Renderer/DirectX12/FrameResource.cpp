@@ -10,7 +10,7 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInsta
 
 	//ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, objectCount, true);
 	PassCB = std::make_unique<UploadBuffer<PassConstants>>(device, passCount, true);
-	MaterialBuffer = std::make_unique<UploadBuffer<MaterialData>>(device, materialCount, false);
+	MaterialBuffer = std::make_unique<UploadBuffer<MaterialData_GPU>>(device, materialCount, false);
 
 	WavesVB = std::make_unique<UploadBuffer<Vertex>>(device, waveVertexCount, false);
 

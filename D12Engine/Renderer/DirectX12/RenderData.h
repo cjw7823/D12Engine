@@ -1,65 +1,44 @@
 #pragma once
 
-#include "DirectX-Headers/d3dx12.h"
-#include "EngineCore/Math/MathHelper.h"
-#include "EngineCore/Animation/SkeletalMesh.h"
+#include "Renderer/Resources/MeshGeometry.h"
+#include "Renderer/Resources/Material.h"
+#include "Renderer/DirectX12/Scene/Light/Light.h"
+#include "Renderer/DirectX12/Scene/SceneRenderTypes.h"
+#include "Renderer/DirectX12/Animation/SkeletalMesh.h"
 
-#include <stdint.h>
-#include <string>
-#include <wrl.h>
-
-inline constexpr int MaxLights = 16;
-
-//HLSL cbuffer는 16바이트(float4) 슬롯 단위로 패킹되므로,
-//C++ 구조체도 멤버 배치가 어긋나지 않도록 padding을 둔다.
-struct Light
+struct Vertex
 {
-	DirectX::XMFLOAT3 Strength = { 0.5f, 0.5f, 0.5f };
-	float FalloffStart = 1.0f;								//point,		spot
-	DirectX::XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f };	//directional,	spot
-	float FalloffEnd = 10.0f;								//point,		spot
-	DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };		//point,		spot
-	float SpotPower = 64.0f;								//spot
+	Vertex() = default;
+	Vertex(const DirectX::XMFLOAT3& p,
+		const DirectX::XMFLOAT3& n,
+		const DirectX::XMFLOAT3& t,
+		const DirectX::XMFLOAT2& uv) :
+		Position(p),
+		Normal(n),
+		TangentU(t),
+		TexC(uv) {
+	}
+	Vertex(
+		float px, float py, float pz,
+		float nx, float ny, float nz,
+		float tx, float ty, float tz,
+		float u, float v) :
+		Position(px, py, pz),
+		Normal(nx, ny, nz),
+		TangentU(tx, ty, tz),
+		TexC(u, v) {
+	}
+
+	DirectX::XMFLOAT3 Position;
+	DirectX::XMFLOAT3 Normal;
+	DirectX::XMFLOAT3 TangentU;
+	DirectX::XMFLOAT2 TexC;
 };
 
-struct [[deprecated("Use InstanceData instead.")]]
-ObjectConstants
+struct MeshData
 {
-	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
-	float GridSpatialStep = 1.0f;
-	UINT MaterialIndex = 0;
-};
-
-struct SkinnedConstants
-{
-	DirectX::XMFLOAT4X4 BoneTransforms[96];
-};
-
-struct InstanceData
-{
-	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
-	float GridSpatialStep = 1.0f;
-	UINT MaterialIndex = 0;
-
-	bool visible = true;			//사용자가 숨김.
-	bool FrustumVisible = true;		//프레임 컬링 결과
-
-	UINT GpuInstanceIndex = UINT_MAX;
-};
-
-struct InstanceData_GPU
-{
-	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
-	float GridSpatialStep = 1.0f;
-	UINT MaterialIndex = 0;
+	std::vector<Vertex> Vertices;
+	std::vector<uint32_t> Indices32;
 };
 
 struct PassConstants
@@ -88,13 +67,27 @@ struct PassConstants
 	Light Lights[MaxLights];
 
 	//프레임당 한 번씩 안개 매개변수를 변경->특정 시간대에만 안개를 사용.
-	DirectX::XMFLOAT4 gFogColor = {0.7f, 0.7f, 0.7f, 1.0f};
+	DirectX::XMFLOAT4 gFogColor = { 0.7f, 0.7f, 0.7f, 1.0f };
 	float gFogStart = 5.0f;
 	float gFogRange = 150.0f;
 	DirectX::XMFLOAT2 cbPassPadding2 = {};
 };
 
-struct MaterialData
+struct SkinnedConstants
+{
+	DirectX::XMFLOAT4X4 BoneTransforms[96];
+};
+
+struct InstanceData_GPU
+{
+	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
+	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
+	float GridSpatialStep = 1.0f;
+	UINT MaterialIndex = 0;
+};
+
+struct MaterialData_GPU
 {
 	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
@@ -104,183 +97,6 @@ struct MaterialData
 
 	UINT DiffuseMapIndex = 0;
 	UINT Pad[3]{};
-};
-
-struct DebugColorConstants
-{
-	DirectX::XMFLOAT4 debugColor;
-};
-
-struct SubmeshGeometry
-{
-	UINT IndexCount = 0;
-	UINT StartIndexLocation = 0;
-	INT BaseVertexLocation = 0;
-	UINT VertexCount = 0;
-
-	//이 서브메시로 정의된 기하 도형의 경계 상자.
-	DirectX::BoundingBox Bounds;
-};
-
-struct MeshGeometry
-{
-	std::string Name;
-
-	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
-
-	UINT VertexByteStride = 0;
-	UINT VertexBufferByteSize = 0;
-	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
-	UINT IndexBufferByteSize = 0;
-
-	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
-
-	D3D12_VERTEX_BUFFER_VIEW VertexBufferView() const
-	{
-		D3D12_VERTEX_BUFFER_VIEW vbv;
-		vbv.BufferLocation = VertexBufferGPU->GetGPUVirtualAddress();
-		vbv.StrideInBytes = VertexByteStride;
-		vbv.SizeInBytes = VertexBufferByteSize;
-
-		return vbv;
-	}
-
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView() const
-	{
-		D3D12_INDEX_BUFFER_VIEW ibv;
-		ibv.BufferLocation = IndexBufferGPU->GetGPUVirtualAddress();
-		ibv.Format = IndexFormat;
-		ibv.SizeInBytes = IndexBufferByteSize;
-
-		return ibv;
-	}
-
-	void DisposeUploaders()
-	{
-		VertexBufferUploader = nullptr;
-		IndexBufferUploader = nullptr;
-	}
-};
-
-//렌더링 순서에 영향
-enum class RenderLayer : int
-{
-	Opaque = 0,
-	SkinnedOpaque,
-	TessLand,
-	MultiTextureBlend,
-	AlphaTestOpaque,
-	A2C_TreeBillboard,			//트리 빌보드
-	GeoSphereLOD,				//GeometryShader로 LOD 구현한 GeoShperes
-	GeoExplode,
-	LineToCylinder,				//선분으로 그리는 원통
-	Waves,
-	MirrorStencil,
-	//MirrorWall,
-	TessWall,
-	MirrorBaseFill,
-	Reflected,
-	Shadow,
-	Transparent,
-	
-	Gizmo,
-
-	Count,
-};
-
-struct SkinnedModelInstance;
-struct RenderItem
-{
-	RenderItem() = default;
-	RenderItem(const RenderItem& rhs) = delete;
-
-	bool Visible = true;	//사용자가 숨김. 프레임 컬링과는 별도.
-	bool InMirror = false;
-
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	MeshGeometry* Geo = nullptr;
-	//Geo의 특정 서브메시를 그리도록 책임.
-	//추후 LOD 등 해당 서브메시에서 또 인덱스 제한을 걸 수도 있음.
-	UINT IndexCount = 0;
-	UINT BaseVertexLocation = 0;
-	UINT StartIndexLocation = 0;
-
-	//For GPU waves render items.
-	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
-	float GridSpatialStep = 1.0f;
-
-	//스킨이 있는 경우만 유효
-	UINT SkinnedCBIndex = -1;
-
-	//애니메이션이 없는 RI는 nullptr로 둔다.
-	SkinnedModelInstance* SkinnedModelInstance = nullptr;
-
-	DirectX::BoundingBox LocalBounds;
-
-	//For Instancing
-	UINT StartInstanceLocation = 0;
-	UINT VisibleInstanceCount = 0;
-	std::vector<InstanceData> Instances;
-};
-
-struct SelectedInstance
-{
-	RenderItem* renderItem = nullptr;
-	UINT instanceIndex = UINT_MAX;
-	float BoundHitDistW = FLT_MAX;
-};
-
-struct Vertex
-{
-	Vertex() = default;
-	Vertex(const DirectX::XMFLOAT3& p,
-		const DirectX::XMFLOAT3& n,
-		const DirectX::XMFLOAT3& t,
-		const DirectX::XMFLOAT2& uv) :
-		Position(p), 
-		Normal(n),
-		TangentU(t),
-		TexC(uv) {}
-	Vertex(
-		float px, float py, float pz,
-		float nx, float ny, float nz,
-		float tx, float ty, float tz,
-		float u, float v) :
-		Position(px, py, pz),
-		Normal(nx, ny, nz),
-		TangentU(tx, ty, tz),
-		TexC(u, v) {}
-		
-	DirectX::XMFLOAT3 Position;
-	DirectX::XMFLOAT3 Normal;
-	DirectX::XMFLOAT3 TangentU;
-	DirectX::XMFLOAT2 TexC;
-};
-
-struct MeshData
-{
-	std::vector<Vertex> Vertices;
-	std::vector<uint32_t> Indices32;
-
-	std::vector<uint16_t>& GetIndices16()
-	{
-		if (mIndices16.empty())
-		{
-			mIndices16.resize(Indices32.size());
-			for (size_t i = 0; i < Indices32.size(); i++)
-				mIndices16[i] = static_cast<uint16_t>(Indices32[i]);
-		}
-		return mIndices16;
-	}
-
-private:
-	std::vector<uint16_t> mIndices16;
 };
 
 struct SkinnedModelInstance

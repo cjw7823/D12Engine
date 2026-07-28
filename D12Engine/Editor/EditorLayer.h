@@ -48,7 +48,7 @@ private:
     bool mShowHierarchy = true;
     bool mShowInspector = true;
     bool mShowConsole = true;
-    bool mHelpWindow = true;
+    bool mHelpWindow = false;
 
     bool mIsPlay = false;
 

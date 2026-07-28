@@ -2,7 +2,7 @@
 #include "SceneViewInputHandler.h"
 
 #include "Renderer/DirectX12/SceneRenderer.h"
-#include "EngineCore/Scene/Scene.h"
+#include "Renderer/DirectX12/Scene/Scene.h"
 
 SceneViewInputHandler::SceneViewInputHandler(SceneRenderer& sceneRenderer) : mSceneRenderer(sceneRenderer)
 {
@@ -45,8 +45,8 @@ void SceneViewInputHandler::ProcessMouseInput(
     {
         mCameraDragging = true;
 
-        if (mBeginRelativeMouseCallback)
-            mBeginRelativeMouseCallback(viewport);
+        //if (mBeginRelativeMouseCallback)
+        //    mBeginRelativeMouseCallback(viewport);
     }
 
     if (mCameraDragging && input.IsMouseDown(MouseButton::Right))
@@ -60,8 +60,8 @@ void SceneViewInputHandler::ProcessMouseInput(
         {
             mCameraDragging = false;
 
-            if (mEndRelativeMouseCallback)
-                mEndRelativeMouseCallback();
+            //if (mEndRelativeMouseCallback)
+            //    mEndRelativeMouseCallback();
         }
     }
 

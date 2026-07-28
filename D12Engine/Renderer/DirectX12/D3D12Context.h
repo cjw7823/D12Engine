@@ -11,7 +11,7 @@
 #include <array>
 #include <dxgi1_5.h>				//For DXGI Interfaces
 
-#include "EngineCore/RenderConfig.h"
+#include "EngineCore/GlobalConfig.h"
 #include "EngineCore/Platform/Windows/WinHandle.h"
 
 #include "Renderer/DirectX12/MsaaOption.h"
@@ -34,7 +34,7 @@ struct D3D12DescriptorHandle
 struct D3D12ContextDesc
 {
     // RTV 0 ~ SwapChainBufferCount - 1은 스왑 체인 백 버퍼용으로 예약.
-    UINT RtvHeapCapacity = RenderConfig::SwapChainBufferCount + 32;
+    UINT RtvHeapCapacity = GlobalConfig::SwapChainBufferCount + 32;
     UINT DsvHeapCapacity = 16;
     UINT CbvSrvUavHeapCapacity = 256;
 
@@ -176,7 +176,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[RenderConfig::SwapChainBufferCount];
+    Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[GlobalConfig::SwapChainBufferCount];
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvUavHeap;

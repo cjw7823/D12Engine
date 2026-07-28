@@ -9,7 +9,7 @@ using namespace Microsoft::WRL;
 D3D12Context::D3D12Context()
 {
 	mFrameContexts.clear();
-	for (int i = 0; i < RenderConfig::NumFrameResources; i++)
+	for (int i = 0; i < GlobalConfig::NumFrameResources; i++)
 		mFrameContexts.push_back(std::make_unique<D3D12FrameContext>());
 }
 
@@ -25,7 +25,7 @@ bool D3D12Context::Initialize(HWND hwnd, int width, int height, D3D12ContextDesc
 	mClientHeight = std::max(1, height);
 	mDesc = desc;
 
-	mDesc.RtvHeapCapacity = std::max<UINT>(mDesc.RtvHeapCapacity, RenderConfig::SwapChainBufferCount);
+	mDesc.RtvHeapCapacity = std::max<UINT>(mDesc.RtvHeapCapacity, GlobalConfig::SwapChainBufferCount);
 	mDesc.DsvHeapCapacity = std::max<UINT>(mDesc.DsvHeapCapacity, 1);
 	mDesc.CbvSrvUavHeapCapacity = std::max<UINT>(mDesc.CbvSrvUavHeapCapacity, 1);
 
@@ -138,7 +138,7 @@ void D3D12Context::ResizeSwapChain(int width, int height)
 
 	DXGI_SWAP_CHAIN_DESC1 desc = {};
 	ThrowIfFailed(mSwapChain->GetDesc1(&desc));
-	ThrowIfFailed(mSwapChain->ResizeBuffers(RenderConfig::SwapChainBufferCount,
+	ThrowIfFailed(mSwapChain->ResizeBuffers(GlobalConfig::SwapChainBufferCount,
 		mClientWidth, mClientHeight,
 		mDesc.RenderTargetFormat,
 		desc.Flags));
@@ -451,7 +451,7 @@ void D3D12Context::CreateDescriptorHeaps()
 		&srvHeapDesc,
 		IID_PPV_ARGS(mSrvUavHeap.GetAddressOf())));
 
-	for (int i = (int)mDesc.RtvHeapCapacity - 1; i >= RenderConfig::SwapChainBufferCount; i--)
+	for (int i = (int)mDesc.RtvHeapCapacity - 1; i >= GlobalConfig::SwapChainBufferCount; i--)
 		mRtvFreeIndices.push_back(i);
 
 	for (int i = (int)mDesc.DsvHeapCapacity - 1; i >= 0; i--)
@@ -470,7 +470,7 @@ void D3D12Context::CreateCommandObjects()
 
 	ThrowIfFailed(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(mCommandQueue.GetAddressOf())));
 
-	for (int i = 0; i < RenderConfig::NumFrameResources; i++)
+	for (int i = 0; i < GlobalConfig::NumFrameResources; i++)
 	{
 		ThrowIfFailed(md3dDevice->CreateCommandAllocator(
 			queueDesc.Type,
@@ -514,7 +514,7 @@ void D3D12Context::CreateSwapChain()
 	sd.SampleDesc.Quality = 0;
 
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.BufferCount = RenderConfig::SwapChainBufferCount;
+	sd.BufferCount = GlobalConfig::SwapChainBufferCount;
 	sd.OutputWindow = mhWnd;
 	sd.Windowed = true;
 
@@ -553,7 +553,7 @@ void D3D12Context::CreateSwapChain()
 	if (mTearingSupported)
 		mdxgiFactory->MakeWindowAssociation(mhWnd, DXGI_MWA_NO_ALT_ENTER);
 
-	ThrowIfFailed(mSwapChain->SetMaximumFrameLatency(RenderConfig::SwapChainBufferCount));
+	ThrowIfFailed(mSwapChain->SetMaximumFrameLatency(GlobalConfig::SwapChainBufferCount));
 	mSwapChainWaitableObject = mSwapChain->GetFrameLatencyWaitableObject();
 }
 
@@ -561,7 +561,7 @@ void D3D12Context::CreateBackBufferRTVs()
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	for (int i = 0; i < RenderConfig::SwapChainBufferCount; ++i)
+	for (int i = 0; i < GlobalConfig::SwapChainBufferCount; ++i)
 	{
 		ThrowIfFailed(mSwapChain->GetBuffer(
 			i,
@@ -610,7 +610,7 @@ void D3D12Context::BeginBackBufferRenderPass(const float clearColor[4])
 
 D3D12FrameContext* D3D12Context::WaitForNextFrameContext()
 {
-	mFrameIndex = (mFrameIndex + 1) % RenderConfig::NumFrameResources;
+	mFrameIndex = (mFrameIndex + 1) % GlobalConfig::NumFrameResources;
 	D3D12FrameContext* frameContext = mFrameContexts[mFrameIndex].get();
 
 	if (frameContext->FenceValue != 0 && mFence->GetCompletedValue() < frameContext->FenceValue)
@@ -642,12 +642,13 @@ void D3D12Context::LogAdapters()
 		Logger::Info(text);
 		adapterList.push_back(adapter);
 		i++;
+
+		LogAdapterOutputs(adapter);
+		ReleaseCom(adapter);
 	}
 
 	for (auto& adapter : adapterList)
 	{
-		LogAdapterOutputs(adapter);
-		ReleaseCom(adapter);
 	}
 }
 
@@ -660,12 +661,12 @@ void D3D12Context::LogAdapterOutputs(IDXGIAdapter* adapter)
 		DXGI_OUTPUT_DESC desc;
 		output->GetDesc(&desc);
 
-		std::wstring text = L"---------------------SobelOutput---------------------";
+		std::wstring text = L"\t\t***Output: ";
 		text += desc.DeviceName;
-		text += L"\n\n";
-
+		text += L"\n";
 		Logger::Info(text);
-		LogOutputDisplayModes(output, mDesc.RenderTargetFormat);
+
+		//LogOutputDisplayModes(output, mDesc.RenderTargetFormat);
 		ReleaseCom(output);
 		i++;
 	}

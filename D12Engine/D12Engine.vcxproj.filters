@@ -156,10 +156,10 @@
     <ClCompile Include="EngineCore\Math\MathHelper.cpp">
       <Filter>EngineCore\Math</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Scene\Scene.cpp">
+    <ClCompile Include="Renderer\DirectX12\Scene\Scene.cpp">
       <Filter>EngineCore\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Camera.cpp">
+    <ClCompile Include="Renderer\DirectX12\Scene\Camera\Camera.cpp">
       <Filter>EngineCore</Filter>
     </ClCompile>
     <ClCompile Include="AssetPipeline\Importers\LoadM3d.cpp">
@@ -201,7 +201,7 @@
     <ClCompile Include="Renderer\DirectX12\Effects\SobelFilter.cpp">
       <Filter>Renderer\DirectX12\Effects</Filter>
     </ClCompile>
-    <ClCompile Include="EngineCore\Animation\SkeletalMesh.cpp">
+    <ClCompile Include="Renderer\DirectX12\Animation\SkeletalMesh.cpp">
       <Filter>EngineCore\Animation</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\RenderData.cpp">
@@ -284,22 +284,22 @@
     <ClInclude Include="EngineCore\Platform\Windows\WinHandle.h">
       <Filter>EngineCore\Platform\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Scene\SceneObject.h">
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneObject.h">
       <Filter>EngineCore\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Scene\Transform.h">
+    <ClInclude Include="Renderer\DirectX12\Components\TransformComponent.h">
       <Filter>EngineCore\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Scene\Scene.h">
+    <ClInclude Include="Renderer\DirectX12\Scene\Scene.h">
       <Filter>EngineCore\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Camera.h">
+    <ClInclude Include="Renderer\DirectX12\Scene\Camera\Camera.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\GameTimer.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\RenderConfig.h">
+    <ClInclude Include="EngineCore\GlobalConfig.h">
       <Filter>EngineCore</Filter>
     </ClInclude>
     <ClInclude Include="EngineCore\StringUtil.h">
@@ -362,9 +362,16 @@
     <ClInclude Include="Renderer\DirectX12\Effects\GpuWaves.h">
       <Filter>Renderer\DirectX12\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="EngineCore\Animation\SkeletalMesh.h">
+    <ClInclude Include="Renderer\DirectX12\Animation\SkeletalMesh.h">
       <Filter>EngineCore\Animation</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderTypes.h" />
+    <ClInclude Include="Renderer\Resources\MeshGeometry.h" />
+    <ClInclude Include="Renderer\DirectX12\Scene\Light\Light.h" />
+    <ClInclude Include="Renderer\Resources\Material.h" />
+    <ClInclude Include="Renderer\DirectX12\Components\StaticMeshComponent.h" />
+    <ClInclude Include="Renderer\DirectX12\Components\IComponent.h" />
+    <ClInclude Include="Renderer\DirectX12\Scene\RenderBatch.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="imgui.ini">

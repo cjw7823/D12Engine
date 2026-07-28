@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EngineCore/Animation/SkeletalMesh.h"
+#include "Renderer/DirectX12/Animation/SkeletalMesh.h"
 #include <fstream>
 
 class M3DLoader

@@ -92,4 +92,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mCurrUploadBuffer = nullptr;
 
 	FreeDescriptorCallback mFreeDescriptorCallback;
+
+	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
+	float GridSpatialStep = 1.0f;
 };

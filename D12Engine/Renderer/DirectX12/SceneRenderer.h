@@ -14,16 +14,17 @@
 
 #include "AssetPipeline/Importers/LoadM3d.h"
 
-#include "EngineCore/Camera.h"
-#include "EngineCore/Scene/Scene.h"
-#include "EngineCore/Scene/SceneObject.h"
-#include "EngineCore/Scene/Transform.h"
-
-#include "Renderer/DirectX12/D3D12RenderTarget.h"
-#include "Renderer/DirectX12/FrameResource.h"
+#include "Renderer/DirectX12/Scene/Scene.h"
+#include "Renderer/DirectX12/Scene/SceneObject.h"
+#include "Renderer/DirectX12/Scene/SceneRenderTypes.h"
+#include "Renderer/DirectX12/Scene/RenderBatch.h"
+#include "Renderer/DirectX12/Scene/Camera/Camera.h"
 #include "Renderer/DirectX12/Effects/GpuWaves.h"
 #include "Renderer/DirectX12/Effects/BlurFilter.h"
 #include "Renderer/DirectX12/Effects/SobelFilter.h"
+#include "Renderer/DirectX12/Components/TransformComponent.h"
+#include "Renderer/DirectX12/D3D12RenderTarget.h"
+#include "Renderer/DirectX12/FrameResource.h"
 #include "Renderer/Resources/TextureManager.h"
 
 #include "Editor/Gizmo/Gizmo.h"
@@ -31,64 +32,8 @@
 class D3D12Context;
 class Scene;
 class GameTimer;
+struct StaticMeshComponent;
 struct GizmoState;
-
-enum class ComputePass
-{
-	WavesUpdate,
-	WavesDisturb,
-
-	BlurHorizontal,
-	BlurVertical,
-
-	SobelExcute,
-	SobelComposite,
-
-	Count
-};
-
-enum class GraphicsPass
-{
-	DepthComplexityVisualize,
-
-	SelectedMask,
-	SelectedOutline,
-
-	VertexNormalVisualize,
-
-	Count
-};
-
-//상호 베타적인 렌더 모드들. 해당 모드에 따라서 특정 GraphicsPass On/Off
-enum class SceneRenderMode
-{
-	Lit,
-	Wireframe,
-	DepthComplexity,
-	VertexNormal,
-
-	Count
-};
-
-struct SceneRenderSettings
-{
-	SceneRenderMode Mode = SceneRenderMode::Lit;
-	bool FrustumCullingEnabled = true;
-	bool SobelEnabled = false;
-
-	UINT GetBlurCount() const { return BlurCounts[mBlurCountIndex]; }
-	void NextBlurCount()
-	{
-		mBlurCountIndex = (mBlurCountIndex + 1) % BlurCounts.size();
-	}
-private:
-	inline static constexpr std::array<UINT, 5> BlurCounts =
-	{
-		0, 1, 2, 4, 8
-	};
-
-	size_t mBlurCountIndex = 0;
-};
 
 class SceneRenderer
 {
@@ -151,35 +96,23 @@ private:
 	void BuildBrickWallGeometry(D3D12Context& context);
 	void BuildFBXGeometry(D3D12Context& context);
 
+	void BuildScene(UINT& InstanceBufferIndex);
+
 	void BuildRenderItems();
 	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
 	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
 	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
-	void BuildRenderItems_SkinnedModel(UINT& InstanceBufferIndex);
 	void BuildRenderItems_FBX(UINT& InstanceBufferIndex);
-	RenderItem* CreateRenderItem(const char* GeoName,
-		const char* submeshName,
-		D3D12_PRIMITIVE_TOPOLOGY topology,
-		std::vector<RenderLayer> layer,
-		bool InMirror = false);
-	InstanceData& AddInstance(
-		RenderItem* renderItem,
-		const char* matName,
-		const wchar_t* objectName,
-		const TransformComponent& transform,
-		bool RegisterSceneObject = true);
-	void FinalizeRenderItem(
-		RenderItem* renderItem,
-		UINT& nextInstanceBufferIndex);
+	void CreateRenderItem(
+		const wchar_t* objName, const char* GeoName, const char* subMeshName, const char* matName,
+		D3D12_PRIMITIVE_TOPOLOGY topology, const TransformComponent& transform,
+		std::vector<RenderLayer> layer, bool InMirror, DirectX::XMMATRIX matTransform = DirectX::XMMatrixIdentity());
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
 	float GetHillsHeight(float x, float z) const;
-
-	[[deprecated("ObjectCB is Closed.")]]
-	void UpdateObjectCBs(const GameTimer& gt);
 
 	void UpdateSkinnedCBs();
 	void UpdateMainPassCB();
@@ -190,9 +123,9 @@ private:
 	void UpdateShadowTransform();
 	void AnimateMaterials();
 
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
-	void DrawSelectedInstance(ID3D12GraphicsCommandList* cmdList);
-	void DrawRenderItems_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& renderLayers);
+	void DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers);
+	void DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList);
+	void DrawSceneObjects_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers);
 	void DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList);
 
 	void CreateQueryHeap(D3D12Context& context);
@@ -200,6 +133,11 @@ private:
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
 
 	void SyncSceneObjectTransforms();
+
+	//for Render Batch
+	void RebuildRenderBatches();
+	RenderBatch& FindOrCreateBatch(const RenderBatchKey& key);
+	void DrawLayer(ID3D12GraphicsCommandList* commandList, RenderLayer layer);
 
 public:
 	//For Gizmo / Selected Instances
@@ -220,7 +158,6 @@ private:
 
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
 
-	//mPSOs[RenderLayer][SceneRenderMode].get();
 	std::array < std::array< Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)SceneRenderMode::Count>, (int)RenderLayer::Count> mLayerPSOs;
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)ComputePass::Count> mComputePSOs;
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)GraphicsPass::Count> mGraphicsPSOs;
@@ -228,25 +165,27 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
-	std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
-	std::vector<RenderItem*> mRenderItemLayer[(int)RenderLayer::Count];
+	std::vector<SceneObject*> mSceneObjectLayer[(int)RenderLayer::Count];
+	//Render Batch
+	std::array<std::vector<RenderBatch>, (int)RenderLayer::Count> mRenderBatches;
+	bool mRenderBatchesDirty = true;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeBillboardInputLayout;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mSkinnedInputLayout;
 
 	//추후 동적 메시 일반화 수정 필요.
 	std::unique_ptr<GpuWaves> mWaves;
-	RenderItem* mWavesRenderItem = nullptr;
+	SceneObject* mWavesRenderItem = nullptr;
 	PassConstants mMainPassCB;
 	PassConstants mReflectedPassCB;
 	std::unique_ptr<BlurFilter> mBlurFilter;
 	std::unique_ptr<SobelFilter> mSobelFilter;
 
-	RenderItem* mMirror = nullptr;
-	RenderItem* mSkull = nullptr;
-	RenderItem* mSkullMirror = nullptr;
-	RenderItem* mSkullShadow = nullptr;
-	RenderItem* mSkullShadowMirror = nullptr;
+	SceneObject* mMirror = nullptr;
+	SceneObject* mSkull = nullptr;
+	SceneObject* mSkullMirror = nullptr;
+	SceneObject* mSkullShadow = nullptr;
+	SceneObject* mSkullShadowMirror = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_debug = nullptr;
