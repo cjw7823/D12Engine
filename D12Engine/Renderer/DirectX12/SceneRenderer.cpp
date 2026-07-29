@@ -58,7 +58,7 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	BuildShadersAndInputLayout();
 	BuildGeometry(context);
 	BuildMaterials(context);
-	BuildRenderItems();
+	BuildScene();
 	BuildFrameResources(context);
 	BuildPSOs(context);
 
@@ -127,7 +127,10 @@ void SceneRenderer::NextBlurCount()
 
 void SceneRenderer::PickRenderItem(int vx, int vy)
 {
-	//mGizmo.Pick(vx, vy, mSceneObjectLayer);
+	mGizmo.Pick(vx, vy, mRenderBatches);
+	std::vector<SelectedSceneObject> seletedObjects = mGizmo.GetSelectedInstances();
+
+	mScene.SelectObject(seletedObjects[0].InstanceRef->Object->Id);
 }
 
 void SceneRenderer::ZoomCamera(int wheelDelta)
@@ -164,17 +167,16 @@ void SceneRenderer::Update(const Scene& scene, float deltaTime)
 
 	mCamera.UpdateViewMatrix();
 
-	SyncSceneObjectTransforms();
 	mGizmo.Update(&mCamera, mViewportWidth, mViewportHeight);
 
 	// 이 시점이면 이 FrameResource slot의 이전 GPU 작업은 완료됨.
 	ReadbackTimestampData(mCurrFrameResourceIndex);
 
 	AnimateMaterials();
-	UpdateShadowTransform();
 	UpdateSkinnedCBs();
 	UpdateMainPassCB();
 	UpdateReflectedPassCB();
+	UpdateShadowTransform();
 	UpdateInstanceBuffer();
 	UpdateMaterialBuffer();
 }
@@ -241,12 +243,11 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 		mCommandList->SetPipelineState(pso);
 
 		DrawLayer(mCommandList, (RenderLayer)layer);
-		//DrawSceneObjects(mCommandList, mSceneObjectLayer[layer]);
 
 		if (mRenderSettings.Mode == SceneRenderMode::VertexNormal)
 		{
 			mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::VertexNormalVisualize].Get());
-			DrawSceneObjects_VertexNormalDebug(mCommandList, mSceneObjectLayer[layer]);
+			DrawLayer_VertexNormalDebug(mCommandList, (RenderLayer)layer);
 		}
 	}
 
@@ -1643,21 +1644,19 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	mSkinnedModelInstance->Initialize(storedAsset, clipName);
 }
 
-void SceneRenderer::BuildRenderItems()
+void SceneRenderer::BuildScene()
 {
-	UINT StartInstanceLocation = 0;
-	BuildRenderItems_Common(StartInstanceLocation);
-	BuildRenderItems_InMirror(StartInstanceLocation);
-	BuildRenderItems_Gizmo(StartInstanceLocation);
-	BuildRenderItems_FBX(StartInstanceLocation);
+	BuildSceneObject_Common();
+	BuildSceneObject_InMirror();
+	BuildSceneObject_Gizmo();
+	BuildSceneObject_FBX();
 
-	mInstanceCount = StartInstanceLocation;
+	RebuildRenderBatches();
 }
 
-void SceneRenderer::BuildRenderItems_Common(UINT& InstanceBufferIndex)
+void SceneRenderer::BuildSceneObject_Common()
 {
 	{
-		InstanceBufferIndex++;
 		TransformComponent transform;
 		transform.Position = { -7.0f, 0.5f, 2.0f };
 		transform.Rotation = { 0.0f, 0.0f, 0.0f };
@@ -1668,7 +1667,6 @@ void SceneRenderer::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			{ RenderLayer::Opaque }, true);
 	}
 	{
-		InstanceBufferIndex++;
 		TransformComponent transform;
 		transform.Position = { -7.0f, 2.0f, 15.0f };
 		transform.Scale = { 2.0f, 2.0f, 2.0f };
@@ -1678,7 +1676,6 @@ void SceneRenderer::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			{ RenderLayer::MultiTextureBlend }, true);
 	}
 	{
-		InstanceBufferIndex++;
 		TransformComponent transform;
 		transform.Position = { -7.0f, 1.0f, -3.0f };
 
@@ -1687,7 +1684,6 @@ void SceneRenderer::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			{ RenderLayer::AlphaTestOpaque }, true);
 	}
 	{
-		InstanceBufferIndex++;
 		TransformComponent transform;
 		transform.Position = { -3.0f, 0.0f, 7.0f };
 		transform.Scale = { 1.5f, 1.0f, 1.4f };
@@ -1697,221 +1693,208 @@ void SceneRenderer::BuildRenderItems_Common(UINT& InstanceBufferIndex)
 			{ RenderLayer::Opaque }, true, XMMatrixScaling(8.0f, 8.0f, 1.0f));
 	}
 
-	//RenderItem* CylinderRI = CreateRenderItem("shapeGeo", "cylinder",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Opaque }, true);
+	for (int i = 0; i < 8; ++i)
+	{
+		TransformComponent leftCylTransform;
+		leftCylTransform.Position = { -12.0f, 1.5f, -10.0f + i * 5.0f };
 
-	//RenderItem* SphereRI = CreateRenderItem("shapeGeo", "sphere",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Opaque }, true);
+		TransformComponent rightCylTransform;
+		rightCylTransform.Position = { -2.0f, 1.5f, -10.0f + i * 5.0f };
 
-	//RenderItem* GeoSphereRI = CreateRenderItem("shapeGeo", "geoSphere",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::GeoSphereLOD }, true);
+		TransformComponent leftSphereTransform;
+		leftSphereTransform.Position = { -12.0f, 3.5f, -10.0f + i * 5.0f };
 
-	//for (int i = 0; i < 8; ++i)
-	//{
-	//	TransformComponent leftCylTransform;
-	//	leftCylTransform.Position = { -12.0f, 1.5f, -10.0f + i * 5.0f };
+		TransformComponent rightSphereTransform;
+		rightSphereTransform.Position = { -2.0f, 3.5f, -10.0f + i * 5.0f };
+		rightSphereTransform.Scale = { 2.0f, 2.0f, 2.0f };
 
-	//	TransformComponent rightCylTransform;
-	//	rightCylTransform.Position = { -2.0f, 1.5f, -10.0f + i * 5.0f };
+		std::wstring objectName1 = L"왼쪽 기둥" + std::to_wstring(i);
+		std::wstring objectName2 = L"오른쪽 기둥" + std::to_wstring(i);
+		std::wstring objectName3 = L"왼쪽 돌" + std::to_wstring(i);
+		std::wstring objectName4 = L"오른쪽 돌" + std::to_wstring(i);
 
-	//	TransformComponent leftSphereTransform;
-	//	leftSphereTransform.Position = { -12.0f, 3.5f, -10.0f + i * 5.0f };
+		CreateRenderItem(objectName1.c_str(), "shapeGeo", "cylinder", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftCylTransform,
+			{ RenderLayer::Opaque }, true);
+		CreateRenderItem(objectName2.c_str(), "shapeGeo", "cylinder", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightCylTransform,
+			{ RenderLayer::Opaque }, true);
 
-	//	TransformComponent rightSphereTransform;
-	//	rightSphereTransform.Position = { -2.0f, 3.5f, -10.0f + i * 5.0f };
-	//	rightSphereTransform.Scale = { 2.0f, 2.0f, 2.0f };
+		CreateRenderItem(objectName3.c_str(), "shapeGeo", "sphere", "stone0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftSphereTransform,
+			{ RenderLayer::Opaque }, true);
+		CreateRenderItem(objectName4.c_str(), "shapeGeo", "geoSphere", "stone0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightSphereTransform,
+			{ RenderLayer::GeoSphereLOD }, true);
+	}
 
-	//	std::wstring objectName1 = L"기둥" + std::to_wstring(i);
-	//	std::wstring objectName2 = L"돌" + std::to_wstring(i);
-	//	AddInstance(CylinderRI, "bricks0", objectName1.c_str(), leftCylTransform);
-	//	AddInstance(CylinderRI, "bricks0", objectName1.c_str(), rightCylTransform);
-	//	AddInstance(SphereRI, "stone0", objectName2.c_str(), leftSphereTransform);
-	//	AddInstance(GeoSphereRI, "stone0", objectName2.c_str(), rightSphereTransform);
-	//}
-	//FinalizeRenderItem(CylinderRI, InstanceBufferIndex);
-	//FinalizeRenderItem(SphereRI, InstanceBufferIndex);
-	//FinalizeRenderItem(GeoSphereRI, InstanceBufferIndex);
+	//skull
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 1.0f, 7.0f };
+		transform.Scale = { 0.2f, 0.2f, 0.2f };
 
-	////skull
-	//mSkull = CreateRenderItem("shapeGeo", "skull",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Opaque }, true);
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -7.0f, 1.0f, 7.0f };
-	//	transform.Scale = { 0.2f, 0.2f, 0.2f };
+		mSkull = CreateRenderItem(L"해골", "shapeGeo", "skull", "defaultMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::Opaque }, true);
+	}
 
-	//	AddInstance(mSkull, "defaultMat", L"해골", transform);
-	//}
-	//FinalizeRenderItem(mSkull, InstanceBufferIndex);
+	//land
+	{
+		TransformComponent transform;
+		transform.Position = { 0.0f, -5.0f, 0.0f };
 
-	////land
-	//RenderItem* landRI = CreateRenderItem("landGeo", "grid",
-	//	D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
-	//	{ RenderLayer::TessLand });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { 0.0f, -5.0f, 0.0f };
+		CreateRenderItem(L"땅", "landGeo", "grid", "grass0",
+			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
+			{ RenderLayer::TessLand }, false,
+			XMMatrixScaling(5.0f, 5.0f, 1.0f));
+	}
 
-	//	auto& data = AddInstance(landRI, "grass0", L"해골", transform);
-	//	XMStoreFloat4x4(&data.TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	//}
-	//FinalizeRenderItem(landRI, InstanceBufferIndex);
+	//wave
+	{
+		TransformComponent transform;
+		transform.Position = { 0.0f, -1.0f, 0.0f };
 
-	////wave
-	//RenderItem* waveRI = CreateRenderItem("waterGeo", "grid",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Waves });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { 0.0f, -1.0f, 0.0f };
+		CreateRenderItem(L"물", "waterGeo", "grid", "water0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::Waves }, false,
+			XMMatrixScaling(5.0f, 5.0f, 1.0f));
+	}
 
-	//	auto& data = AddInstance(waveRI, "water0", L"파도", transform);
-	//	XMStoreFloat4x4(&data.TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	//}
-	//FinalizeRenderItem(waveRI, InstanceBufferIndex);
+	//mirror
+	{
+		TransformComponent transform;
+		transform.Position = { -18.0f, 2.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.2f, 1.0f, 0.5f };
 
-	////mirror
-	//mMirror = CreateRenderItem("shapeGeo", "grid",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::MirrorStencil, RenderLayer::Transparent });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -18.0f, 2.0f, 7.0f };
-	//	transform.Rotation = { 0.0f, 0.0f, -90.0f };
-	//	transform.Scale = { 0.2f, 1.0f, 0.5f };
+		mMirror = CreateRenderItem(L"거울", "shapeGeo", "grid", "iceMirrorMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::MirrorStencil, RenderLayer::Transparent }, false,
+			XMMatrixScaling(1.0f, 2.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
+	}
+	{
+		TransformComponent transform;
+		transform.Position = { -18.001f, 3.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.3f, 1.0f, 1.4f };
 
-	//	auto& data = AddInstance(mMirror, "iceMirrorMat", L"거울", transform);
-	//	XMStoreFloat4x4(&data.TexTransform, XMMatrixScaling(1.0f, 2.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2));
-	//}
-	//FinalizeRenderItem(mMirror, InstanceBufferIndex);
+		CreateRenderItem(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
+			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
+			{ RenderLayer::TessWall }, false,
+			XMMatrixScaling(2.5f, 11.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
+	}
+	//거울 백플레이트
+	{
+		TransformComponent transform;
+		transform.Position = { -18.0f, 2.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.2f, 1.0f, 0.5f };
 
-	//RenderItem* mirrorWallTessRI = CreateRenderItem("brickWallGeo", "brickWall",
-	//	D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
-	//	{ RenderLayer::TessWall });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -18.001f, 3.0f, 7.0f };
-	//	transform.Rotation = { 0.0f, 0.0f, -90.0f };
-	//	transform.Scale = { 0.3f, 1.0f, 1.4f };
+		CreateRenderItem(L"거울 백플레이트", "shapeGeo", "grid", "mirrorBaseMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::MirrorBaseFill }, false);
+	}
 
-	//	auto& data = AddInstance(mirrorWallTessRI, "bricks1", L"거울 벽", transform);
-	//	XMStoreFloat4x4(&data.TexTransform, XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2));
-	//}
-	//FinalizeRenderItem(mirrorWallTessRI, InstanceBufferIndex);
+	//skull shadow
+	{
+		TransformComponent transform;
+		transform.Position = { 3.0f, 3.0f, 0.0f };
 
-	////거울 백플레이트
-	//RenderItem* mirrorBackRI = CreateRenderItem("shapeGeo", "grid",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::MirrorBaseFill });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -18.0f, 2.0f, 7.0f };
-	//	transform.Rotation = { 0.0f, 0.0f, -90.0f };
-	//	transform.Scale = { 0.2f, 1.0f, 0.5f };
+		mSkullShadow = CreateRenderItem(L"해골 그림자", "shapeGeo", "skull", "shadowMat_skull",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::Shadow }, true);
+	}
 
-	//	auto& data = AddInstance(mirrorBackRI, "mirrorBaseMat", L"거울 백플레이트", transform);
-	//}
-	//FinalizeRenderItem(mirrorBackRI, InstanceBufferIndex);
+	//tree billboard
+	{
+		TransformComponent transform;
+		CreateRenderItem(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
+			D3D_PRIMITIVE_TOPOLOGY_POINTLIST, transform,
+			{ RenderLayer::A2C_TreeBillboard }, false);
+	}
 
-	////skull shadow
-	//mSkullShadow = CreateRenderItem("shapeGeo", "skull",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Shadow });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { 3.0f, 3.0f, 0.0f };
+	//extended Cylinder
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 0.0f, 20.0f };
 
-	//	auto& data = AddInstance(mSkullShadow, "shadowMat_skull", L"해골 그림자", transform);
-	//}
-	//FinalizeRenderItem(mSkullShadow, InstanceBufferIndex);
+		CreateRenderItem(L"GS확장 원통", "cylinderWithoutTop", "cylinderWithoutTop", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_LINESTRIP, transform,
+			{ RenderLayer::LineToCylinder }, false);
+	}
 
-	////tree billboard
-	//RenderItem* treeBillboardRI = CreateRenderItem("treeBillboard", "tree",
-	//	D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
-	//	{ RenderLayer::A2C_TreeBillboard });
-	//{
-	//	TransformComponent transform;
+	//explode
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 6.0f, 7.0f };
 
-	//	auto& data = AddInstance(treeBillboardRI, "treeBillboardMat", L"나무 빌보드", transform);
-	//}
-	//FinalizeRenderItem(treeBillboardRI, InstanceBufferIndex);
-
-	////extended Cylinder
-	//RenderItem* cylRI = CreateRenderItem("cylinderWithoutTop", "cylinderWithoutTop",
-	//	D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,
-	//	{ RenderLayer::LineToCylinder });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -7.0f, 0.0f, 20.0f };
-
-	//	auto& data = AddInstance(cylRI, "bricks0", L"GS확장 원통", transform);
-	//}
-	//FinalizeRenderItem(cylRI, InstanceBufferIndex);
-
-	////explode
-	//RenderItem* explodeRI = CreateRenderItem("shapeGeo", "geoSphere",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::GeoExplode });
-	//{
-	//	TransformComponent transform;
-	//	transform.Position = { -7.0f, 6.0f, 7.0f };
-
-	//	auto& data = AddInstance(explodeRI, "bricks0", L"폭발하는 돌", transform);
-	//}
-	//FinalizeRenderItem(explodeRI, InstanceBufferIndex);
+		CreateRenderItem(L"폭발하는 돌", "shapeGeo", "geoSphere", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::GeoExplode }, true);
+	}
 }
 
-void SceneRenderer::BuildRenderItems_InMirror(UINT& InstanceBufferIndex)
+void SceneRenderer::BuildSceneObject_InMirror()
 {
-	//XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
-	//XMMATRIX R = XMMatrixReflect(mirrorPlane);
+	const XMMATRIX R = XMMatrixReflect(GetMirrorPlane()); // x = -10 plane
 
-	//std::vector<std::unique_ptr<RenderItem>> renderItems;
-	//for (auto& ri : mAllRenderItems)
-	//{
-	//	if (ri->InMirror == false) continue;
+	std::vector<SceneObject*> copySceneObjects;
+	for (const auto& obj : mScene.GetObjects())
+		copySceneObjects.push_back(obj.get());
 
-	//	auto reflectedRI = std::make_unique<RenderItem>();
-	//	*reflectedRI = *ri;	// 값 복사
-	//	for (auto& instance : reflectedRI->Instances)
-	//	{
-	//		auto world = XMLoadFloat4x4(&instance.World) * R;
-	//		auto invTransposeWorld = MathHelper::InverseTranspose(world);
-	//		XMStoreFloat4x4(&instance.World, world);
-	//		XMStoreFloat4x4(&instance.WorldInvTranspose, invTransposeWorld);
-	//	}
-	//	FinalizeRenderItem(reflectedRI.get(), InstanceBufferIndex);
+	for (auto sceneObjPtr : copySceneObjects)
+	{
+		StaticMeshComponent* originMesh = sceneObjPtr->GetComponent<StaticMeshComponent>();
+		if (!originMesh || originMesh->InMirror == false) continue;
+	
+		SceneObject& reflected = mScene.CreateObject(sceneObjPtr->Name + L"_InMirror");
+		XMStoreFloat4x4(&reflected.Transform.WorldOverride,
+			sceneObjPtr->Transform.GetWorldMatrix() * R);
+		reflected.Transform.UseWorldOverride = true;
+		reflected.Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable);
 
-	//	if (ri.get() == mSkullShadow) mSkullShadowMirror = reflectedRI.get();
-	//	if (ri.get() == mSkull) mSkullMirror = reflectedRI.get();
+		auto& reflectedMesh = reflected.AddComponent<StaticMeshComponent>();
+		reflectedMesh = *originMesh;
+		reflectedMesh.InMirror = false;
 
-	//	mSceneObjectLayer[(int)RenderLayer::Reflected].push_back(reflectedRI.get());
-	//	renderItems.push_back(std::move(reflectedRI));
-	//}
+		for (SubmeshSlot& slot : reflectedMesh.SubmeshSlots)
+			slot.Layer = RenderLayer::Reflected;
+
+		if (sceneObjPtr == mSkullShadow) mSkullShadowMirror = &reflected;
+		if (sceneObjPtr == mSkull) mSkullMirror = &reflected;
+	}
+
+	mRenderBatchesDirty = true;
 }
 
-void SceneRenderer::BuildRenderItems_Gizmo(UINT& InstanceBufferIndex)
+void SceneRenderer::BuildSceneObject_Gizmo()
 {
-	//RenderItem* gizmoRI = CreateRenderItem("shapeGeo", "box",
-	//	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//	{ RenderLayer::Gizmo });
-	//gizmoRI->Visible = false;
-	//{
-	//	TransformComponent transform;
+	TransformComponent transform;
 
-	//	AddInstance(gizmoRI, "gizmoX", L"기즈모 X", transform, false);
-	//	AddInstance(gizmoRI, "gizmoY", L"기즈모 Y", transform, false);
-	//	AddInstance(gizmoRI, "gizmoZ", L"기즈모 Z", transform, false);
-	//}
-	//mGizmo.SetGigmoRenderItem(gizmoRI);
-	//FinalizeRenderItem(gizmoRI, InstanceBufferIndex);
+	auto gizmoX = CreateRenderItem(L"기즈모 X", "shapeGeo", "box", "gizmoX",
+		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+		{ RenderLayer::Gizmo }, false);
+	gizmoX->Visible = false;
+
+	auto gizmoY = CreateRenderItem(L"기즈모 Y", "shapeGeo", "box", "gizmoY",
+		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+		{ RenderLayer::Gizmo }, false);
+	gizmoY->Visible = false;
+
+	auto gizmoZ = CreateRenderItem(L"기즈모 Z", "shapeGeo", "box", "gizmoZ",
+		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+		{ RenderLayer::Gizmo }, false);
+	gizmoZ->Visible = false;
+
+	gizmoX->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+	gizmoY->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+	gizmoZ->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+
+	mGizmo.SetGigmoObjects(gizmoX, gizmoY, gizmoZ);
 }
 
-void SceneRenderer::BuildRenderItems_FBX(UINT& InstanceBufferIndex)
+void SceneRenderer::BuildSceneObject_FBX()
 {
 	//const std::string assetName = "fbxPreviewGeo";
 	//const auto skeletalMeshIt = mSkeletalMeshes.find(assetName);
@@ -1939,7 +1922,7 @@ void SceneRenderer::BuildRenderItems_FBX(UINT& InstanceBufferIndex)
 	//}
 }
 
-void SceneRenderer::CreateRenderItem(
+SceneObject* SceneRenderer::CreateRenderItem(
 	const wchar_t* objName, const char* GeoName, const char* subMeshName, const char* matName,
 	D3D12_PRIMITIVE_TOPOLOGY topology, const TransformComponent& transform,
 	std::vector<RenderLayer> layer, bool InMirror, DirectX::XMMATRIX matTransform)
@@ -1965,8 +1948,10 @@ void SceneRenderer::CreateRenderItem(
 		smSlot.Layer = l;
 		component.SubmeshSlots.push_back(smSlot);
 
-		mSceneObjectLayer[(int)l].push_back(&obj);
+		//mSceneObjectLayer[(int)l].push_back(&obj);
 	}
+
+	return &obj;
 }
 
 void SceneRenderer::BuildFrameResources(D3D12Context& context)
@@ -2293,21 +2278,20 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSampler
 
 DirectX::XMVECTOR SceneRenderer::GetMirrorPlane()
 {
-	//XMMATRIX W = XMLoadFloat4x4(&mMirror->Instances[0].World);
+	XMMATRIX W = mMirror->Transform.GetWorldMatrix();
 
-	//XMVECTOR pLocal = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);	// 점 벡터
-	//XMVECTOR nLocal = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);	// grid가 XZ Plane일 때
+	XMVECTOR pLocal = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);	// 점 벡터
+	XMVECTOR nLocal = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);	// grid가 XZ Plane일 때
 
-	//XMVECTOR pWorld = XMVector3TransformCoord(pLocal, W);
+	XMVECTOR pWorld = XMVector3TransformCoord(pLocal, W);
 
-	//XMMATRIX invTransW = MathHelper::InverseTranspose(W);
-	//XMVECTOR nWorld = XMVector3TransformNormal(nLocal, invTransW);
-	//nWorld = XMVector3Normalize(nWorld);
+	XMMATRIX invTransW = MathHelper::InverseTranspose(W);
+	XMVECTOR nWorld = XMVector3TransformNormal(nLocal, invTransW);
+	nWorld = XMVector3Normalize(nWorld);
 
-	//float d = -XMVectorGetX(XMVector3Dot(nWorld, pWorld));
+	float d = -XMVectorGetX(XMVector3Dot(nWorld, pWorld));
 
-	//return XMVectorSetW(nWorld, d);
-	return XMVectorZero();
+	return XMVectorSetW(nWorld, d);
 }
 
 float SceneRenderer::GetHillsHeight(float x, float z) const
@@ -2453,19 +2437,19 @@ void SceneRenderer::UpdateMainPassCB()
 
 void SceneRenderer::UpdateReflectedPassCB()
 {
-	//mReflectedPassCB = mMainPassCB;
+	mReflectedPassCB = mMainPassCB;
 
-	//XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
-	//XMMATRIX R = XMMatrixReflect(mirrorPlane);
+	XMVECTOR mirrorPlane = GetMirrorPlane(); // x = -10 plane
+	XMMATRIX R = XMMatrixReflect(mirrorPlane);
 
-	//for (int i = 0; i < MaxLights; i++)
-	//{
-	//	XMVECTOR lightDir = XMLoadFloat3(&mMainPassCB.Lights[i].Direction);
-	//	XMVECTOR reflectedLightDir = XMVector3TransformNormal(lightDir, R);
-	//	XMStoreFloat3(&mReflectedPassCB.Lights[i].Direction, reflectedLightDir);
-	//}
+	for (int i = 0; i < MaxLights; i++)
+	{
+		XMVECTOR lightDir = XMLoadFloat3(&mMainPassCB.Lights[i].Direction);
+		XMVECTOR reflectedLightDir = XMVector3TransformNormal(lightDir, R);
+		XMStoreFloat3(&mReflectedPassCB.Lights[i].Direction, reflectedLightDir);
+	}
 
-	//mCurrFrameResource->PassCB->CopyData(1, mReflectedPassCB);
+	mCurrFrameResource->PassCB->CopyData(1, mReflectedPassCB);
 }
 
 void SceneRenderer::UpdateInstanceBuffer()
@@ -2495,7 +2479,7 @@ void SceneRenderer::UpdateInstanceBuffer()
 		for (RenderBatch& batch : batches)
 		{
 			batch.StartInstanceLocation = instanceRegionStart;
-			instanceRegionStart += batch.Instances.size();
+			instanceRegionStart += (UINT)batch.Instances.size();
 			batch.VisibleInstanceCount = 0;
 
 			for (int i = 0; i < batch.Instances.size(); i++)
@@ -2505,13 +2489,12 @@ void SceneRenderer::UpdateInstanceBuffer()
 				if (!object || !object->Visible) continue;
 				StaticMeshComponent* staticMesh = object->GetComponent<StaticMeshComponent>();
 				if (!staticMesh || !staticMesh->Visible || !staticMesh->Geometry) continue;
-				SubmeshSlot& slot = staticMesh->SubmeshSlots[ref.SlotIndex];
+				SubmeshSlot& slot = staticMesh->SubmeshSlots[ref.SubMeshSlotIndex];
 				if (!slot.Visible || !slot.Submesh || !slot.MaterialData) continue;
-				TransformComponent& transform = object->Transform;
 
 				ref.GpuInstanceIndex = UINT_MAX;
 
-				XMMATRIX world = transform.GetWorldMatrix();
+				XMMATRIX world = object->Transform.GetWorldMatrix();
 				XMMATRIX worldInvTranspose = MathHelper::InverseTranspose(world);
 
 				BoundingBox worldBounds;
@@ -2542,6 +2525,8 @@ void SceneRenderer::UpdateInstanceBuffer()
 
 void SceneRenderer::RebuildRenderBatches()
 {
+	mInstanceCount = 0;
+
 	for (auto& layerBatches : mRenderBatches)
 		layerBatches.clear();
 
@@ -2568,9 +2553,10 @@ void SceneRenderer::RebuildRenderBatches()
 
 			RenderInstanceRef ref{};
 			ref.Object = object;
-			ref.SlotIndex = i;
+			ref.SubMeshSlotIndex = i;
 			ref.GpuInstanceIndex = UINT_MAX;
 			batch.Instances.push_back(ref);
+			mInstanceCount++;
 		}
 	}
 
@@ -2621,6 +2607,26 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer la
 	}
 }
 
+void SceneRenderer::DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderLayer layer)
+{
+	for (const RenderBatch& batch : mRenderBatches[(int)layer])
+	{
+		if (batch.VisibleInstanceCount == 0) continue;
+
+		auto vbv = batch.Key.Geometry->VertexBufferView();
+		auto ibv = batch.Key.Geometry->IndexBufferView();
+		const SubmeshGeometry& submesh = *batch.Key.Submesh;
+
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
+		cmdList->IASetIndexBuffer(&ibv);
+		cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		cmdList->SetGraphicsRoot32BitConstant(1, batch.StartInstanceLocation, 0);
+
+		cmdList->DrawIndexedInstanced(submesh.IndexCount, batch.VisibleInstanceCount, submesh.StartIndexLocation, submesh.BaseVertexLocation, 0);
+	}
+}
+
 void SceneRenderer::UpdateMaterialBuffer()
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialBuffer.get();
@@ -2666,23 +2672,25 @@ void SceneRenderer::UpdateWavesGPU(ID3D12GraphicsCommandList* cmdList)
 
 void SceneRenderer::UpdateShadowTransform()
 {
-	//if (mSkullShadow == nullptr) return;
+	if (mSkullShadow == nullptr) return;
 
-	////빛 전환에 따른 해골 그림자 변환.
-	//XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); //xz plane
-	//XMVECTOR toMainLight = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
-	//XMVECTOR toReflectedLight = -XMLoadFloat3(&mReflectedPassCB.Lights[0].Direction);
-	//XMMATRIX s = XMMatrixShadow(shadowPlane, toMainLight);
-	//XMMATRIX s2 = XMMatrixShadow(shadowPlane, toReflectedLight);
-	//XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
-	//XMMATRIX skullWorld = XMLoadFloat4x4(&mSkull->Instances[0].World);
-	//XMStoreFloat4x4(&mSkullShadow->Instances[0].World, skullWorld * s * shadowOffsetY);
+	//빛 전환에 따른 해골 그림자 변환.
+	XMVECTOR shadowPlane = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); //xz plane
+	XMVECTOR toMainLight = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
+	XMVECTOR toReflectedLight = -XMLoadFloat3(&mReflectedPassCB.Lights[0].Direction);
+	XMMATRIX s = XMMatrixShadow(shadowPlane, toMainLight);
+	XMMATRIX s2 = XMMatrixShadow(shadowPlane, toReflectedLight);
+	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f);
+	XMMATRIX skullWorld = mSkull->Transform.GetWorldMatrix();
+	XMStoreFloat4x4(&mSkullShadow->Transform.WorldOverride, skullWorld * s * shadowOffsetY);
+	mSkullShadow->Transform.UseWorldOverride = true;
 
-	//if (mSkullShadowMirror != nullptr)
-	//{ 
-	//	XMMATRIX mirrorSkullWorld = XMLoadFloat4x4(&mSkullMirror->Instances[0].World);
-	//	XMStoreFloat4x4(&mSkullShadowMirror->Instances[0].World, mirrorSkullWorld * s2 * shadowOffsetY);
-	//}
+	if (mSkullShadowMirror != nullptr)
+	{ 
+		XMMATRIX mirrorSkullWorld = mSkullMirror->Transform.GetWorldMatrix();
+		XMStoreFloat4x4(&mSkullShadowMirror->Transform.WorldOverride, mirrorSkullWorld * s2 * shadowOffsetY);
+		mSkullShadowMirror->Transform.UseWorldOverride = true;
+	}
 }
 
 void SceneRenderer::AnimateMaterials()
@@ -2752,52 +2760,52 @@ void SceneRenderer::DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const s
 
 void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 {
-	//auto selectedInstances = mGizmo.GetSelectedInstances();
+	auto selectedInstances = mGizmo.GetSelectedInstances();
 
-	//if (selectedInstances.empty()) return;
+	for (auto& selected : selectedInstances)
+	{
+		if (!selected.InstanceRef->Object || selected.InstanceRef->SubMeshSlotIndex == UINT_MAX) continue;
 
-	//for (auto& selected : selectedInstances)
-	//{
-	//	if (selected.renderItem == nullptr ||
-	//		selected.instanceIndex == UINT_MAX)
-	//	{
-	//		continue;
-	//	}
+		auto mesh = selected.InstanceRef->Object->GetComponent<StaticMeshComponent>();
+		if (!mesh || !mesh->Geometry || selected.InstanceRef->SubMeshSlotIndex >= mesh->SubmeshSlots.size())
+			continue;
 
-	//	RenderItem* ri = selected.renderItem;
-	//	UINT instanceIndex = selected.instanceIndex;
-	//	UINT instanceIndexGPU = ri->Instances[instanceIndex].GpuInstanceIndex;
-	//	if (instanceIndexGPU == UINT_MAX) continue;
+		const SubmeshSlot& slot = mesh->SubmeshSlots[selected.InstanceRef->SubMeshSlotIndex];
+		RenderBatchKey key{};
+		key.Geometry = mesh->Geometry;
+		key.Submesh = slot.Submesh;
+		key.Topology = mesh->Topology;
+		key.Layer = slot.Layer;
+		const auto& batches = mRenderBatches[static_cast<int>(slot.Layer)];
 
-	//	auto vbv = ri->Geo->VertexBufferView();
-	//	auto ibv = ri->Geo->IndexBufferView();
-	//	cmdList->IASetVertexBuffers(0, 1, &vbv);
-	//	cmdList->IASetIndexBuffer(&ibv);
-	//	cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+		const auto batchIt = std::find_if(batches.begin(), batches.end(),
+			[&key](const RenderBatch& batch)
+			{
+				return batch.Key == key;
+			});
+		if (batchIt == batches.end()) continue;
 
-	//	cmdList->SetGraphicsRoot32BitConstant(1, instanceIndexGPU, 0);
+		const RenderBatch& batch = *batchIt;
+		const auto instanceIt = std::find_if(batch.Instances.begin(), batch.Instances.end(),
+			[&](const RenderInstanceRef& instance)
+			{
+				return instance.Object == selected.InstanceRef->Object &&
+					instance.SubMeshSlotIndex == selected.InstanceRef->SubMeshSlotIndex;
+			});
 
-	//	cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-	//}
-}
+		if (instanceIt == batch.Instances.end() || instanceIt->GpuInstanceIndex == UINT_MAX)
+			continue;
 
-void SceneRenderer::DrawSceneObjects_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers)
-{
-	//for (auto& ri : renderLayers)
-	//{
-	//	if (ri->VisibleInstanceCount == 0) continue;
+		auto vbv = mesh->Geometry->VertexBufferView();
+		auto ibv = mesh->Geometry->IndexBufferView();
+		cmdList->IASetVertexBuffers(0, 1, &vbv);
+		cmdList->IASetIndexBuffer(&ibv);
+		cmdList->IASetPrimitiveTopology(mesh->Topology);
 
-	//	auto vbv = ri->Geo->VertexBufferView();
-	//	auto ibv = ri->Geo->IndexBufferView();
+		cmdList->SetGraphicsRoot32BitConstant(1, instanceIt->GpuInstanceIndex, 0);
 
-	//	cmdList->IASetVertexBuffers(0, 1, &vbv);
-	//	cmdList->IASetIndexBuffer(&ibv);
-	//	cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_POINTLIST);
-
-	//	cmdList->SetGraphicsRoot32BitConstant(1, ri->StartInstanceLocation, 0);
-
-	//	cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-	//}
+		cmdList->DrawIndexedInstanced(slot.Submesh->IndexCount, 1, slot.Submesh->StartIndexLocation, slot.Submesh->BaseVertexLocation, 0);
+	}
 }
 
 void SceneRenderer::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
@@ -2862,38 +2870,4 @@ ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMod
 
 	const auto& litPso = mLayerPSOs[(int)RenderLayer::Opaque][(int)mode];
 	return litPso.Get();
-}
-
-void SceneRenderer::SyncSceneObjectTransforms()
-{
-	//for (const auto& object : mScene.GetObjects())
-	//{
-	//	if (!object) continue;
-
-	//	if (!object->TransformDirty) continue;
-
-	//	const XMMATRIX world = object->Transform.GetWorldMatrix();
-
-	//	const XMMATRIX worldInvTranspose = MathHelper::InverseTranspose(world);
-
-	//	for (const RenderInstanceBinding& binding : object->RenderBindings)
-	//	{
-	//		RenderItem* renderItem = binding.RenderData;
-
-	//		if (!renderItem) continue;
-
-	//		if (binding.InstanceIndex >= renderItem->Instances.size())
-	//		{
-	//			assert(false && "SceneObject RenderBinding index is invalid.");
-	//			continue;
-	//		}
-
-	//		InstanceData& instance = renderItem->Instances[binding.InstanceIndex];
-
-	//		XMStoreFloat4x4(&instance.World, world);
-	//		XMStoreFloat4x4(&instance.WorldInvTranspose, worldInvTranspose);
-	//	}
-
-	//	object->TransformDirty = false;
-	//}
 }

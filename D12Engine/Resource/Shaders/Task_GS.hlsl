@@ -16,7 +16,6 @@ struct InstanceData
 {
     float4x4 World;
     float4x4 WorldInvTranspose;
-    float4x4 TexTransform;
     float2 DisplacementMapTexelSize;
     float GridSpatialStep;
     uint MaterialIndex;
@@ -183,7 +182,6 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     InstanceData instData = gInstanceData[globalInstanceID];
     float4x4 world = instData.World;
     float4x4 worldInvTranspose = instData.WorldInvTranspose;
-    float4x4 texTransform = instData.TexTransform;
     float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;
     float gridSpatialStep = instData.GridSpatialStep;
     uint matIndex = instData.MaterialIndex;
@@ -193,8 +191,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     float4 posW = mul(float4(vin.PosL, 1.0f), world);
     vout.PosW = posW.xyz;
     vout.NormalW = mul(vin.NormalL, (float3x3) worldInvTranspose);
-    float4 texC = mul(float4(vin.TexC, 0.f, 1.f), texTransform);
-    vout.TexC = mul(texC, matData.MatTransform).xy;
+    vout.TexC = mul(float4(vin.TexC, 0.f, 1.f), matData.MatTransform).xy;
     vout.MatIndex = matIndex;
     vout.gInstanceID = globalInstanceID;
 

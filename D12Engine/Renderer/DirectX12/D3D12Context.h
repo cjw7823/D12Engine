@@ -127,7 +127,7 @@ public:
     const UINT GetCurrentBackBufferIndex() const noexcept { return mCurrentBackBufferIndex; }
     const UINT GetCurrentFrameIndex() const noexcept { return mFrameIndex; }
 
-    void BeginBackBufferRenderPass(const float clearColor[4]);
+    void BeginBackBufferRenderPass();
 
 private:
     void CreateDevice();

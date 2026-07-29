@@ -95,15 +95,12 @@ private:
 	void BuildCylinderWithoutTopGeometry(D3D12Context& context);
 	void BuildBrickWallGeometry(D3D12Context& context);
 	void BuildFBXGeometry(D3D12Context& context);
-
-	void BuildScene(UINT& InstanceBufferIndex);
-
-	void BuildRenderItems();
-	void BuildRenderItems_Common(UINT& InstanceBufferIndex);
-	void BuildRenderItems_InMirror(UINT& InstanceBufferIndex);
-	void BuildRenderItems_Gizmo(UINT& InstanceBufferIndex);
-	void BuildRenderItems_FBX(UINT& InstanceBufferIndex);
-	void CreateRenderItem(
+	void BuildScene();
+	void BuildSceneObject_Common();
+	void BuildSceneObject_InMirror();
+	void BuildSceneObject_Gizmo();
+	void BuildSceneObject_FBX();
+	SceneObject* CreateRenderItem(
 		const wchar_t* objName, const char* GeoName, const char* subMeshName, const char* matName,
 		D3D12_PRIMITIVE_TOPOLOGY topology, const TransformComponent& transform,
 		std::vector<RenderLayer> layer, bool InMirror, DirectX::XMMATRIX matTransform = DirectX::XMMatrixIdentity());
@@ -122,22 +119,21 @@ private:
 	void UpdateWavesGPU(ID3D12GraphicsCommandList* cmdList);
 	void UpdateShadowTransform();
 	void AnimateMaterials();
-
+	
+	[[deprecated("사용불가. 참고용")]]
 	void DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers);
 	void DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList);
-	void DrawSceneObjects_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers);
 	void DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList);
 
 	void CreateQueryHeap(D3D12Context& context);
 
 	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
 
-	void SyncSceneObjectTransforms();
-
 	//for Render Batch
 	void RebuildRenderBatches();
 	RenderBatch& FindOrCreateBatch(const RenderBatchKey& key);
-	void DrawLayer(ID3D12GraphicsCommandList* commandList, RenderLayer layer);
+	void DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer layer);
+	void DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderLayer layer);
 
 public:
 	//For Gizmo / Selected Instances
@@ -165,6 +161,7 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
+	[[deprecated("mRenderBatches를 사용하세요.")]]
 	std::vector<SceneObject*> mSceneObjectLayer[(int)RenderLayer::Count];
 	//Render Batch
 	std::array<std::vector<RenderBatch>, (int)RenderLayer::Count> mRenderBatches;

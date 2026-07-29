@@ -83,6 +83,7 @@ void D3D12RenderTarget::Shutdown(D3D12Context& context)
 void D3D12RenderTarget::CreateResources(D3D12Context& context)
 {
     ID3D12Device* device = context.GetDevice();
+    auto mClearColor = context.GetDesc().BackBufferClearColor;
 
     D3D12_CLEAR_VALUE colorClearValue = {};
     colorClearValue.Format = mColorFormat;
@@ -208,6 +209,8 @@ void D3D12RenderTarget::CreateViews(D3D12Context& context)
 
 void D3D12RenderTarget::CreateMsaaRenderTarget(D3D12Context& context)
 {
+    auto mClearColor = context.GetDesc().BackBufferClearColor;
+
     D3D12_RESOURCE_DESC texDesc = {};
     texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     texDesc.Width = mWidth;
@@ -244,12 +247,13 @@ void D3D12RenderTarget::CreateMsaaRenderTarget(D3D12Context& context)
         mMsaaDescriptorHandle.Cpu);
 }
 
-void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
+void D3D12RenderTarget::Clear(D3D12Context& context)
 {
     assert(mColorBuffer);
     assert(mDepthBuffer);
 
     ID3D12GraphicsCommandList* cmdList = context.GetCommandList();
+    auto mClearColor = context.GetDesc().BackBufferClearColor.data();
 
     D3D12_RESOURCE_STATES newState = context.mMsaaOption.IsEnable() ? D3D12_RESOURCE_STATE_RESOLVE_DEST : D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -261,7 +265,7 @@ void D3D12RenderTarget::Clear(D3D12Context& context, const float clearColor[4])
     cmdList->RSSetScissorRects(1, &mScissorRect);
 
     auto rtvHandle = context.mMsaaOption.IsEnable() ? mMsaaDescriptorHandle.Cpu : mRtv.Cpu;
-    cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    cmdList->ClearRenderTargetView(rtvHandle, mClearColor, 0, nullptr);
 
     cmdList->ClearDepthStencilView(
         mDsv.Cpu,

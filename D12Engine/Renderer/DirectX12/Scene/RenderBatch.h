@@ -65,7 +65,7 @@ struct RenderInstanceRef
 	SceneObject* Object = nullptr;
 
 	// Object의 StaticMeshComponent::SubmeshSlots 인덱스
-	std::uint32_t SlotIndex = UINT32_MAX;
+	std::uint32_t SubMeshSlotIndex = UINT32_MAX;
 
 	// 현재 프레임 GPU 인스턴스 버퍼 위치
 	UINT GpuInstanceIndex = UINT_MAX;

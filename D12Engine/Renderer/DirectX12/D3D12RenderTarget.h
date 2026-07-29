@@ -14,7 +14,7 @@ public:
     void Create(D3D12Context& context, DXGI_FORMAT colorFormat, DXGI_FORMAT depthFormat);
     void Resize(D3D12Context& context, int width, int height);
     void Shutdown(D3D12Context& context);
-    void Clear(D3D12Context& context, const float clearColor[4] = mClearColor);
+    void Clear(D3D12Context& context);
     void TransitionIfNeeded(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* resource, D3D12_RESOURCE_STATES& currState, D3D12_RESOURCE_STATES newState);
     void ResolveMsaaToColorBuffer(ID3D12GraphicsCommandList* commandList);
     void PrepareForSampling(ID3D12GraphicsCommandList* commandList);
@@ -63,6 +63,4 @@ private:
 
     D3D12_VIEWPORT mViewport{};
     D3D12_RECT mScissorRect{};
-
-    inline static const float mClearColor[4] = { 0.12f, 0.16f, 0.22f, 1.0f };
 };

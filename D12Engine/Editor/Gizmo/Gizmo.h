@@ -5,6 +5,7 @@
 #include "Renderer/DirectX12/Scene/SceneRenderTypes.h"
 #include "Renderer/DirectX12/Scene/Camera/Camera.h"
 #include "Renderer/DirectX12/Scene/SceneObject.h"
+#include "Renderer/DirectX12/Scene/RenderBatch.h"
 
 #include <DirectXMath.h>
 #include <vector>
@@ -35,13 +36,13 @@ struct GizmoState
 class Gizmo
 {
 public:
-	//void SetGigmoRenderItem(RenderItem* ri);
-	inline std::vector<SelectedSceneObject> GetSelectedInstances() const { return mSelectedInstances; }
+	void SetGigmoObjects(SceneObject* x, SceneObject* y, SceneObject* z);
+	inline std::vector<SelectedSceneObject> GetSelectedInstances() const { return mSelectedObjects; }
 
 	void Update(Camera* camera, int viewportWidth, int viewportHeight);
 
 	bool BeginGizmoDrag(int vx, int vy);
-	//void Pick(int vx, int vy, std::vector<RenderItem*> RenderItemLayer[]);
+	void Pick(int vx, int vy, const std::array<std::vector<RenderBatch>, (int)RenderLayer::Count>& renderBatch);
 	void UpdateGizmoDrag(int vx, int vy);
 	void EndGizmoDrag();
 
@@ -50,7 +51,7 @@ public:
 private:
 	void UpdateGizmo();
 
-	//InstanceData* GetPrimarySelectedInstance();
+	SceneObject* GetPrimarySelectedObject();
 	DirectX::XMVECTOR GetGizmoAxisVector(GizmoAxis axis) const;
 	float CalcGizmoAxisLength(const DirectX::XMFLOAT3& pivotW) const;
 	void BuildWorldRayFromViewport(int sx, int sy, DirectX::XMVECTOR& rayOriginW, DirectX::XMVECTOR& rayDirW) const;
@@ -63,9 +64,12 @@ private:
 	bool IntersectRayPlane(DirectX::XMVECTOR rayOriginW, DirectX::XMVECTOR rayDirW, DirectX::XMVECTOR plane, DirectX::XMVECTOR& hitPointW) const;
 
 private:
-	//RenderItem* mGizmoRI = nullptr;
+	SceneObject* mGizmoX = nullptr;
+	SceneObject* mGizmoY = nullptr;
+	SceneObject* mGizmoZ = nullptr;
+
 	GizmoState mGizmo;
-	std::vector<SelectedSceneObject> mSelectedInstances;
+	std::vector<SelectedSceneObject> mSelectedObjects;
 
 	Camera* mCamera;
 	int mViewportWidth = 1;

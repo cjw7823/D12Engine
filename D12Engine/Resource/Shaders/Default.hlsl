@@ -113,7 +113,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
     VertexOut vout = (VertexOut) 0.0f;
     
-    InstanceData instData = gInstanceData[gInstanceIndex];
+    InstanceData instData = gInstanceData[gInstanceIndex + instanceID];
     float4x4 world = instData.World;
     float4x4 worldInvTranspose = instData.WorldInvTranspose;
     float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;

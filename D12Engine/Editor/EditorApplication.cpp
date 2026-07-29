@@ -173,8 +173,7 @@ void EditorApplication::Tick()
 	}
 
 	//·»´õ¸µ
-	const float clearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
-	mD3D12Context.BeginBackBufferRenderPass(clearColor);
+	mD3D12Context.BeginBackBufferRenderPass();
 	mImGuiLayer.RenderDrawData(mD3D12Context);
 
 	mD3D12Context.EndFrame();

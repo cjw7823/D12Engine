@@ -16,7 +16,6 @@ struct InstanceData
 {
     float4x4 World;
     float4x4 WorldInvTranspose;
-    float4x4 TexTransform;
     float2 DisplacementMapTexelSize;
     float GridSpatialStep;
     uint MaterialIndex;

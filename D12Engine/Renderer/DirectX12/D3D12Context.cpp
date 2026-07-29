@@ -585,7 +585,7 @@ void D3D12Context::CreateBackBufferRTVs()
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
 
-void D3D12Context::BeginBackBufferRenderPass(const float clearColor[4])
+void D3D12Context::BeginBackBufferRenderPass()
 {
 	assert(mFrameStarted);
 
@@ -604,7 +604,7 @@ void D3D12Context::BeginBackBufferRenderPass(const float clearColor[4])
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
-	mCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	mCommandList->ClearRenderTargetView(rtvHandle, mDesc.BackBufferClearColor.data(), 0, nullptr);
 	mCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 }
 

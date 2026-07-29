@@ -51,6 +51,7 @@ private:
     bool mHelpWindow = false;
 
     bool mIsPlay = false;
+    bool mInitialFocusApplied = false;
 
     Scene& mScene;
 };

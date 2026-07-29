@@ -10,6 +10,14 @@
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/Resources/TextureDesc.h"
 
+enum SceneObjectFlags
+{
+    None = 0,
+    HideInHierarchy = 1 << 0,
+    NotSelectable = 1 << 1,
+    EditorOnly = 1 << 2,
+};
+
 using SceneObjectId = std::uint64_t;
 class SceneObject
 {
@@ -42,6 +50,11 @@ public:
         return nullptr;
     }
 
+    bool HasFlag(SceneObjectFlags flag) const
+    {
+        return (Flags & flag) != SceneObjectFlags::None;
+    }
+
 public:
 	SceneObjectId Id = 0;
 	std::wstring Name = L"오브젝트";
@@ -56,6 +69,8 @@ public:
     bool Visible = true;
     bool FrustumVisible = true;
 
+    SceneObjectFlags Flags = SceneObjectFlags::None;
+
 private:
     //하나의 객체가 여러 서브메시를 가질 수 있음.
     std::vector<std::unique_ptr<IComponent>> mComponents;
@@ -64,9 +79,10 @@ private:
     //std::unique_ptr<SkinnedModelInstance> SkinnedInstance;
 };
 
+struct RenderInstanceRef;
 struct SelectedSceneObject
 {
-    SceneObject* obj = nullptr;
-    UINT instanceIndex = UINT_MAX;
+    const RenderInstanceRef* InstanceRef = nullptr;
+
     float BoundHitDistW = FLT_MAX;
 };

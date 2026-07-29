@@ -21,6 +21,13 @@ void EditorLayer::Initialize()
 void EditorLayer::OnImGuiRender()
 {
 	DrawEditorUI();
+
+	// 최초 실행 시 Scene View 탭을 기본 활성화
+	if (!mInitialFocusApplied)
+	{
+		ImGui::SetWindowFocus("Scene View");
+		mInitialFocusApplied = true;
+	}
 }
 
 void EditorLayer::SetSceneViewTexture(ImTextureID textureID)
@@ -256,6 +263,8 @@ void EditorLayer::DrawHierarchy()
 	for (const auto& object : objects)
 	{
 		if (!object) continue;
+
+		if (object->HasFlag(SceneObjectFlags::HideInHierarchy)) continue;
 
 		ImGui::PushID(reinterpret_cast<void*>(
 			static_cast<std::uintptr_t>(object->Id)));
