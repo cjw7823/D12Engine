@@ -23,6 +23,7 @@
 #include "Renderer/DirectX12/Effects/BlurFilter.h"
 #include "Renderer/DirectX12/Effects/SobelFilter.h"
 #include "Renderer/DirectX12/Components/TransformComponent.h"
+#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 #include "Renderer/DirectX12/FrameResource.h"
 #include "Renderer/Resources/TextureManager.h"
@@ -32,7 +33,6 @@
 class D3D12Context;
 class Scene;
 class GameTimer;
-struct StaticMeshComponent;
 struct GizmoState;
 
 class SceneRenderer
@@ -136,7 +136,6 @@ private:
 	void DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderLayer layer);
 
 public:
-	//For Gizmo / Selected Instances
 	Gizmo mGizmo;
 
 private:
@@ -161,8 +160,6 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
-	[[deprecated("mRenderBatches를 사용하세요.")]]
-	std::vector<SceneObject*> mSceneObjectLayer[(int)RenderLayer::Count];
 	//Render Batch
 	std::array<std::vector<RenderBatch>, (int)RenderLayer::Count> mRenderBatches;
 	bool mRenderBatchesDirty = true;
@@ -209,13 +206,8 @@ private:
 	UINT mVisibleInstanceCount = 0;
 
 	//For FBX Animation
-	std::unordered_map<std::string, SkeletalMesh> mSkeletalMeshes;
-
-	//For Animation
+	std::unordered_map<std::string, SkeletalMeshComponent> mSkeletalMeshes;
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
-	std::vector<M3DLoader::M3dMaterial> mSkinnedMats;
-	std::vector<std::wstring> mSkinnedTexturePaths;
-	std::vector<std::wstring> mSkinnedNormalTexturePaths;
 
 	//For Camera
 	DirectX::BoundingFrustum mCamFrustum;

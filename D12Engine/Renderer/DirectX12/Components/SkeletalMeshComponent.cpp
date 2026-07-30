@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "SkeletalMesh.h"
+#include "SkeletalMeshComponent.h"
 
 #include <cassert>
 #include <algorithm>

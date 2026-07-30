@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "Renderer/DirectX12/RenderData.h"
-#include "Renderer/DirectX12/Animation/skeletalMesh.h"
+#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
 
 struct ufbx_scene;
 
@@ -23,7 +23,7 @@ public:
     [[nodiscard]]
     static MeshData ImportStaticMesh(const std::filesystem::path& filePath);
     [[nodiscard]]
-    static SkeletalMesh ImportSkeletalMesh(const std::filesystem::path& filePath);
+    static SkeletalMeshComponent ImportSkeletalMesh(const std::filesystem::path& filePath);
 
 private:
     [[nodiscard]]

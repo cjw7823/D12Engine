@@ -104,7 +104,7 @@ struct SkeletalSubmesh
 	SkinBinding Skin;
 };
 
-struct SkeletalMesh
+struct SkeletalMeshComponent
 {
 	SkeletonAsset Skeleton;
 

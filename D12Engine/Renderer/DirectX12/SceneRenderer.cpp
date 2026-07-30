@@ -427,24 +427,6 @@ void SceneRenderer::LoadTextures(D3D12Context& context)
 		L"Resource/Textures/Treearray2.dds",
 	};
 
-	for (UINT i = 0; i < mSkinnedMats.size(); i++)
-	{
-		std::string diffuseName = mSkinnedMats[i].DiffuseMapName;
-		std::string normalName = mSkinnedMats[i].NormalMapName;
-
-		std::wstring diffuseFilename = L"Resource/Textures/" + AnsiToWString(diffuseName);
-		std::wstring normalFilename = L"Resource/Textures/" + AnsiToWString(normalName);
-
-		//확장자 제거.
-		diffuseName = diffuseName.substr(0, diffuseName.find_last_of("."));
-		normalName = normalName.substr(0, normalName.find_last_of("."));
-
-		mSkinnedTexturePaths.push_back(diffuseFilename);
-		mSkinnedNormalTexturePaths.push_back(normalFilename);
-		paths.push_back(diffuseFilename);
-		//paths.push_back(normalFilename);
-	}
-
 	//묶음 로딩 : 텍스처 15개 기준 3ms 단축.
 	ThrowIfFailed(TextureManager::GetInstance().LoadDDS(context, paths));
 
@@ -696,20 +678,6 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	mMaterials[gizmoX->Name] = std::move(gizmoX);
 	mMaterials[gizmoY->Name] = std::move(gizmoY);
 	mMaterials[gizmoZ->Name] = std::move(gizmoZ);
-
-	for (UINT i = 0; i < mSkinnedMats.size(); ++i)
-	{
-		auto mat = std::make_unique<Material>();
-		mat->Name = mSkinnedMats[i].Name;
-		mat->MatBufferIndex = index++;
-		mat->DiffuseTexturePath = mSkinnedTexturePaths[i];
-		//mat->NormalTexturePath = mSkinnedNormalTexturePaths[i];
-		mat->DiffuseAlbedo = mSkinnedMats[i].DiffuseAlbedo;
-		mat->FresnelR0 = mSkinnedMats[i].FresnelR0;
-		mat->Roughness = mSkinnedMats[i].Roughness;
-
-		mMaterials[mat->Name] = std::move(mat);
-	}
 }
 
 void SceneRenderer::BuildRootSignature(D3D12Context& context)
@@ -1534,8 +1502,9 @@ void SceneRenderer::BuildBrickWallGeometry(D3D12Context& context)
 
 void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 {
-	SkeletalMesh skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
-	for (std::size_t submeshIndex = 0; submeshIndex < skelMesh.Submeshes.size(); submeshIndex++)
+	SkeletalMeshComponent skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
+
+	for (int submeshIndex = 0; submeshIndex < skelMesh.Submeshes.size(); submeshIndex++)
 	{
 		const SkeletalSubmesh& submesh = skelMesh.Submeshes[submeshIndex];
 
@@ -1629,7 +1598,7 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	const std::string geometryName = geometry->Name;
 	mGeometries[geometryName] = std::move(geometry);
 	mSkeletalMeshes[geometryName] = std::move(skelMesh);
-	SkeletalMesh& storedAsset = mSkeletalMeshes.at(geometryName);
+	SkeletalMeshComponent& storedAsset = mSkeletalMeshes.at(geometryName);
 	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
 	auto clipName = storedAsset.Animations.begin()->first;
 	for (const auto& [name, clip] : storedAsset.Animations)
@@ -1897,30 +1866,27 @@ void SceneRenderer::BuildSceneObject_Gizmo()
 
 void SceneRenderer::BuildSceneObject_FBX()
 {
-	//const std::string assetName = "fbxPreviewGeo";
-	//const auto skeletalMeshIt = mSkeletalMeshes.find(assetName);
+	const std::string assetName = "fbxPreviewGeo";
+	const auto skeletalMeshIt = mSkeletalMeshes.find(assetName);
 
-	//SkeletalMesh& skeletalMesh = skeletalMeshIt->second;
-	//TransformComponent transform;
-	//transform.Position = { 5.0f, 0.0f, 0.0f };
-	//transform.Rotation = { 0.0f, 180.0f, 0.0f };
-	//transform.Scale = { 0.03f, 0.03f, 0.03f };
+	SkeletalMeshComponent& skeletalMesh = skeletalMeshIt->second;
+	TransformComponent transform;
+	transform.Position = { 5.0f, 0.0f, 0.0f };
+	transform.Rotation = { 0.0f, 180.0f, 0.0f };
+	transform.Scale = { 0.03f, 0.03f, 0.03f };
 
-	//for (int submeshIndex = 0; submeshIndex < (int)skeletalMesh.Submeshes.size(); submeshIndex++)
-	//{
-	//	const SkeletalSubmesh& submesh = skeletalMesh.Submeshes[submeshIndex];
+	for (int submeshIndex = 0; submeshIndex < (int)skeletalMesh.Submeshes.size(); submeshIndex++)
+	{
+		const SkeletalSubmesh& submesh = skeletalMesh.Submeshes[submeshIndex];
 
-	//	RenderItem* renderItem = CreateRenderItem(assetName.c_str(), submesh.Name.c_str(),
-	//		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-	//		{ RenderLayer::SkinnedOpaque }, false);
+		auto ri = CreateRenderItem(L"FBX 미리보기", assetName.c_str(), submesh.Name.c_str(), "defaultMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderLayer::SkinnedOpaque }, false);
 
-	//	AddInstance(renderItem, "defaultMat", L"FBX 미리보기", transform);
-
-	//	// 서브메시마다 서로 다른 CB 사용
-	//	renderItem->SkinnedCBIndex = submeshIndex;
-	//	renderItem->SkinnedModelInstance = mSkinnedModelInstance.get();
-	//	FinalizeRenderItem(renderItem, InstanceBufferIndex);
-	//}
+		// 서브메시마다 서로 다른 CB 사용
+		//renderItem->SkinnedCBIndex = submeshIndex;
+		//renderItem->SkinnedModelInstance = mSkinnedModelInstance.get();
+	}
 }
 
 SceneObject* SceneRenderer::CreateRenderItem(
@@ -1948,8 +1914,6 @@ SceneObject* SceneRenderer::CreateRenderItem(
 		smSlot.MaterialData = material;
 		smSlot.Layer = l;
 		component.SubmeshSlots.push_back(smSlot);
-
-		//mSceneObjectLayer[(int)l].push_back(&obj);
 	}
 
 	return &obj;
@@ -2588,6 +2552,15 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer la
 	{
 		if (batch.VisibleInstanceCount == 0) continue;
 
+		if (layer == RenderLayer::SkinnedOpaque)
+		{
+			UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
+			auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
+
+			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + 0 * skinnedCBByteSize;
+			cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
+		}
+
 		MeshGeometry& geometry = *batch.Key.Geometry;
 		const SubmeshGeometry& submesh = *batch.Key.Submesh;
 
@@ -2598,6 +2571,7 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer la
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(batch.Key.Topology);
 		cmdList->SetGraphicsRoot32BitConstant(1, batch.StartInstanceLocation, 0); //instance
+		if (layer != RenderLayer::SkinnedOpaque)
 		cmdList->SetGraphicsRootConstantBufferView(2, 0);	//skinned
 		cmdList->DrawIndexedInstanced(
 			submesh.IndexCount,
@@ -2723,8 +2697,8 @@ void SceneRenderer::AnimateMaterials()
 
 void SceneRenderer::DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers)
 {
-	//UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
-	//auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
+	UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
+	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
 
 	for (SceneObject* sceneObj : renderLayers)
 	{

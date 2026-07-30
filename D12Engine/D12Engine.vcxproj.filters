@@ -201,7 +201,7 @@
     <ClCompile Include="Renderer\DirectX12\Effects\SobelFilter.cpp">
       <Filter>Renderer\DirectX12\Effects</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\Animation\SkeletalMesh.cpp">
+    <ClCompile Include="Renderer\DirectX12\Components\SkeletalMeshComponent.cpp">
       <Filter>EngineCore\Animation</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\RenderData.cpp">
@@ -362,7 +362,7 @@
     <ClInclude Include="Renderer\DirectX12\Effects\GpuWaves.h">
       <Filter>Renderer\DirectX12\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\Animation\SkeletalMesh.h">
+    <ClInclude Include="Renderer\DirectX12\Components\SkeletalMeshComponent.h">
       <Filter>EngineCore\Animation</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderTypes.h" />
