@@ -44,6 +44,7 @@ bool EditorApplication::Initialize()
 	}
 
 	TextureManager::GetInstance().Initialize(mD3D12Context);
+
 	mSceneViewInputHandler.RegistCallback_ChangeMsaaOption(
 		[this]()
 		{

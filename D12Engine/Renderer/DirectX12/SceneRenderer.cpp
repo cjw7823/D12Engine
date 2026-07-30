@@ -21,7 +21,7 @@
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
-SceneRenderer::SceneRenderer(Scene& scene) : mScene(scene)
+SceneRenderer::SceneRenderer(Scene& scene) : mScene(scene), mGizmo(scene)
 {
 }
 
@@ -127,10 +127,7 @@ void SceneRenderer::NextBlurCount()
 
 void SceneRenderer::PickRenderItem(int vx, int vy)
 {
-	mGizmo.Pick(vx, vy, mRenderBatches);
-	std::vector<SelectedSceneObject> seletedObjects = mGizmo.GetSelectedInstances();
-
-	mScene.SelectObject(seletedObjects[0].InstanceRef->Object->Id);
+	mGizmo.Pick(vx, vy);
 }
 
 void SceneRenderer::ZoomCamera(int wheelDelta)
@@ -251,7 +248,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 		}
 	}
 
-	if (!mGizmo.GetSelectedInstances().empty())
+	if (!mScene.GetSelectedObjectIds().empty())
 	{
 		mCommandList->OMSetStencilRef(0x80);
 
@@ -1275,6 +1272,7 @@ void SceneRenderer::BuildLandGeometry(D3D12Context& context)
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 
+	//테셀레이션 제어점 패치 용도.
 	std::vector<std::uint16_t> indices;
 	indices.reserve((rows - 1) * (cols - 1) * 4);
 	for (int i = 0; i < rows - 1; ++i)
@@ -1779,10 +1777,11 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Rotation = { 0.0f, 0.0f, -90.0f };
 		transform.Scale = { 0.3f, 1.0f, 1.4f };
 
-		CreateRenderItem(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
+		auto ri = CreateRenderItem(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
 			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
 			{ RenderLayer::TessWall }, false,
 			XMMatrixScaling(2.5f, 11.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
+		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
 	//거울 백플레이트
 	{
@@ -1804,14 +1803,16 @@ void SceneRenderer::BuildSceneObject_Common()
 		mSkullShadow = CreateRenderItem(L"해골 그림자", "shapeGeo", "skull", "shadowMat_skull",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
 			{ RenderLayer::Shadow }, true);
+		mSkullShadow->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
 
 	//tree billboard
 	{
 		TransformComponent transform;
-		CreateRenderItem(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
+		auto ri = CreateRenderItem(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
 			D3D_PRIMITIVE_TOPOLOGY_POINTLIST, transform,
 			{ RenderLayer::A2C_TreeBillboard }, false);
+		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
 
 	//extended Cylinder
@@ -1852,7 +1853,7 @@ void SceneRenderer::BuildSceneObject_InMirror()
 		XMStoreFloat4x4(&reflected.Transform.WorldOverride,
 			sceneObjPtr->Transform.GetWorldMatrix() * R);
 		reflected.Transform.UseWorldOverride = true;
-		reflected.Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable);
+		reflected.mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable);
 
 		auto& reflectedMesh = reflected.AddComponent<StaticMeshComponent>();
 		reflectedMesh = *originMesh;
@@ -1887,9 +1888,9 @@ void SceneRenderer::BuildSceneObject_Gizmo()
 		{ RenderLayer::Gizmo }, false);
 	gizmoZ->Visible = false;
 
-	gizmoX->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
-	gizmoY->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
-	gizmoZ->Flags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+	gizmoX->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+	gizmoY->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
+	gizmoZ->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
 
 	mGizmo.SetGigmoObjects(gizmoX, gizmoY, gizmoZ);
 }
@@ -2760,51 +2761,54 @@ void SceneRenderer::DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const s
 
 void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 {
-	auto selectedInstances = mGizmo.GetSelectedInstances();
+	auto selectedIds = mScene.GetSelectedObjectIds();
 
-	for (auto& selected : selectedInstances)
+	for (auto selectedId : selectedIds)
 	{
-		if (!selected.InstanceRef->Object || selected.InstanceRef->SubMeshSlotIndex == UINT_MAX) continue;
+		SceneObject* selectedObj = mScene.FindObject(selectedId);
+		if (!selectedObj) continue;
 
-		auto mesh = selected.InstanceRef->Object->GetComponent<StaticMeshComponent>();
-		if (!mesh || !mesh->Geometry || selected.InstanceRef->SubMeshSlotIndex >= mesh->SubmeshSlots.size())
-			continue;
+		auto mesh = selectedObj->GetComponent<StaticMeshComponent>();
+		if (!mesh || !mesh->Geometry) continue;
 
-		const SubmeshSlot& slot = mesh->SubmeshSlots[selected.InstanceRef->SubMeshSlotIndex];
-		RenderBatchKey key{};
-		key.Geometry = mesh->Geometry;
-		key.Submesh = slot.Submesh;
-		key.Topology = mesh->Topology;
-		key.Layer = slot.Layer;
-		const auto& batches = mRenderBatches[static_cast<int>(slot.Layer)];
+		for (UINT i = 0; i < mesh->SubmeshSlots.size(); i++)
+		{
+			const SubmeshSlot& slot = mesh->SubmeshSlots[i];
+			RenderBatchKey key{};
+			key.Geometry = mesh->Geometry;
+			key.Submesh = slot.Submesh;
+			key.Topology = mesh->Topology;
+			key.Layer = slot.Layer;
+			const auto& batches = mRenderBatches[static_cast<int>(slot.Layer)];
 
-		const auto batchIt = std::find_if(batches.begin(), batches.end(),
-			[&key](const RenderBatch& batch)
-			{
-				return batch.Key == key;
-			});
-		if (batchIt == batches.end()) continue;
+			const auto batchIt = std::find_if(batches.begin(), batches.end(),
+				[&key](const RenderBatch& batch)
+				{
+					return batch.Key == key;
+				});
+			if (batchIt == batches.end()) continue;
 
-		const RenderBatch& batch = *batchIt;
-		const auto instanceIt = std::find_if(batch.Instances.begin(), batch.Instances.end(),
-			[&](const RenderInstanceRef& instance)
-			{
-				return instance.Object == selected.InstanceRef->Object &&
-					instance.SubMeshSlotIndex == selected.InstanceRef->SubMeshSlotIndex;
-			});
+			const RenderBatch& batch = *batchIt;
+			const auto instanceIt = std::find_if(batch.Instances.begin(), batch.Instances.end(),
+				[&](const RenderInstanceRef& instance)
+				{
+					return instance.Object == selectedObj &&
+						instance.SubMeshSlotIndex == i;
+				});
 
-		if (instanceIt == batch.Instances.end() || instanceIt->GpuInstanceIndex == UINT_MAX)
-			continue;
+			if (instanceIt == batch.Instances.end() || instanceIt->GpuInstanceIndex == UINT_MAX)
+				continue;
 
-		auto vbv = mesh->Geometry->VertexBufferView();
-		auto ibv = mesh->Geometry->IndexBufferView();
-		cmdList->IASetVertexBuffers(0, 1, &vbv);
-		cmdList->IASetIndexBuffer(&ibv);
-		cmdList->IASetPrimitiveTopology(mesh->Topology);
+			auto vbv = mesh->Geometry->VertexBufferView();
+			auto ibv = mesh->Geometry->IndexBufferView();
+			cmdList->IASetVertexBuffers(0, 1, &vbv);
+			cmdList->IASetIndexBuffer(&ibv);
+			cmdList->IASetPrimitiveTopology(mesh->Topology);
 
-		cmdList->SetGraphicsRoot32BitConstant(1, instanceIt->GpuInstanceIndex, 0);
+			cmdList->SetGraphicsRoot32BitConstant(1, instanceIt->GpuInstanceIndex, 0);
 
-		cmdList->DrawIndexedInstanced(slot.Submesh->IndexCount, 1, slot.Submesh->StartIndexLocation, slot.Submesh->BaseVertexLocation, 0);
+			cmdList->DrawIndexedInstanced(slot.Submesh->IndexCount, 1, slot.Submesh->StartIndexLocation, slot.Submesh->BaseVertexLocation, 0);
+		}
 	}
 }
 

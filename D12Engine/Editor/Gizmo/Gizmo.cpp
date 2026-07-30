@@ -4,10 +4,15 @@
 #include "EngineCore/StringUtil.h"
 
 #include "Renderer/DirectX12/Components/StaticMeshComponent.h"
+#include "Renderer/DirectX12/Scene/Scene.h"
 
 #include <DirectXMath.h>
 
 using namespace DirectX;
+
+Gizmo::Gizmo(Scene& scene) : mScene(scene)
+{
+}
 
 void Gizmo::SetGigmoObjects(SceneObject* x, SceneObject* y, SceneObject* z)
 {
@@ -54,77 +59,80 @@ bool Gizmo::BeginGizmoDrag(int vx, int vy)
 	XMVECTOR startHitW;
 	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, startHitW)) return false;
 
-	mGizmo.Dragging = true;
-	mGizmo.ActiveAxis = pickedAxis;
+	mGizmoState.Dragging = true;
+	mGizmoState.ActiveAxis = pickedAxis;
 
-	DirectX::XMStoreFloat3(&mGizmo.StartObjectPosW, objectPosW);
-	DirectX::XMStoreFloat3(&mGizmo.StartHitPosW, startHitW);
-	DirectX::XMStoreFloat3(&mGizmo.DragAxisW, axisW);
-	DirectX::XMStoreFloat4(&mGizmo.DragPlane, dragPlane);
+	DirectX::XMStoreFloat3(&mGizmoState.StartObjectPosW, objectPosW);
+	DirectX::XMStoreFloat3(&mGizmoState.StartHitPosW, startHitW);
+	DirectX::XMStoreFloat3(&mGizmoState.DragAxisW, axisW);
+	DirectX::XMStoreFloat4(&mGizmoState.DragPlane, dragPlane);
 
 	return true;
 }
 
-void Gizmo::Pick(int vx, int vy, const std::array<std::vector<RenderBatch>, (int)RenderLayer::Count>& renderBatch)
+void Gizmo::Pick(int vx, int vy)
 {
 	if (!mCamera || !mCamera->IsReady()) return;
-	mSelectedObjects.clear();
+	mScene.ClearSelection();
+
+	struct SelectedObject
+	{
+		SceneObjectId _id = UINT64_MAX;
+		float BoundHitDistW = FLT_MAX;
+		UINT SubmeshSlotIndex = UINT_MAX;
+	};
 
 	// ray를 월드공간으로 변환.
 	XMVECTOR worldRayOrigin, worldRayDir;
 	BuildWorldRayFromViewport(vx, vy, worldRayOrigin, worldRayDir);
 
-	std::vector<SelectedSceneObject> candidates;
+	std::vector<SelectedObject> candidates;
 
-	auto checkLayers = { RenderLayer::Opaque, RenderLayer::SkinnedOpaque, RenderLayer::TessLand, RenderLayer::MultiTextureBlend, RenderLayer::AlphaTestOpaque, RenderLayer::GeoSphereLOD, RenderLayer::GeoExplode, RenderLayer::LineToCylinder, RenderLayer::Waves };
-	for (auto Layer : checkLayers)
+	for (std::unique_ptr<SceneObject>& object : mScene.GetObjects())
 	{
-		for (const RenderBatch& batch : renderBatch[(int)Layer])
+		if (object->Visible == false) continue;
+		if (object->FrustumVisible == false) continue;
+		if (object->HasFlag(SceneObjectFlags::NotSelectable)) continue;
+
+		StaticMeshComponent* staticMesh = object->GetComponent<StaticMeshComponent>();
+		if (!staticMesh || !staticMesh->Geometry || !staticMesh->Visible) continue;
+
+		for (UINT i = 0; i < staticMesh->SubmeshSlots.size(); i++)
 		{
-			for (const RenderInstanceRef& instanceRef : batch.Instances)
+			SubmeshSlot& sm = staticMesh->SubmeshSlots[i];
+
+			XMMATRIX W = object->Transform.GetWorldMatrix();
+			BoundingBox worldBounds;
+			sm.Submesh->Bounds.Transform(worldBounds, W);
+
+			float boundT = 0.0f;
+			// 광선이 메시의 바운딩 박스와 교차하는지 확인
+			if (worldBounds.Intersects(worldRayOrigin, worldRayDir, boundT))
 			{
-				SceneObject* sceneObj = instanceRef.Object;
-				StaticMeshComponent* mesh = sceneObj->GetComponent<StaticMeshComponent>();
-				SubmeshSlot& sm = mesh->SubmeshSlots[instanceRef.SubMeshSlotIndex];
-				
-				if (sceneObj->Visible == false) continue;
-				if (sceneObj->FrustumVisible == false) continue;
-
-				XMMATRIX W = sceneObj->Transform.GetWorldMatrix();
-				BoundingBox worldBounds;
-				sm.Submesh->Bounds.Transform(worldBounds, W);
-
-				float boundT = 0.0f;
-				// 광선이 메시의 바운딩 박스와 교차하는지 확인
-				if (worldBounds.Intersects(worldRayOrigin, worldRayDir, boundT))
-				{
-					SelectedSceneObject sceneObj;
-					sceneObj.InstanceRef = &instanceRef;
-					sceneObj.BoundHitDistW = boundT;
-					candidates.push_back(sceneObj);
-				}
+				candidates.push_back({ object->Id, boundT, i });
 			}
 		}
 	}
 
 	std::sort(candidates.begin(), candidates.end(),
-		[](const SelectedSceneObject& a, const SelectedSceneObject& b)
+		[&](const SelectedObject& a,
+			const SelectedObject& b)
 		{
 			return a.BoundHitDistW < b.BoundHitDistW;
 		});
 
-	SelectedSceneObject selectedRenderItem;
+	SceneObjectId selectedRenderItem = UINT64_MAX;
 	float closestDistW = FLT_MAX;
 
 	// 2차: 후보에 대해서만 실제 triangle test
-	for (const SelectedSceneObject& c : candidates)
+	for (const SelectedObject& c : candidates)
 	{
 		// 이미 찾은 실제 hit보다 Bounds 진입점이 더 뒤면 더 볼 필요 없음
 		if (c.BoundHitDistW > closestDistW) break;
 
-		auto& instance = c.InstanceRef->Object;
+		SceneObject* instance = mScene.FindObject(c._id);
 		StaticMeshComponent* mesh = instance->GetComponent<StaticMeshComponent>();
-		auto sm = mesh->SubmeshSlots[c.InstanceRef->SubMeshSlotIndex].Submesh;
+		auto sm = mesh->SubmeshSlots[c.SubmeshSlotIndex].Submesh;
 
 		XMMATRIX W = instance->Transform.GetWorldMatrix();
 		XMVECTOR detW = XMMatrixDeterminant(W);
@@ -175,26 +183,25 @@ void Gizmo::Pick(int vx, int vy, const std::array<std::vector<RenderBatch>, (int
 				if (distW < closestDistW)
 				{
 					closestDistW = distW;
-					selectedRenderItem = c;
+					selectedRenderItem = c._id;
 				}
 			}
 		}
 	}
 
-	if (selectedRenderItem.InstanceRef->Object != nullptr && 
-		selectedRenderItem.InstanceRef->SubMeshSlotIndex != UINT_MAX)
+	if (selectedRenderItem != UINT64_MAX)
 	{
-		mSelectedObjects.push_back(selectedRenderItem);
+		mScene.SelectObject({ selectedRenderItem });
 		std::wstring text(L"선택한 인스턴스 : ");
-		text += selectedRenderItem.InstanceRef->Object->Name;
+		text += mScene.FindObject(selectedRenderItem)->Name;
 		Logger::Info(text);
 	}
 }
 
 void Gizmo::UpdateGizmoDrag(int vx, int vy)
 {
-	if (!mGizmo.Dragging) return;
-	if (mGizmo.ActiveAxis == GizmoAxis::None) return;
+	if (!mGizmoState.Dragging) return;
+	if (mGizmoState.ActiveAxis == GizmoAxis::None) return;
 
 	SceneObject* selectedObj = GetPrimarySelectedObject();
 	if (selectedObj == nullptr)
@@ -206,13 +213,13 @@ void Gizmo::UpdateGizmoDrag(int vx, int vy)
 	XMVECTOR rayOriginW, rayDirW;
 	BuildWorldRayFromViewport(vx, vy, rayOriginW, rayDirW);
 
-	XMVECTOR dragPlane = XMLoadFloat4(&mGizmo.DragPlane);
+	XMVECTOR dragPlane = XMLoadFloat4(&mGizmoState.DragPlane);
 	XMVECTOR currentHitW;
 	if (!IntersectRayPlane(rayOriginW, rayDirW, dragPlane, currentHitW)) return;
 
-	XMVECTOR startHitW = XMLoadFloat3(&mGizmo.StartHitPosW);
-	XMVECTOR startObjectPosW = XMLoadFloat3(&mGizmo.StartObjectPosW);
-	XMVECTOR axisW = XMLoadFloat3(&mGizmo.DragAxisW);
+	XMVECTOR startHitW = XMLoadFloat3(&mGizmoState.StartHitPosW);
+	XMVECTOR startObjectPosW = XMLoadFloat3(&mGizmoState.StartObjectPosW);
+	XMVECTOR axisW = XMLoadFloat3(&mGizmoState.DragAxisW);
 	axisW = XMVector3Normalize(axisW);
 
 	// 마우스가 drag plane 위에서 움직인 월드 이동량
@@ -232,8 +239,8 @@ void Gizmo::UpdateGizmoDrag(int vx, int vy)
 
 void Gizmo::EndGizmoDrag()
 {
-	mGizmo.Dragging = false;
-	mGizmo.ActiveAxis = GizmoAxis::None;
+	mGizmoState.Dragging = false;
+	mGizmoState.ActiveAxis = GizmoAxis::None;
 }
 
 void Gizmo::UpdateGizmo()
@@ -289,18 +296,13 @@ void Gizmo::UpdateGizmo()
 
 SceneObject* Gizmo::GetPrimarySelectedObject()
 {
-	if (mSelectedObjects.empty())
-		return nullptr;
+	std::vector<SceneObjectId> ids = mScene.GetSelectedObjectIds();
+	if (ids.empty()) return nullptr;
 
-	auto& selected = mSelectedObjects[0];
+	auto selected = mScene.FindObject(ids[0]);
+	if (selected == nullptr) return nullptr;
 
-	if (selected.InstanceRef->Object == nullptr)
-		return nullptr;
-
-	if (selected.InstanceRef->SubMeshSlotIndex == UINT_MAX)
-		return nullptr;
-
-	return selected.InstanceRef->Object;
+	return selected;
 }
 
 DirectX::XMVECTOR Gizmo::GetGizmoAxisVector(GizmoAxis axis) const

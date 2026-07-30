@@ -16,8 +16,14 @@ SceneObject& Scene::CreateObject(const std::wstring& name)
 
 void Scene::DestroyObject(SceneObjectId id)
 {
-    if (mSelectedObjectId == id)
-        ClearSelection();
+    for (auto selectedId : mSelectedObjectIds)
+    {
+        if (selectedId == id)
+        {
+            ClearSelection();
+            break;
+        }
+    }
 
     const auto newEnd = std::remove_if(
         mObjects.begin(),
@@ -60,24 +66,32 @@ const SceneObject* Scene::FindObject(SceneObjectId id) const
 
 }
 
-void Scene::SelectObject(SceneObjectId id)
+void Scene::SelectObject(std::vector<SceneObjectId> ids)
 {
-    mSelectedObjectId = FindObject(id) ? id : 0;
+    ClearSelection();
+
+    for (auto id : ids)
+    {
+        if (FindObject(id) != nullptr)
+        {
+            mSelectedObjectIds.push_back(id);
+        }
+    }
 }
 
 void Scene::ClearSelection()
 {
-    mSelectedObjectId = 0;
+    mSelectedObjectIds.clear();
 }
 
-SceneObject* Scene::GetSelectedObject()
+SceneObject* Scene::GetSelectedObject(SceneObjectId index)
 {
-    return FindObject(mSelectedObjectId);
+    return FindObject(mSelectedObjectIds[index]);
 }
 
-const SceneObject* Scene::GetSelectedObject() const
+const SceneObject* Scene::GetSelectedObject(SceneObjectId index) const
 {
-    return FindObject(mSelectedObjectId);
+    return FindObject(mSelectedObjectIds[index]);
 }
 
 SceneObjectId Scene::GenerateObjectId()

@@ -7,6 +7,7 @@
 
 #include "Renderer/DirectX12/Components/IComponent.h"
 #include "Renderer/DirectX12/Components/TransformComponent.h"
+#include "Renderer/DirectX12/Components/StaticMeshComponent.h"
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/Resources/TextureDesc.h"
 
@@ -52,7 +53,7 @@ public:
 
     bool HasFlag(SceneObjectFlags flag) const
     {
-        return (Flags & flag) != SceneObjectFlags::None;
+        return (mObjectFlags & flag) != SceneObjectFlags::None;
     }
 
 public:
@@ -69,7 +70,7 @@ public:
     bool Visible = true;
     bool FrustumVisible = true;
 
-    SceneObjectFlags Flags = SceneObjectFlags::None;
+    SceneObjectFlags mObjectFlags = SceneObjectFlags::None;
 
 private:
     //하나의 객체가 여러 서브메시를 가질 수 있음.
@@ -77,12 +78,4 @@ private:
 
     //Skinned 객체일 때만 소유.
     //std::unique_ptr<SkinnedModelInstance> SkinnedInstance;
-};
-
-struct RenderInstanceRef;
-struct SelectedSceneObject
-{
-    const RenderInstanceRef* InstanceRef = nullptr;
-
-    float BoundHitDistW = FLT_MAX;
 };

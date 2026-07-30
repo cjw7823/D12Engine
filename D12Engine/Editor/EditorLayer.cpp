@@ -257,8 +257,13 @@ void EditorLayer::DrawHierarchy()
 		return;
 	}
 
-	const SceneObjectId selectedObjectId = mScene.GetSelectedObjectID();
+	std::vector<SceneObjectId> ids = mScene.GetSelectedObjectIds();
 	const auto& objects = mScene.GetObjects();
+
+	auto isSelected = [&](SceneObjectId id)->bool
+		{
+			return std::find(ids.begin(), ids.end(), id) != ids.end();
+		};
 
 	for (const auto& object : objects)
 	{
@@ -269,7 +274,7 @@ void EditorLayer::DrawHierarchy()
 		ImGui::PushID(reinterpret_cast<void*>(
 			static_cast<std::uintptr_t>(object->Id)));
 
-		const bool selected = object->Id == selectedObjectId;
+		const bool selected = isSelected(object->Id);
 		const std::string objectName = WideToUtf8(object->Name);
 
 		if (ImGui::Selectable(
@@ -277,7 +282,8 @@ void EditorLayer::DrawHierarchy()
 			selected,
 			ImGuiSelectableFlags_SpanAllColumns))
 		{
-			mScene.SelectObject(object->Id);
+			if (!object->HasFlag(SceneObjectFlags::NotSelectable))
+				mScene.SelectObject({ object->Id });
 		}
 
 		if (selected)
@@ -299,6 +305,9 @@ void EditorLayer::DrawHierarchy()
 	ImGui::End();
 }
 
+/// <summary>
+/// 추후 여러개 선택 시 공통된 정보만 수정 가능하도록 변경 예정.
+/// </summary>
 void EditorLayer::DrawInspector()
 {
 	if (!ImGui::Begin("Inspector", &mShowInspector))
@@ -307,9 +316,16 @@ void EditorLayer::DrawInspector()
 		return;
 	}
 
-	SceneObject* selectedObject = mScene.GetSelectedObject();
+	bool Selectedflag = false;
+	std::vector<SceneObjectId> ids = mScene.GetSelectedObjectIds();
+	SceneObject* selectedObject = nullptr;
+	if (!ids.empty())
+	{
+		selectedObject = mScene.FindObject(ids[0]);
+		if (selectedObject) Selectedflag = true;
+	}
 
-	if (!selectedObject)
+	if (!Selectedflag)
 	{
 		ImGui::TextDisabled(
 			"%s",

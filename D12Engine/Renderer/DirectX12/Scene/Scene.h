@@ -20,13 +20,13 @@ public:
 	SceneObject* FindObject(SceneObjectId id);	
 	const SceneObject* FindObject(SceneObjectId id) const;
 
-	void SelectObject(SceneObjectId id);
+	void SelectObject(std::vector<SceneObjectId> ids);
 	void ClearSelection();
 
-	SceneObject* GetSelectedObject();
-	const SceneObject* GetSelectedObject() const;
+	SceneObject* GetSelectedObject(SceneObjectId index);
+	const SceneObject* GetSelectedObject(SceneObjectId index) const;
 
-	SceneObjectId GetSelectedObjectID() const { return mSelectedObjectId; }
+	std::vector<SceneObjectId> GetSelectedObjectIds() const { return mSelectedObjectIds; }
 
 private:
 	SceneObjectId GenerateObjectId();
@@ -34,5 +34,5 @@ private:
 private:
 	std::vector<std::unique_ptr<SceneObject>> mObjects;
 	SceneObjectId mNextObjectId = 1;
-    SceneObjectId mSelectedObjectId = 0;
+    std::vector<SceneObjectId> mSelectedObjectIds;
 };
