@@ -191,7 +191,7 @@
     <ClCompile Include="Editor\Input\SceneViewInputHandler.cpp" />
     <ClCompile Include="Editor\Panels\ConsolePanel.cpp" />
     <ClCompile Include="Editor\Panels\SceneViewPanel.cpp" />
-    <ClCompile Include="Renderer\DirectX12\Components\SkeletalMeshComponent.cpp" />
+    <ClCompile Include="Renderer\Resources\SkeletalMeshAsset.cpp" />
     <ClCompile Include="Renderer\DirectX12\Scene\Camera\Camera.cpp" />
     <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp" />
     <ClCompile Include="EngineCore\Input\InputSystem.cpp" />
@@ -228,7 +228,9 @@
     <ClInclude Include="..\ThirdParty\ufbx\ufbx.h" />
     <ClInclude Include="AssetPipeline\Importers\FbxImporter.h" />
     <ClInclude Include="AssetPipeline\Importers\LoadM3d.h" />
+    <ClInclude Include="Renderer\DirectX12\Components\MeshComponent.h" />
     <ClInclude Include="Renderer\DirectX12\Components\SkeletalMeshComponent.h" />
+    <ClInclude Include="Renderer\Resources\SkeletalMeshAsset.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
     <ClInclude Include="Editor\Gizmo\Gizmo.h" />

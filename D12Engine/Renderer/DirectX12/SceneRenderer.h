@@ -23,10 +23,10 @@
 #include "Renderer/DirectX12/Effects/BlurFilter.h"
 #include "Renderer/DirectX12/Effects/SobelFilter.h"
 #include "Renderer/DirectX12/Components/TransformComponent.h"
-#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
 #include "Renderer/DirectX12/FrameResource.h"
 #include "Renderer/Resources/TextureManager.h"
+#include "Renderer/Resources/SkeletalMeshAsset.h"
 
 #include "Editor/Gizmo/Gizmo.h"
 
@@ -100,12 +100,25 @@ private:
 	void BuildSceneObject_InMirror();
 	void BuildSceneObject_Gizmo();
 	void BuildSceneObject_FBX();
-	SceneObject* CreateRenderItem(
-		const wchar_t* objName, const char* GeoName, const char* subMeshName, const char* matName,
-		D3D12_PRIMITIVE_TOPOLOGY topology, const TransformComponent& transform,
-		std::vector<RenderLayer> layer, bool InMirror, DirectX::XMMATRIX matTransform = DirectX::XMMatrixIdentity());
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
+
+	SceneObject* CreateStaticMeshObject(
+		const wchar_t* objName,
+		const char* GeoName,
+		const char* subMeshName,
+		const char* matName,
+		D3D12_PRIMITIVE_TOPOLOGY topology,
+		const TransformComponent& transform,
+		std::vector<RenderPass> layer,
+		bool InMirror, 
+		DirectX::XMMATRIX matTransform = DirectX::XMMatrixIdentity());
+	SceneObject* CreateSkeletalMeshObject(
+		const wchar_t* objName,
+		const char* GeoName,
+		const char* matName,
+		const SkeletalMeshAsset& asset,
+		const TransformComponent& transform);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
@@ -120,20 +133,18 @@ private:
 	void UpdateShadowTransform();
 	void AnimateMaterials();
 	
-	[[deprecated("사용불가. 참고용")]]
-	void DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers);
 	void DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList);
 	void DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList);
 
 	void CreateQueryHeap(D3D12Context& context);
 
-	ID3D12PipelineState* ResolvePSO(RenderLayer layer, SceneRenderMode mode) const;
+	ID3D12PipelineState* ResolvePSO(RenderPass layer, SceneRenderMode mode) const;
 
 	//for Render Batch
 	void RebuildRenderBatches();
-	RenderBatch& FindOrCreateBatch(const RenderBatchKey& key);
-	void DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer layer);
-	void DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderLayer layer);
+	RenderBatch& FindOrCreateBatch(RenderPass layer, const RenderBatchKey& key);
+	void DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderPass layer);
+	void DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderPass layer);
 
 public:
 	Gizmo mGizmo;
@@ -153,7 +164,7 @@ private:
 
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
 
-	std::array < std::array< Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)SceneRenderMode::Count>, (int)RenderLayer::Count> mLayerPSOs;
+	std::array < std::array< Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)SceneRenderMode::Count>, (int)RenderPass::Count> mLayerPSOs;
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)ComputePass::Count> mComputePSOs;
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, (int)GraphicsPass::Count> mGraphicsPSOs;
 
@@ -161,7 +172,7 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
 
 	//Render Batch
-	std::array<std::vector<RenderBatch>, (int)RenderLayer::Count> mRenderBatches;
+	std::array<std::vector<RenderBatch>, (int)RenderPass::Count> mRenderBatches;
 	bool mRenderBatchesDirty = true;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeBillboardInputLayout;
@@ -206,7 +217,7 @@ private:
 	UINT mVisibleInstanceCount = 0;
 
 	//For FBX Animation
-	std::unordered_map<std::string, SkeletalMeshComponent> mSkeletalMeshes;
+	std::unordered_map<std::string, SkeletalMeshAsset> mSkeletalMesheAssets;
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
 
 	//For Camera

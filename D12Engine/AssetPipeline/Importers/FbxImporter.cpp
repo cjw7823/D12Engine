@@ -179,7 +179,7 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
     return result;
 }
 
-SkeletalMeshComponent FbxImporter::ImportSkeletalMesh(const std::filesystem::path& filePath)
+SkeletalMeshAsset FbxImporter::ImportSkeletalMesh(const std::filesystem::path& filePath)
 {
     ScenePtr scene = LoadScene(filePath);
 
@@ -190,7 +190,12 @@ SkeletalMeshComponent FbxImporter::ImportSkeletalMesh(const std::filesystem::pat
 
     std::unordered_map<std::string, AnimationClip> anims = ImportAnimations(*scene, skeleton, nodeIdToJointIndex);
 
-    return SkeletalMeshComponent{ std::move(skeleton), std::move(submeshes), std::move(anims) };
+    SkeletalMeshAsset skeletalMesh{};
+    skeletalMesh.Skeleton = std::move(skeleton);
+    skeletalMesh.Submeshes = std::move(submeshes);
+    skeletalMesh.Animations = std::move(anims);
+
+    return skeletalMesh;
 }
 
 FbxImporter::ScenePtr FbxImporter::LoadScene(

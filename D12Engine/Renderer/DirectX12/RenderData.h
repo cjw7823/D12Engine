@@ -4,7 +4,7 @@
 #include "Renderer/Resources/Material.h"
 #include "Renderer/DirectX12/Scene/Light/Light.h"
 #include "Renderer/DirectX12/Scene/SceneRenderTypes.h"
-#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
+#include "Renderer/Resources/SkeletalMeshAsset.h"
 
 struct Vertex
 {
@@ -101,7 +101,7 @@ struct MaterialData_GPU
 
 struct SkinnedModelInstance
 {
-	const SkeletalMeshComponent* Asset = nullptr;
+	const SkeletalMeshAsset* Asset = nullptr;
 
 	std::string ClipName;
 	float TimePos = 0.0f;
@@ -112,6 +112,6 @@ struct SkinnedModelInstance
 	// Submeshº° GPU Skin Palette
 	std::vector<std::vector<DirectX::XMFLOAT4X4>> SubmeshFinalTransforms;
 
-	void Initialize(const SkeletalMeshComponent& asset, std::string clipName = {});
+	void Initialize(const SkeletalMeshAsset& asset, std::string clipName = {});
 	void UpdateAnimation(float deltaTime);
 };

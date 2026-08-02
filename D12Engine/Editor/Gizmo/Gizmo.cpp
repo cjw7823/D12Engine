@@ -10,7 +10,7 @@
 
 using namespace DirectX;
 
-Gizmo::Gizmo(Scene& scene) : mScene(scene)
+Gizmo::Gizmo(Scene& scene) : mScene(scene), mCamera(nullptr)
 {
 }
 
@@ -94,12 +94,12 @@ void Gizmo::Pick(int vx, int vy)
 		if (object->FrustumVisible == false) continue;
 		if (object->HasFlag(SceneObjectFlags::NotSelectable)) continue;
 
-		StaticMeshComponent* staticMesh = object->GetComponent<StaticMeshComponent>();
-		if (!staticMesh || !staticMesh->Geometry || !staticMesh->Visible) continue;
+		MeshComponent* mesh = object->GetComponent<MeshComponent>();
+		if (!mesh || !mesh->Geometry || !mesh->Visible) continue;
 
-		for (UINT i = 0; i < staticMesh->SubmeshSlots.size(); i++)
+		for (UINT i = 0; i < mesh->SubmeshSlots.size(); i++)
 		{
-			SubmeshSlot& sm = staticMesh->SubmeshSlots[i];
+			SubmeshSlot& sm = mesh->SubmeshSlots[i];
 
 			XMMATRIX W = object->Transform.GetWorldMatrix();
 			BoundingBox worldBounds;
@@ -131,7 +131,7 @@ void Gizmo::Pick(int vx, int vy)
 		if (c.BoundHitDistW > closestDistW) break;
 
 		SceneObject* instance = mScene.FindObject(c._id);
-		StaticMeshComponent* mesh = instance->GetComponent<StaticMeshComponent>();
+		MeshComponent* mesh = instance->GetComponent<MeshComponent>();
 		auto sm = mesh->SubmeshSlots[c.SubmeshSlotIndex].Submesh;
 
 		XMMATRIX W = instance->Transform.GetWorldMatrix();
@@ -385,7 +385,7 @@ GizmoAxis Gizmo::PickGizmoAxis(int sx, int sy)
 		XMMATRIX W = instance->Transform.GetWorldMatrix();
 		BoundingBox gizmoBounds;
 		//ÁÖÀÇ.
-		instance->GetComponent<StaticMeshComponent>()->SubmeshSlots[0].Submesh->Bounds.Transform(gizmoBounds, W);
+		instance->GetComponent<MeshComponent>()->SubmeshSlots[0].Submesh->Bounds.Transform(gizmoBounds, W);
 
 		float boundT = 0.0f;
 		if (gizmoBounds.Intersects(rayOriginW, rayDirW, boundT))

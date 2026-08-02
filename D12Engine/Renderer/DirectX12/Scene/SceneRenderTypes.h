@@ -38,7 +38,7 @@ enum class SceneRenderMode
 };
 
 //렌더링 순서에 영향
-enum class RenderLayer : int
+enum class RenderPass : std::uint8_t
 {
 	Opaque = 0,
 	SkinnedOpaque,

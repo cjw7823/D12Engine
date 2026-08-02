@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
+#include "Renderer/Resources/SkeletalMeshAsset.h"
 #include <fstream>
 
 class M3DLoader

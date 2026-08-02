@@ -11,6 +11,7 @@
 #include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/DirectX12/PipelineStateFactory.h"
 #include "Renderer/DirectX12/Components/StaticMeshComponent.h"
+#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
 
 #include "AssetPipeline/Importers/FbxImporter.h"
 
@@ -222,33 +223,34 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 		queryType,
 		SceneStart);
 
-	for (int layer = 0; layer < (int)RenderLayer::Count; layer++)
+	for (int layer = 0; layer < (int)RenderPass::Count; layer++)
 	{
-		RenderLayer renderLayer = (RenderLayer)layer;
+		RenderPass renderLayer = (RenderPass)layer;
 		assert(mLayerPSOs[layer][(int)SceneRenderMode::Lit] && "모든 RenderLayer에는 Lit PSO가 필요합니다.");
 
 		mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress());
-		if (renderLayer == RenderLayer::Reflected)
+		if (renderLayer == RenderPass::Reflected)
 			mCommandList->SetGraphicsRootConstantBufferView(0, passCB->GetGPUVirtualAddress() + passCBByteSize);
 
 		mCommandList->OMSetStencilRef(0);
-		if(renderLayer == RenderLayer::MirrorStencil || renderLayer == RenderLayer::TessWall ||
-			renderLayer == RenderLayer::MirrorBaseFill || renderLayer == RenderLayer::Reflected)
+		if(renderLayer == RenderPass::MirrorStencil || renderLayer == RenderPass::TessWall ||
+			renderLayer == RenderPass::MirrorBaseFill || renderLayer == RenderPass::Reflected)
 			mCommandList->OMSetStencilRef(1);
 
 		ID3D12PipelineState* pso = ResolvePSO(renderLayer, mRenderSettings.Mode);
 		mCommandList->SetPipelineState(pso);
 
-		DrawLayer(mCommandList, (RenderLayer)layer);
+		DrawLayer(mCommandList, (RenderPass)layer);
 
 		if (mRenderSettings.Mode == SceneRenderMode::VertexNormal)
 		{
 			mCommandList->SetPipelineState(mGraphicsPSOs[(int)GraphicsPass::VertexNormalVisualize].Get());
-			DrawLayer_VertexNormalDebug(mCommandList, (RenderLayer)layer);
+			DrawLayer_VertexNormalDebug(mCommandList, (RenderPass)layer);
 		}
 	}
 
-	if (!mScene.GetSelectedObjectIds().empty())
+	// 깊이 복잡도 렌더링할 때는 외곽선 표시 X
+	if (mRenderSettings.Mode != SceneRenderMode::DepthComplexity && !mScene.GetSelectedObjectIds().empty())
 	{
 		mCommandList->OMSetStencilRef(0x80);
 
@@ -1502,8 +1504,9 @@ void SceneRenderer::BuildBrickWallGeometry(D3D12Context& context)
 
 void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 {
-	SkeletalMeshComponent skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
+	SkeletalMeshAsset skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
 
+	//단순 가중치 검증
 	for (int submeshIndex = 0; submeshIndex < skelMesh.Submeshes.size(); submeshIndex++)
 	{
 		const SkeletalSubmesh& submesh = skelMesh.Submeshes[submeshIndex];
@@ -1597,8 +1600,8 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 
 	const std::string geometryName = geometry->Name;
 	mGeometries[geometryName] = std::move(geometry);
-	mSkeletalMeshes[geometryName] = std::move(skelMesh);
-	SkeletalMeshComponent& storedAsset = mSkeletalMeshes.at(geometryName);
+	mSkeletalMesheAssets[geometryName] = std::move(skelMesh);
+	SkeletalMeshAsset& storedAsset = mSkeletalMesheAssets.at(geometryName);
 	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
 	auto clipName = storedAsset.Animations.begin()->first;
 	for (const auto& [name, clip] : storedAsset.Animations)
@@ -1613,10 +1616,12 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 
 void SceneRenderer::BuildScene()
 {
+	mRenderBatchesDirty = true;
+
 	BuildSceneObject_Common();
 	BuildSceneObject_InMirror();
 	BuildSceneObject_Gizmo();
-	BuildSceneObject_FBX();
+	//BuildSceneObject_FBX();
 
 	RebuildRenderBatches();
 }
@@ -1629,35 +1634,35 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Rotation = { 0.0f, 0.0f, 0.0f };
 		transform.Scale = { 2.0f, 2.0f / 3.0f, 2.0f };
 
-		CreateRenderItem(L"밉맵 상자", "shapeGeo", "box", "woodCrate",
+		CreateStaticMeshObject(L"밉맵 상자", "shapeGeo", "box", "woodCrate",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::Opaque }, true);
+			{ RenderPass::Opaque }, true);
 	}
 	{
 		TransformComponent transform;
 		transform.Position = { -7.0f, 2.0f, 15.0f };
 		transform.Scale = { 2.0f, 2.0f, 2.0f };
 
-		CreateRenderItem(L"회전 블랜딩 상자", "shapeGeo", "box", "swirling",
+		CreateStaticMeshObject(L"회전 블랜딩 상자", "shapeGeo", "box", "swirling",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::MultiTextureBlend }, true);
+			{ RenderPass::MultiTextureBlend }, true);
 	}
 	{
 		TransformComponent transform;
 		transform.Position = { -7.0f, 1.0f, -3.0f };
 
-		CreateRenderItem(L"철망 상자", "shapeGeo", "box", "wireFence",
+		CreateStaticMeshObject(L"철망 상자", "shapeGeo", "box", "wireFence",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::AlphaTestOpaque }, true);
+			{ RenderPass::AlphaTestOpaque }, true);
 	}
 	{
 		TransformComponent transform;
 		transform.Position = { -3.0f, 0.0f, 7.0f };
 		transform.Scale = { 1.5f, 1.0f, 1.4f };
 
-		CreateRenderItem(L"바닥", "shapeGeo", "grid", "checkerTileMat",
+		CreateStaticMeshObject(L"바닥", "shapeGeo", "grid", "checkerTileMat",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::Opaque }, true, XMMatrixScaling(8.0f, 8.0f, 1.0f));
+			{ RenderPass::Opaque }, true, XMMatrixScaling(8.0f, 8.0f, 1.0f));
 	}
 
 	for (int i = 0; i < 8; ++i)
@@ -1680,19 +1685,19 @@ void SceneRenderer::BuildSceneObject_Common()
 		std::wstring objectName3 = L"왼쪽 돌" + std::to_wstring(i);
 		std::wstring objectName4 = L"오른쪽 돌" + std::to_wstring(i);
 
-		CreateRenderItem(objectName1.c_str(), "shapeGeo", "cylinder", "bricks0",
+		CreateStaticMeshObject(objectName1.c_str(), "shapeGeo", "cylinder", "bricks0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftCylTransform,
-			{ RenderLayer::Opaque }, true);
-		CreateRenderItem(objectName2.c_str(), "shapeGeo", "cylinder", "bricks0",
+			{ RenderPass::Opaque }, true);
+		CreateStaticMeshObject(objectName2.c_str(), "shapeGeo", "cylinder", "bricks0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightCylTransform,
-			{ RenderLayer::Opaque }, true);
+			{ RenderPass::Opaque }, true);
 
-		CreateRenderItem(objectName3.c_str(), "shapeGeo", "sphere", "stone0",
+		CreateStaticMeshObject(objectName3.c_str(), "shapeGeo", "sphere", "stone0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftSphereTransform,
-			{ RenderLayer::Opaque }, true);
-		CreateRenderItem(objectName4.c_str(), "shapeGeo", "geoSphere", "stone0",
+			{ RenderPass::Opaque }, true);
+		CreateStaticMeshObject(objectName4.c_str(), "shapeGeo", "geoSphere", "stone0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightSphereTransform,
-			{ RenderLayer::GeoSphereLOD }, true);
+			{ RenderPass::GeoSphereLOD }, true);
 	}
 
 	//skull
@@ -1701,9 +1706,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Position = { -7.0f, 1.0f, 7.0f };
 		transform.Scale = { 0.2f, 0.2f, 0.2f };
 
-		mSkull = CreateRenderItem(L"해골", "shapeGeo", "skull", "defaultMat",
+		mSkull = CreateStaticMeshObject(L"해골", "shapeGeo", "skull", "defaultMat",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::Opaque }, true);
+			{ RenderPass::Opaque }, true);
 	}
 
 	//land
@@ -1711,9 +1716,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		TransformComponent transform;
 		transform.Position = { 0.0f, -5.0f, 0.0f };
 
-		CreateRenderItem(L"땅", "landGeo", "grid", "grass0",
+		CreateStaticMeshObject(L"땅", "landGeo", "grid", "grass0",
 			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
-			{ RenderLayer::TessLand }, false,
+			{ RenderPass::TessLand }, false,
 			XMMatrixScaling(5.0f, 5.0f, 1.0f));
 	}
 
@@ -1722,9 +1727,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		TransformComponent transform;
 		transform.Position = { 0.0f, -1.0f, 0.0f };
 
-		CreateRenderItem(L"물", "waterGeo", "grid", "water0",
+		CreateStaticMeshObject(L"물", "waterGeo", "grid", "water0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::Waves }, false,
+			{ RenderPass::Waves }, false,
 			XMMatrixScaling(5.0f, 5.0f, 1.0f));
 	}
 
@@ -1735,9 +1740,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Rotation = { 0.0f, 0.0f, -90.0f };
 		transform.Scale = { 0.2f, 1.0f, 0.5f };
 
-		mMirror = CreateRenderItem(L"거울", "shapeGeo", "grid", "iceMirrorMat",
+		mMirror = CreateStaticMeshObject(L"거울", "shapeGeo", "grid", "iceMirrorMat",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::MirrorStencil, RenderLayer::Transparent }, false,
+			{ RenderPass::MirrorStencil, RenderPass::Transparent }, false,
 			XMMatrixScaling(1.0f, 2.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
 	}
 	{
@@ -1746,9 +1751,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Rotation = { 0.0f, 0.0f, -90.0f };
 		transform.Scale = { 0.3f, 1.0f, 1.4f };
 
-		auto ri = CreateRenderItem(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
+		auto ri = CreateStaticMeshObject(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
 			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
-			{ RenderLayer::TessWall }, false,
+			{ RenderPass::TessWall }, false,
 			XMMatrixScaling(2.5f, 11.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
 		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
@@ -1759,9 +1764,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		transform.Rotation = { 0.0f, 0.0f, -90.0f };
 		transform.Scale = { 0.2f, 1.0f, 0.5f };
 
-		CreateRenderItem(L"거울 백플레이트", "shapeGeo", "grid", "mirrorBaseMat",
+		CreateStaticMeshObject(L"거울 백플레이트", "shapeGeo", "grid", "mirrorBaseMat",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::MirrorBaseFill }, false);
+			{ RenderPass::MirrorBaseFill }, false);
 	}
 
 	//skull shadow
@@ -1769,18 +1774,18 @@ void SceneRenderer::BuildSceneObject_Common()
 		TransformComponent transform;
 		transform.Position = { 3.0f, 3.0f, 0.0f };
 
-		mSkullShadow = CreateRenderItem(L"해골 그림자", "shapeGeo", "skull", "shadowMat_skull",
+		mSkullShadow = CreateStaticMeshObject(L"해골 그림자", "shapeGeo", "skull", "shadowMat_skull",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::Shadow }, true);
+			{ RenderPass::Shadow }, true);
 		mSkullShadow->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
 
 	//tree billboard
 	{
 		TransformComponent transform;
-		auto ri = CreateRenderItem(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
+		auto ri = CreateStaticMeshObject(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
 			D3D_PRIMITIVE_TOPOLOGY_POINTLIST, transform,
-			{ RenderLayer::A2C_TreeBillboard }, false);
+			{ RenderPass::A2C_TreeBillboard }, false);
 		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
 	}
 
@@ -1789,9 +1794,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		TransformComponent transform;
 		transform.Position = { -7.0f, 0.0f, 20.0f };
 
-		CreateRenderItem(L"GS확장 원통", "cylinderWithoutTop", "cylinderWithoutTop", "bricks0",
+		CreateStaticMeshObject(L"GS확장 원통", "cylinderWithoutTop", "cylinderWithoutTop", "bricks0",
 			D3D_PRIMITIVE_TOPOLOGY_LINESTRIP, transform,
-			{ RenderLayer::LineToCylinder }, false);
+			{ RenderPass::LineToCylinder }, false);
 	}
 
 	//explode
@@ -1799,9 +1804,9 @@ void SceneRenderer::BuildSceneObject_Common()
 		TransformComponent transform;
 		transform.Position = { -7.0f, 6.0f, 7.0f };
 
-		CreateRenderItem(L"폭발하는 돌", "shapeGeo", "geoSphere", "bricks0",
+		CreateStaticMeshObject(L"폭발하는 돌", "shapeGeo", "geoSphere", "bricks0",
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::GeoExplode }, true);
+			{ RenderPass::GeoExplode }, true);
 	}
 }
 
@@ -1815,7 +1820,7 @@ void SceneRenderer::BuildSceneObject_InMirror()
 
 	for (auto sceneObjPtr : copySceneObjects)
 	{
-		StaticMeshComponent* originMesh = sceneObjPtr->GetComponent<StaticMeshComponent>();
+		MeshComponent* originMesh = sceneObjPtr->GetComponent<MeshComponent>();
 		if (!originMesh || originMesh->InMirror == false) continue;
 	
 		SceneObject& reflected = mScene.CreateObject(sceneObjPtr->Name + L"_InMirror");
@@ -1824,37 +1829,35 @@ void SceneRenderer::BuildSceneObject_InMirror()
 		reflected.Transform.UseWorldOverride = true;
 		reflected.mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable);
 
-		auto& reflectedMesh = reflected.AddComponent<StaticMeshComponent>();
+		auto& reflectedMesh = reflected.AddComponent<MeshComponent>();
 		reflectedMesh = *originMesh;
 		reflectedMesh.InMirror = false;
 
 		for (SubmeshSlot& slot : reflectedMesh.SubmeshSlots)
-			slot.Layer = RenderLayer::Reflected;
+			slot.Layers = { RenderPass::Reflected };
 
 		if (sceneObjPtr == mSkullShadow) mSkullShadowMirror = &reflected;
 		if (sceneObjPtr == mSkull) mSkullMirror = &reflected;
 	}
-
-	mRenderBatchesDirty = true;
 }
 
 void SceneRenderer::BuildSceneObject_Gizmo()
 {
 	TransformComponent transform;
 
-	auto gizmoX = CreateRenderItem(L"기즈모 X", "shapeGeo", "box", "gizmoX",
+	auto gizmoX = CreateStaticMeshObject(L"기즈모 X", "shapeGeo", "box", "gizmoX",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderLayer::Gizmo }, false);
+		{ RenderPass::Gizmo }, false);
 	gizmoX->Visible = false;
 
-	auto gizmoY = CreateRenderItem(L"기즈모 Y", "shapeGeo", "box", "gizmoY",
+	auto gizmoY = CreateStaticMeshObject(L"기즈모 Y", "shapeGeo", "box", "gizmoY",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderLayer::Gizmo }, false);
+		{ RenderPass::Gizmo }, false);
 	gizmoY->Visible = false;
 
-	auto gizmoZ = CreateRenderItem(L"기즈모 Z", "shapeGeo", "box", "gizmoZ",
+	auto gizmoZ = CreateStaticMeshObject(L"기즈모 Z", "shapeGeo", "box", "gizmoZ",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderLayer::Gizmo }, false);
+		{ RenderPass::Gizmo }, false);
 	gizmoZ->Visible = false;
 
 	gizmoX->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
@@ -1867,32 +1870,27 @@ void SceneRenderer::BuildSceneObject_Gizmo()
 void SceneRenderer::BuildSceneObject_FBX()
 {
 	const std::string assetName = "fbxPreviewGeo";
-	const auto skeletalMeshIt = mSkeletalMeshes.find(assetName);
+	const auto skeletalMeshIt = mSkeletalMesheAssets.find(assetName);
+	SkeletalMeshAsset& skeletalMesh = skeletalMeshIt->second;
 
-	SkeletalMeshComponent& skeletalMesh = skeletalMeshIt->second;
 	TransformComponent transform;
 	transform.Position = { 5.0f, 0.0f, 0.0f };
 	transform.Rotation = { 0.0f, 180.0f, 0.0f };
 	transform.Scale = { 0.03f, 0.03f, 0.03f };
 
-	for (int submeshIndex = 0; submeshIndex < (int)skeletalMesh.Submeshes.size(); submeshIndex++)
-	{
-		const SkeletalSubmesh& submesh = skeletalMesh.Submeshes[submeshIndex];
-
-		auto ri = CreateRenderItem(L"FBX 미리보기", assetName.c_str(), submesh.Name.c_str(), "defaultMat",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderLayer::SkinnedOpaque }, false);
-
-		// 서브메시마다 서로 다른 CB 사용
-		//renderItem->SkinnedCBIndex = submeshIndex;
-		//renderItem->SkinnedModelInstance = mSkinnedModelInstance.get();
-	}
+	CreateSkeletalMeshObject(L"FBX 미리보기", assetName.c_str(), "defaultMat", skeletalMesh, transform);
 }
 
-SceneObject* SceneRenderer::CreateRenderItem(
-	const wchar_t* objName, const char* GeoName, const char* subMeshName, const char* matName,
-	D3D12_PRIMITIVE_TOPOLOGY topology, const TransformComponent& transform,
-	std::vector<RenderLayer> layer, bool InMirror, DirectX::XMMATRIX matTransform)
+SceneObject* SceneRenderer::CreateStaticMeshObject(
+	const wchar_t* objName,
+	const char* GeoName,
+	const char* subMeshName,
+	const char* matName,
+	D3D12_PRIMITIVE_TOPOLOGY topology,
+	const TransformComponent& transform,
+	std::vector<RenderPass> layer,
+	bool InMirror,
+	DirectX::XMMATRIX matTransform)
 {
 	auto* geometry = mGeometries.at(GeoName).get();
 	SceneObject& obj = mScene.CreateObject(objName);
@@ -1907,16 +1905,52 @@ SceneObject* SceneRenderer::CreateRenderItem(
 	XMStoreFloat4x4(&material->MatTransform, matTransform);
 	SubmeshGeometry& sm = component.Geometry->Submeshes[subMeshName];
 
-	for (auto l : layer)
-	{
-		SubmeshSlot smSlot{};
-		smSlot.Submesh = &sm;
-		smSlot.MaterialData = material;
-		smSlot.Layer = l;
-		component.SubmeshSlots.push_back(smSlot);
-	}
+	SubmeshSlot smSlot{};
+	smSlot.Submesh = &sm;
+	smSlot.MaterialData = material;
+	smSlot.Layers = layer;
+	component.SubmeshSlots.push_back(smSlot);
+
+	mRenderBatchesDirty = true;
 
 	return &obj;
+}
+
+SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, const char* GeoName, const char* matName, const SkeletalMeshAsset& asset, const TransformComponent& transform)
+{
+	auto* geometry = mGeometries.at(GeoName).get();
+	Material* material = mMaterials.at(matName).get();
+	SceneObject& object = mScene.CreateObject(objName);
+	object.Transform = transform;
+
+	auto& component = object.AddComponent<SkeletalMeshComponent>();
+	component.Asset = &asset;
+	component.Geometry = geometry;
+	component.Topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	component.SubmeshSlots.reserve(asset.Submeshes.size());
+
+	for (int i = 0; i < asset.Submeshes.size(); i++)
+	{
+		const SkeletalSubmesh& source = asset.Submeshes[i];
+
+		auto geometryIt = geometry->Submeshes.find(source.Name);
+		if (geometryIt == geometry->Submeshes.end())
+		{
+			std::wstring wfn = AnsiToWString(__FILE__);
+			throw DxException(1, L"Skeletal submesh geometry not found: ", wfn, __LINE__);
+		}
+
+		SubmeshSlot slot{};
+		slot.Submesh = &geometryIt->second;
+		slot.MaterialData = material;
+		slot.Layers = { RenderPass::SkinnedOpaque };
+
+		component.SubmeshSlots.push_back(slot);
+	}
+
+	mRenderBatchesDirty = true;
+
+	return &object;
 }
 
 void SceneRenderer::BuildFrameResources(D3D12Context& context)
@@ -1962,19 +1996,19 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 	{
 		PsoBuildContext opaqueCtx = ctx;
 		PipelineStateFactory factory(opaqueCtx);
-		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::Opaque][(int)SceneRenderMode::Lit] =
 			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-		mLayerPSOs[(int)RenderLayer::Transparent][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::Transparent][(int)SceneRenderMode::Lit] =
 			factory.CreateTransparentPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
-		mLayerPSOs[(int)RenderLayer::Waves][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::Waves][(int)SceneRenderMode::Lit] =
 			factory.CreateTransparentPSO(mShaders["wavesVS"].Get(), mShaders["opaquePS"].Get());
-		mLayerPSOs[(int)RenderLayer::MultiTextureBlend][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::MultiTextureBlend][(int)SceneRenderMode::Lit] =
 			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["multiTextureBlendPS"].Get());
 
 		PsoBuildContext alphaTestCtx = ctx;
 		alphaTestCtx.CullMode = D3D12_CULL_MODE_NONE;
 		PipelineStateFactory alphaTestFactory(alphaTestCtx);
-		mLayerPSOs[(int)RenderLayer::AlphaTestOpaque][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::AlphaTestOpaque][(int)SceneRenderMode::Lit] =
 			alphaTestFactory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
 	}
 
@@ -1982,33 +2016,33 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		PsoBuildContext opaqueWireframeCtx = ctx;
 		opaqueWireframeCtx.IsWireframe = true;
 		PipelineStateFactory factory(opaqueWireframeCtx);
-		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::Opaque][(int)SceneRenderMode::Wireframe] =
 			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 	}
 
 	{
 		PsoBuildContext depthCtx = ctx;
 		PipelineStateFactory depthFactory(depthCtx);
-		mLayerPSOs[(int)RenderLayer::Opaque][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::Opaque][(int)SceneRenderMode::DepthComplexity] =
 			depthFactory.CreateDepthCountPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 	}
 
 	{
 		PsoBuildContext mirrorCtx = ctx;
 		PipelineStateFactory mirrorFactory(mirrorCtx);
-		mLayerPSOs[(int)RenderLayer::MirrorStencil][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::MirrorStencil][(int)SceneRenderMode::Lit] =
 			mirrorFactory.CreateMirrorStencilPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
 		PsoBuildContext mirrorCtx2 = ctx;
 		mirrorCtx2.Clockwise = true;
 		mirrorCtx2.CullMode = D3D12_CULL_MODE_NONE;
 		PipelineStateFactory mirrorFactory2(mirrorCtx2);
-		mLayerPSOs[(int)RenderLayer::Reflected][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::Reflected][(int)SceneRenderMode::Lit] =
 			mirrorFactory2.CreateMirrorReflectedPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 
 		PsoBuildContext mirrorCtx3 = ctx;
 		PipelineStateFactory mirrorFactory3(mirrorCtx3);
-		mLayerPSOs[(int)RenderLayer::MirrorBaseFill][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::MirrorBaseFill][(int)SceneRenderMode::Lit] =
 			mirrorFactory3.CreateMirrorBaseFillPSO(mShaders["standardVS"].Get(), mShaders["mirrorBaseFillPS"].Get());
 	}
 
@@ -2016,7 +2050,7 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 	{
 		PsoBuildContext shadowCtx = ctx;
 		PipelineStateFactory shadowFactory(shadowCtx);
-		mLayerPSOs[(int)RenderLayer::Shadow][(int)SceneRenderMode::Lit] = 
+		mLayerPSOs[(int)RenderPass::Shadow][(int)SceneRenderMode::Lit] = 
 			shadowFactory.CreateShadowPSO(mShaders["standardVS"].Get(), mShaders["alphaTestPS"].Get());
 	}
 
@@ -2025,15 +2059,15 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		treeCtx.InputLayout = &mTreeBillboardInputLayout;
 		treeCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 		PipelineStateFactory treeFactory(treeCtx);
-		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::A2C_TreeBillboard][(int)SceneRenderMode::Lit] =
 			treeFactory.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get(), true);
-		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::A2C_TreeBillboard][(int)SceneRenderMode::DepthComplexity] =
 			treeFactory.CreateDepthCountPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS"].Get());
 
 		PsoBuildContext treeCtx2 = treeCtx;
 		treeCtx2.IsWireframe = true;
 		PipelineStateFactory treeFactory2(treeCtx2);
-		mLayerPSOs[(int)RenderLayer::A2C_TreeBillboard][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::A2C_TreeBillboard][(int)SceneRenderMode::Wireframe] =
 			treeFactory2.CreateTreeBillboardPSO(mShaders["treeBillboardVS"].Get(), mShaders["treeBillboardGS"].Get(), mShaders["treeBillboardPS_Wireframe"].Get(), true);
 	}
 
@@ -2043,15 +2077,15 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		exCylCtx.CullMode = D3D12_CULL_MODE_NONE;
 		exCylCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 		PipelineStateFactory exCylFactory(exCylCtx);
-		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::LineToCylinder][(int)SceneRenderMode::Lit] =
 			exCylFactory.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
-		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::LineToCylinder][(int)SceneRenderMode::DepthComplexity] =
 			exCylFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
 
 		PsoBuildContext exCylCtx2 = exCylCtx;
 		exCylCtx2.IsWireframe = true;
 		PipelineStateFactory exCylFactory2(exCylCtx2);
-		mLayerPSOs[(int)RenderLayer::LineToCylinder][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::LineToCylinder][(int)SceneRenderMode::Wireframe] =
 			exCylFactory2.CreateLineToCylinderPSO(mShaders["lineToCylinderVS"].Get(), mShaders["lineToCylinderGS"].Get(), mShaders["lineToCylinderPS"].Get());
 	}
 
@@ -2059,30 +2093,30 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		PsoBuildContext explodeCtx = ctx;
 		explodeCtx.CullMode = D3D12_CULL_MODE_NONE;
 		PipelineStateFactory explodeFactory(explodeCtx);
-		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::GeoExplode][(int)SceneRenderMode::Lit] =
 			explodeFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
-		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::GeoExplode][(int)SceneRenderMode::DepthComplexity] =
 			explodeFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
 
 		PsoBuildContext explodeCtx2 = explodeCtx;
 		explodeCtx2.IsWireframe = true;
 		PipelineStateFactory explodeFactory2(explodeCtx2);
-		mLayerPSOs[(int)RenderLayer::GeoExplode][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::GeoExplode][(int)SceneRenderMode::Wireframe] =
 			explodeFactory2.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["explodeGS"].Get(), mShaders["lineToCylinderPS"].Get());
 	}
 
 	{
 		PsoBuildContext lodCtx = ctx;
 		PipelineStateFactory lodFactory(lodCtx);
-		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::GeoSphereLOD][(int)SceneRenderMode::Lit] =
 			lodFactory.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
-		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::GeoSphereLOD][(int)SceneRenderMode::DepthComplexity] =
 			lodFactory.CreateDepthCountPSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
 	
 		PsoBuildContext lodCtx2 = lodCtx;
 		lodCtx2.IsWireframe = true;
 		PipelineStateFactory lodFactory2(lodCtx2);
-		mLayerPSOs[(int)RenderLayer::GeoSphereLOD][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::GeoSphereLOD][(int)SceneRenderMode::Wireframe] =
 			lodFactory2.CreateExplodePSO(mShaders["lineToCylinderVS"].Get(), mShaders["LOD_GS"].Get(), mShaders["lineToCylinderPS"].Get());
 	}
 	
@@ -2091,28 +2125,28 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		tessCtx.CullMode = D3D12_CULL_MODE_NONE;
 		tessCtx.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 		PipelineStateFactory tessFactory(tessCtx);
-		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::TessLand][(int)SceneRenderMode::Lit] =
 			tessFactory.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::TessLand][(int)SceneRenderMode::DepthComplexity] =
 			tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::TessWall][(int)SceneRenderMode::Lit] =
 			tessFactory.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
-		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::DepthComplexity] =
+		mLayerPSOs[(int)RenderPass::TessWall][(int)SceneRenderMode::DepthComplexity] =
 			tessFactory.CreateDepthCountPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
 
 		PsoBuildContext tessCtx2 = tessCtx;
 		tessCtx2.IsWireframe = true;
 		PipelineStateFactory tessFactory2(tessCtx2);
-		mLayerPSOs[(int)RenderLayer::TessLand][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::TessLand][(int)SceneRenderMode::Wireframe] =
 			tessFactory2.CreateTessellationPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS"].Get(), mShaders["tessPS"].Get());
-		mLayerPSOs[(int)RenderLayer::TessWall][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::TessWall][(int)SceneRenderMode::Wireframe] =
 			tessFactory2.CreateTessellateMirrorWallPSO(mShaders["tessVS"].Get(), mShaders["tessHS"].Get(), mShaders["tessDS_Wall"].Get(), mShaders["tessPS"].Get());
 	}
 
 	{
 		PsoBuildContext gizmoCtx = ctx;
 		PipelineStateFactory gizmoFactory(gizmoCtx);
-		mLayerPSOs[(int)RenderLayer::Gizmo][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::Gizmo][(int)SceneRenderMode::Lit] =
 			gizmoFactory.CreateGizmoPSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
 	}
 
@@ -2121,13 +2155,13 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		skinnedCtx.InputLayout = &mSkinnedInputLayout;
 		skinnedCtx.CullMode = D3D12_CULL_MODE_NONE;
 		PipelineStateFactory skinnedFactory(skinnedCtx);
-		mLayerPSOs[(int)RenderLayer::SkinnedOpaque][(int)SceneRenderMode::Lit] =
+		mLayerPSOs[(int)RenderPass::SkinnedOpaque][(int)SceneRenderMode::Lit] =
 			skinnedFactory.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
 
 		PsoBuildContext skinnedCtx2 = skinnedCtx;
 		skinnedCtx2.IsWireframe = true;
 		PipelineStateFactory skinnedFactory2(skinnedCtx2);
-		mLayerPSOs[(int)RenderLayer::SkinnedOpaque][(int)SceneRenderMode::Wireframe] =
+		mLayerPSOs[(int)RenderPass::SkinnedOpaque][(int)SceneRenderMode::Wireframe] =
 			skinnedFactory2.CreateOpaquePSO(mShaders["skinnedVS"].Get(), mShaders["opaquePS"].Get());
 	}
 
@@ -2349,7 +2383,6 @@ void SceneRenderer::UpdateSkinnedCBs()
 
 		std::copy(finalTransforms.begin(), finalTransforms.end(), std::begin(skinnedConstants.BoneTransforms));
 
-		// submeshIndex == RenderItem::SkinnedCBIndex
 		currSkinnedCB->CopyData(submeshIndex, skinnedConstants);
 	}
 }
@@ -2450,14 +2483,15 @@ void SceneRenderer::UpdateInstanceBuffer()
 			for (int i = 0; i < batch.Instances.size(); i++)
 			{
 				RenderInstanceRef& ref = batch.Instances[i];
+				ref.GpuInstanceIndex = UINT_MAX;
 				SceneObject* object = ref.Object;
+
 				if (!object || !object->Visible) continue;
-				StaticMeshComponent* staticMesh = object->GetComponent<StaticMeshComponent>();
-				if (!staticMesh || !staticMesh->Visible || !staticMesh->Geometry) continue;
-				SubmeshSlot& slot = staticMesh->SubmeshSlots[ref.SubMeshSlotIndex];
+				MeshComponent* mesh = object->GetComponent<MeshComponent>();
+				if (!mesh || !mesh->Visible || !mesh->Geometry) continue;
+				SubmeshSlot& slot = mesh->SubmeshSlots[ref.SubMeshSlotIndex];
 				if (!slot.Visible || !slot.Submesh || !slot.MaterialData) continue;
 
-				ref.GpuInstanceIndex = UINT_MAX;
 
 				XMMATRIX world = object->Transform.GetWorldMatrix();
 				XMMATRIX worldInvTranspose = MathHelper::InverseTranspose(world);
@@ -2500,37 +2534,45 @@ void SceneRenderer::RebuildRenderBatches()
 		SceneObject* object = ptr.get();
 		if (!object) continue;
 
-		StaticMeshComponent* staticMesh = object->GetComponent<StaticMeshComponent>();
-		if (!staticMesh || !staticMesh->Geometry || !staticMesh->Visible) continue;
+		MeshComponent* mesh = object->GetComponent<MeshComponent>();
+		if (!mesh || !mesh->Geometry || !mesh->Visible) continue;
 
-		for (int i = 0; i < staticMesh->SubmeshSlots.size(); i++)
+		SkeletalMeshComponent* skeletalMesh = object->GetComponent<SkeletalMeshComponent>();
+		const MeshType meshType = skeletalMesh ? MeshType::Skinned : MeshType::None;
+
+		for (int i = 0; i < mesh->SubmeshSlots.size(); i++)
 		{
-			SubmeshSlot& slot = staticMesh->SubmeshSlots[i];
+			SubmeshSlot& slot = mesh->SubmeshSlots[i];
 			if (!slot.Submesh) continue;
 
-			RenderBatchKey key{};
-			key.Geometry = staticMesh->Geometry;
-			key.Submesh = slot.Submesh;
-			key.Topology = staticMesh->Topology;
-			key.Layer = slot.Layer;
+			for (RenderPass layer : slot.Layers)
+			{
+				RenderBatchKey key{};
+				key.Geometry = mesh->Geometry;
+				key.Submesh = slot.Submesh;
+				key.Topology = mesh->Topology;
+				key.Type = meshType;
 
-			RenderBatch& batch = FindOrCreateBatch(key);
+				RenderBatch& batch = FindOrCreateBatch(layer, key);
 
-			RenderInstanceRef ref{};
-			ref.Object = object;
-			ref.SubMeshSlotIndex = i;
-			ref.GpuInstanceIndex = UINT_MAX;
-			batch.Instances.push_back(ref);
-			mInstanceCount++;
+				RenderInstanceRef ref{};
+				ref.Object = object;
+				ref.SubMeshSlotIndex = i;
+				ref.GpuInstanceIndex = UINT_MAX;
+
+				batch.Instances.push_back(ref);
+
+				mInstanceCount++;
+			}
 		}
 	}
 
 	mRenderBatchesDirty = false;
 }
 
-RenderBatch& SceneRenderer::FindOrCreateBatch(const RenderBatchKey& key)
+RenderBatch& SceneRenderer::FindOrCreateBatch(RenderPass layer, const RenderBatchKey& key)
 {
-	std::vector<RenderBatch>& batches = mRenderBatches[(int)key.Layer];
+	std::vector<RenderBatch>& batches = mRenderBatches[(int)layer];
 
 	const auto result = std::find_if(batches.begin(), batches.end(),
 		[&key](const RenderBatch& batch)
@@ -2546,20 +2588,21 @@ RenderBatch& SceneRenderer::FindOrCreateBatch(const RenderBatchKey& key)
 	return newBatch;
 }
 
-void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer layer)
+void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderPass layer)
 {
 	for (const RenderBatch& batch : mRenderBatches[(int)layer])
 	{
 		if (batch.VisibleInstanceCount == 0) continue;
 
-		if (layer == RenderLayer::SkinnedOpaque)
-		{
-			UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
-			auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
-
-			D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + 0 * skinnedCBByteSize;
-			cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
-		}
+		//if (batch.Key.Type == MeshType::Skinned)
+		//{
+		//	UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
+		//	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
+		//	D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + static_cast<UINT64>(batch.SkinnedCBIndex) * skinnedCBByteSize;
+		//	cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
+		//}
+		//else
+			cmdList->SetGraphicsRootConstantBufferView(2, 0);	//skinned
 
 		MeshGeometry& geometry = *batch.Key.Geometry;
 		const SubmeshGeometry& submesh = *batch.Key.Submesh;
@@ -2571,8 +2614,7 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer la
 		cmdList->IASetIndexBuffer(&ibv);
 		cmdList->IASetPrimitiveTopology(batch.Key.Topology);
 		cmdList->SetGraphicsRoot32BitConstant(1, batch.StartInstanceLocation, 0); //instance
-		if (layer != RenderLayer::SkinnedOpaque)
-		cmdList->SetGraphicsRootConstantBufferView(2, 0);	//skinned
+
 		cmdList->DrawIndexedInstanced(
 			submesh.IndexCount,
 			batch.VisibleInstanceCount,
@@ -2582,7 +2624,7 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderLayer la
 	}
 }
 
-void SceneRenderer::DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderLayer layer)
+void SceneRenderer::DrawLayer_VertexNormalDebug(ID3D12GraphicsCommandList* cmdList, RenderPass layer)
 {
 	for (const RenderBatch& batch : mRenderBatches[(int)layer])
 	{
@@ -2695,44 +2737,6 @@ void SceneRenderer::AnimateMaterials()
 	swirlingMat->NumFramesDirty = GlobalConfig::NumFrameResources;
 }
 
-void SceneRenderer::DrawSceneObjects(ID3D12GraphicsCommandList* cmdList, const std::vector<SceneObject*>& renderLayers)
-{
-	UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
-	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
-
-	for (SceneObject* sceneObj : renderLayers)
-	{
-		if (!sceneObj->Visible) continue;
-
-		auto staticMesh = sceneObj->GetComponent<StaticMeshComponent>();
-		if (staticMesh == nullptr) continue;
-
-		auto vbv = staticMesh->Geometry->VertexBufferView();
-		auto ibv = staticMesh->Geometry->IndexBufferView();
-
-		cmdList->IASetVertexBuffers(0, 1, &vbv);
-		cmdList->IASetIndexBuffer(&ibv);
-		cmdList->IASetPrimitiveTopology(staticMesh->Topology);
-
-		//cmdList->SetGraphicsRoot32BitConstant(1, staticMesh->SubmeshSlots[0].Submesh->StartInstanceLocation, 0);
-		cmdList->SetGraphicsRoot32BitConstant(1, 0, 0);
-
-		//if (ri->SkinnedModelInstance != nullptr)
-		//{
-		//	D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + ri->SkinnedCBIndex * skinnedCBByteSize;
-		//	cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
-		//}
-		//else
-		{
-			cmdList->SetGraphicsRootConstantBufferView(2, 0);
-		}
-
-		//cmdList->DrawIndexedInstanced(ri->IndexCount, ri->VisibleInstanceCount, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-		auto sm = staticMesh->SubmeshSlots[0].Submesh;
-		cmdList->DrawIndexedInstanced(sm->IndexCount, 1, sm->StartIndexLocation, sm->BaseVertexLocation, 0);
-	}
-}
-
 void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 {
 	auto selectedIds = mScene.GetSelectedObjectIds();
@@ -2742,7 +2746,7 @@ void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 		SceneObject* selectedObj = mScene.FindObject(selectedId);
 		if (!selectedObj) continue;
 
-		auto mesh = selectedObj->GetComponent<StaticMeshComponent>();
+		auto mesh = selectedObj->GetComponent<MeshComponent>();
 		if (!mesh || !mesh->Geometry) continue;
 
 		for (UINT i = 0; i < mesh->SubmeshSlots.size(); i++)
@@ -2752,8 +2756,7 @@ void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 			key.Geometry = mesh->Geometry;
 			key.Submesh = slot.Submesh;
 			key.Topology = mesh->Topology;
-			key.Layer = slot.Layer;
-			const auto& batches = mRenderBatches[static_cast<int>(slot.Layer)];
+			const auto& batches = mRenderBatches[static_cast<int>(slot.Layers[0])];
 
 			const auto batchIt = std::find_if(batches.begin(), batches.end(),
 				[&key](const RenderBatch& batch)
@@ -2788,18 +2791,29 @@ void SceneRenderer::DrawSelectedSceneObject(ID3D12GraphicsCommandList* cmdList)
 
 void SceneRenderer::DrawDebugColorTriangle(ID3D12GraphicsCommandList* cmdList)
 {
-	static constexpr std::array<DirectX::XMFLOAT4, 10> colors =
+	static constexpr std::array<DirectX::XMFLOAT4, 20> colors =
 	{
-		XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f},   // 1 빨강
-		XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f},   // 2 주황
-		XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f},   // 3 노랑
-		XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f},   // 4 초록
-		XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f},   // 5 파랑
-		XMFLOAT4{0.0f, 1.0f, 1.0f, 1.0f},   // 6 청록
-		XMFLOAT4{1.0f, 0.0f, 1.0f, 1.0f},   // 7 자홍
-		XMFLOAT4{0.5f, 0.0f, 1.0f, 1.0f},   // 8 보라
-		XMFLOAT4{1.0f, 1.0f, 1.0f, 1.0f},   // 9 흰색
-		XMFLOAT4{0.4f, 0.4f, 0.4f, 1.0f}    // 10 회색
+		XMFLOAT4{1.0f, 0.0f, 0.0f, 1.0f},   //  1 빨강
+		XMFLOAT4{1.0f, 0.5f, 0.0f, 1.0f},   //  2 주황
+		XMFLOAT4{1.0f, 1.0f, 0.0f, 1.0f},   //  3 노랑
+		XMFLOAT4{0.0f, 1.0f, 0.0f, 1.0f},   //  4 초록
+		XMFLOAT4{0.0f, 0.0f, 1.0f, 1.0f},   //  5 파랑
+		XMFLOAT4{0.0f, 1.0f, 1.0f, 1.0f},   //  6 청록
+		XMFLOAT4{1.0f, 0.0f, 1.0f, 1.0f},   //  7 자홍
+		XMFLOAT4{0.5f, 0.0f, 1.0f, 1.0f},   //  8 보라
+		XMFLOAT4{1.0f, 1.0f, 1.0f, 1.0f},   //  9 흰색
+		XMFLOAT4{0.5f, 1.0f, 0.0f, 1.0f},   // 10 라임
+
+		XMFLOAT4{1.0f, 0.4f, 0.4f, 1.0f},   // 11 연한 빨강
+		XMFLOAT4{1.0f, 0.7f, 0.4f, 1.0f},   // 12 연한 주황
+		XMFLOAT4{0.8f, 0.8f, 0.0f, 1.0f},   // 13 황록
+		XMFLOAT4{0.4f, 1.0f, 0.4f, 1.0f},   // 14 연한 초록
+		XMFLOAT4{0.4f, 0.4f, 1.0f, 1.0f},   // 15 연한 파랑
+		XMFLOAT4{0.0f, 0.6f, 0.6f, 1.0f},   // 16 짙은 청록
+		XMFLOAT4{1.0f, 0.4f, 0.7f, 1.0f},   // 17 분홍
+		XMFLOAT4{0.6f, 0.3f, 0.1f, 1.0f},   // 18 갈색
+		XMFLOAT4{1.0f, 0.75f, 0.0f, 1.0f},  // 19 금색
+		XMFLOAT4{0.1f, 0.1f, 0.1f, 1.0f}    // 20 검정
 	};
 
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2838,7 +2852,7 @@ void SceneRenderer::CreateQueryHeap(D3D12Context& context)
 	context.GetCommandQueue()->GetTimestampFrequency(&mGpuTimestampFrequency);
 }
 
-ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMode mode) const
+ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderPass layer, SceneRenderMode mode) const
 {
 	if(mode == SceneRenderMode::VertexNormal)
 		return mLayerPSOs[(int)layer][(int)SceneRenderMode::Lit].Get();
@@ -2846,6 +2860,6 @@ ID3D12PipelineState* SceneRenderer::ResolvePSO(RenderLayer layer, SceneRenderMod
 	const auto& modePso = mLayerPSOs[(int)layer][(int)mode];
 	if (modePso) return modePso.Get();
 
-	const auto& litPso = mLayerPSOs[(int)RenderLayer::Opaque][(int)mode];
+	const auto& litPso = mLayerPSOs[(int)RenderPass::Opaque][(int)mode];
 	return litPso.Get();
 }

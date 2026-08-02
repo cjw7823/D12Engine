@@ -4,7 +4,7 @@
 #include "Renderer/DirectX12/MACRO.h"
 #include "EngineCore/StringUtil.h"
 
-void SkinnedModelInstance::Initialize(const SkeletalMeshComponent& asset, std::string clipName)
+void SkinnedModelInstance::Initialize(const SkeletalMeshAsset& asset, std::string clipName)
 {
     Asset = &asset;
     ClipName = std::move(clipName);

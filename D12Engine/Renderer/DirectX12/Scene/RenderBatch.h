@@ -42,6 +42,13 @@
 	동일한 SceneObject는 자신이 가진 Submesh 수만큼 여러 RenderBatch에서
 	참조될 수 있지만, SceneObject 자체가 복제되는 것은 아니다.
 */
+
+enum class MeshType : std::uint8_t
+{
+	None,
+	Skinned
+};
+
 struct RenderBatchKey
 {
 	MeshGeometry* Geometry = nullptr;
@@ -49,14 +56,14 @@ struct RenderBatchKey
 
 	D3D12_PRIMITIVE_TOPOLOGY Topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-	RenderLayer Layer = RenderLayer::Opaque;
+	MeshType Type = MeshType::None;
 
 	bool operator==(const RenderBatchKey& rhs) const
 	{
 		return Geometry == rhs.Geometry &&
 			Submesh == rhs.Submesh &&
 			Topology == rhs.Topology &&
-			Layer == rhs.Layer;
+			Type == rhs.Type;
 	}
 };
 
@@ -64,7 +71,7 @@ struct RenderInstanceRef
 {
 	SceneObject* Object = nullptr;
 
-	// Object의 StaticMeshComponent::SubmeshSlots 인덱스
+	// Object의 MeshComponent::SubmeshSlots 인덱스
 	std::uint32_t SubMeshSlotIndex = UINT32_MAX;
 
 	// 현재 프레임 GPU 인스턴스 버퍼 위치
