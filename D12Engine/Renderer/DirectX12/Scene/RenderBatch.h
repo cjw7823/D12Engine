@@ -43,12 +43,6 @@
 	참조될 수 있지만, SceneObject 자체가 복제되는 것은 아니다.
 */
 
-enum class MeshType : std::uint8_t
-{
-	None,
-	Skinned
-};
-
 struct RenderBatchKey
 {
 	MeshGeometry* Geometry = nullptr;
@@ -56,14 +50,11 @@ struct RenderBatchKey
 
 	D3D12_PRIMITIVE_TOPOLOGY Topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-	MeshType Type = MeshType::None;
-
 	bool operator==(const RenderBatchKey& rhs) const
 	{
 		return Geometry == rhs.Geometry &&
 			Submesh == rhs.Submesh &&
-			Topology == rhs.Topology &&
-			Type == rhs.Type;
+			Topology == rhs.Topology;
 	}
 };
 

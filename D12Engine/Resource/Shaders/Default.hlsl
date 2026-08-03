@@ -11,80 +11,7 @@
 #endif
 
 //#define CARTOON
-#include "LightingUtil.hlsli"
-
-struct InstanceData
-{
-    float4x4 World;
-    float4x4 WorldInvTranspose;
-    float2 DisplacementMapTexelSize;
-    float GridSpatialStep;
-    uint MaterialIndex;
-};
-
-struct MaterialData
-{
-    float4 DiffuseAlbedo;
-    float3 FresnelR0;
-    float Roughness;
-    float4x4 MatTransform;
-    uint DiffuseMapIndex;
-    uint3 MatPad;
-};
-
-Texture2D gDiffuseMap[] : register(t0);
-StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
-StructuredBuffer<InstanceData> gInstanceData : register(t1, space1);
-
-Texture2D gDisplacementMap : register(t0, space2);
-
-SamplerState gsamPointWrap : register(s0);
-SamplerState gsamPointClamp : register(s1);
-SamplerState gsamLinearWrap : register(s2);
-SamplerState gsamLinearClamp : register(s3);
-SamplerState gsamAnisotropicWrap : register(s4);
-SamplerState gsamAnisotropicClamp : register(s5);
-
-cbuffer cbPass : register(b0)
-{
-    float4x4 gView;
-    float4x4 gInvView;
-    float4x4 gProj;
-    float4x4 gInvProj;
-    float4x4 gViewProj;
-    float4x4 gInvViewProj;
-    float3 gEyePosW;
-    float cbPerPassPad1;
-    float2 gRenderTargetSize;
-    float2 gInvRenderTargetSize;
-    float gNearZ;
-    float gFarZ;
-    float gTotalTime;
-    float gDeltaTime;
-    float4 gAmbientLight;
-    
-    // 인덱스 [0, NUM_DIR_LIGHTS)는 방향광입니다.
-	// 인덱스[NUM_DIR_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHTS)는 점광원입니다.
-	// 인덱스[NUM_DIR_LIGHTS + NUM_POINT_LIGHTS, NUM_DIR_LIGHTS + NUM_POINT_LIGHT + NUM_SPOT_LIGHTS)는 스포트라이트이며, 객체당 최대 MaxLights 개수까지 사용할 수 있습니다.
-    Light gLights[MaxLights];
-    
-    //앱이 프레임당 한 번씩 안개 매개변수를 변경할 수 있도록 합니다.
-    //특정 시간대에만 안개를 사용할 수 있습니다.
-    float4 gFogColor;
-    float gFogStart;
-    float gFogRange;
-    float2 cbPerObjectPad2;
-};
-
-cbuffer cbInstanceIndex : register(b1)
-{
-    uint gInstanceIndex;
-};
-
-cbuffer cbSkinned : register(b2)
-{
-    float4x4 gBoneTransforms[96];
-};
+#include "CommonStructures.hlsli"
 
 struct VertexIn
 {
@@ -116,7 +43,6 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     InstanceData instData = gInstanceData[gInstanceIndex + instanceID];
     float4x4 world = instData.World;
     float4x4 worldInvTranspose = instData.WorldInvTranspose;
-    float2 displacementMapTexelSize = instData.DisplacementMapTexelSize;
     float gridSpatialStep = instData.GridSpatialStep;
     uint matIndex = instData.MaterialIndex;
     vout.MatIndex = matIndex;
@@ -128,12 +54,14 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     vin.PosL.y += gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC, 1.0f).r;
 	
 	//유한차분법을 이용하여 정규분포를 추정.
-    float du = displacementMapTexelSize.x;
-    float dv = displacementMapTexelSize.y;
-    float l = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(du, 0.0f), 0.0f).r;
-    float r = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(du, 0.0f), 0.0f).r;
-    float t = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(0.0f, dv), 0.0f).r;
-    float b = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(0.0f, dv), 0.0f).r;
+    uint width, height;
+    gDisplacementMap.GetDimensions(width, height);
+    float2 texelSize = rcp(float2(width, height)); //역수
+    
+    float l = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(texelSize.x, 0.0f), 0.0f).r;
+    float r = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(texelSize.x, 0.0f), 0.0f).r;
+    float t = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC - float2(0.0f, texelSize.y), 0.0f).r;
+    float b = gDisplacementMap.SampleLevel(gsamPointWrap, vin.TexC + float2(0.0f, texelSize.y), 0.0f).r;
     vin.NormalL = normalize(float3(-r + l, 2.0f * gridSpatialStep, b - t));
 #endif
     
@@ -149,12 +77,10 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     float3 tangentL = float3(0.0f, 0.0f, 0.0f);
     for(int i = 0; i < 4; ++i)
     {
-        // Assume no nonuniform scaling when transforming normals, so 
-        // that we do not have to use the inverse-transpose.
-
-        posL += weights[i] * mul(float4(vin.PosL, 1.0f), gBoneTransforms[vin.BoneIndices[i]]).xyz;
-        normalL += weights[i] * mul(vin.NormalL, (float3x3)gBoneTransforms[vin.BoneIndices[i]]);
-        tangentL += weights[i] * mul(vin.Tangent.xyz, (float3x3)gBoneTransforms[vin.BoneIndices[i]]);
+        const uint transformIndex = instData.SkinnedBufferIndex + vin.BoneIndices[i];
+        posL += weights[i] * mul(float4(vin.PosL, 1.0f), gBoneTransforms[transformIndex]).xyz;
+        normalL += weights[i] * mul(vin.NormalL, (float3x3) gBoneTransforms[transformIndex]);
+        tangentL += weights[i] * mul(vin.Tangent.xyz, (float3x3) gBoneTransforms[transformIndex]);
     }
 
     vin.PosL = posL;

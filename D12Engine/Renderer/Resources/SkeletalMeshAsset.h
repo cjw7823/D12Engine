@@ -8,6 +8,7 @@
 #include <DirectXMath.h>
 
 #include "EngineCore/Math/MathHelper.h"
+#include "Renderer/Resources/ImportedMaterial.h"
 
 using JointIndex = std::uint32_t;
 inline constexpr JointIndex InvalidJoint = (std::numeric_limits<JointIndex>::max)();
@@ -33,6 +34,7 @@ struct JointTransform
 
 struct JointAnimation
 {
+	//키가 없는 채널의 값을 바인드 포즈 값으로 유지하기 위해 JointTransform를 입출력으로 사용.
 	void Sample(float timePos, JointTransform& inOutTransform) const;
 
 	std::vector<VectorKey> TranslationKeys;
@@ -98,17 +100,39 @@ struct SkeletalSubmesh
 {
 	std::string Name;
 
+	std::uint32_t IndexCount = 0;
+	std::uint32_t StartIndexLocation = 0;
+
+	ImportedMaterialIndex MaterialIndex = InvalidMaterialIndex;
+};
+
+struct SkeletalMeshPart
+{
+	std::string Name;
+
 	std::vector<SkinnedVertex> Vertices;
 	std::vector<std::uint32_t> Indices;
 
 	SkinBinding Skin;
+	std::vector<SkeletalSubmesh> Submeshes;
 };
 
 struct SkeletalMeshAsset
 {
 	SkeletonAsset Skeleton;
 
-	std::vector<SkeletalSubmesh> Submeshes;
+	std::vector<SkeletalMeshPart> MeshParts;
 
 	std::unordered_map<std::string, AnimationClip> Animations;
+	std::vector<ImportedMaterial> Materials;
+
+	UINT GetSubmeshCount() const
+	{
+		UINT count = 0;
+		for (const auto& part : MeshParts)
+		{
+			count += static_cast<UINT>(part.Submeshes.size());
+		}
+		return count;
+	}
 };

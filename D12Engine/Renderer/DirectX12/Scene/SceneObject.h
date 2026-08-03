@@ -8,7 +8,7 @@
 #include "Renderer/DirectX12/Components/IComponent.h"
 #include "Renderer/DirectX12/Components/TransformComponent.h"
 #include "Renderer/DirectX12/Components/StaticMeshComponent.h"
-#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Resources/RenderData.h"
 #include "Renderer/Resources/TextureDesc.h"
 
 enum SceneObjectFlags

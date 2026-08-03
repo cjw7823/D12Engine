@@ -5,10 +5,10 @@
 #include "EngineCore/GameTimer.h"
 #include "EngineCore/Logging/Logger.h"
 
+#include "Renderer/Resources/RenderData.h"
 #include "Renderer/DirectX12/Scene/Scene.h"
 #include "Renderer/DirectX12/MACRO.h"
 #include "Renderer/DirectX12/GeometryGenerator.h"
-#include "Renderer/DirectX12/RenderData.h"
 #include "Renderer/DirectX12/PipelineStateFactory.h"
 #include "Renderer/DirectX12/Components/StaticMeshComponent.h"
 #include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
@@ -171,7 +171,7 @@ void SceneRenderer::Update(const Scene& scene, float deltaTime)
 	ReadbackTimestampData(mCurrFrameResourceIndex);
 
 	AnimateMaterials();
-	UpdateSkinnedCBs();
+	UpdateSkinnedBuffer();
 	UpdateMainPassCB();
 	UpdateReflectedPassCB();
 	UpdateShadowTransform();
@@ -208,15 +208,18 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 
 	UINT treeArrayTexIndex = TextureManager::GetInstance().Find(L"Resource/Textures/Treearray2.dds")->Srv.Index;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(context.GetSrvUavHeap()->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootDescriptorTable(3, hTable);
+	mCommandList->SetGraphicsRootDescriptorTable(2, hTable);
 	hTable.Offset(treeArrayTexIndex, context.GetCbvSrvUavDescriptorSize());
 	mCommandList->SetGraphicsRootDescriptorTable(7, hTable);
 
 	auto instanceBufferAddress = mCurrFrameResource->InstanceBuffer->Resource()->GetGPUVirtualAddress();
-	mCommandList->SetGraphicsRootShaderResourceView(5, instanceBufferAddress);
+	mCommandList->SetGraphicsRootShaderResourceView(4, instanceBufferAddress);
 
 	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
-	mCommandList->SetGraphicsRootShaderResourceView(4, matBuffer->GetGPUVirtualAddress());
+	mCommandList->SetGraphicsRootShaderResourceView(3, matBuffer->GetGPUVirtualAddress());
+
+	auto skinnedBuffer = mCurrFrameResource->SkinnedDataBuffer->Resource();
+	mCommandList->SetGraphicsRootShaderResourceView(5, skinnedBuffer->GetGPUVirtualAddress());
 
 	mCommandList->EndQuery(
 		mTimestampQueryHeap.Get(),
@@ -705,10 +708,10 @@ void SceneRenderer::BuildRootSignature_Default(D3D12Context& context)
 	std::array<CD3DX12_ROOT_PARAMETER, 8> slotRootParameter{};
 	slotRootParameter[0].InitAsConstantBufferView(0);	// (b0) pass CB
 	slotRootParameter[1].InitAsConstants(1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);			// (b1) Start Instance Location
-	slotRootParameter[2].InitAsConstantBufferView(2);										// (b2) skinned CB
-	slotRootParameter[3].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
-	slotRootParameter[4].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
-	slotRootParameter[5].InitAsShaderResourceView(1, 1);							// (t1, space1) instances + mat index
+	slotRootParameter[2].InitAsDescriptorTable(1, &diffuseMapTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0) textures
+	slotRootParameter[3].InitAsShaderResourceView(0, 1);							// (t0, space1) materials + tex index
+	slotRootParameter[4].InitAsShaderResourceView(1, 1);							// (t1, space1) instances + mat index
+	slotRootParameter[5].InitAsShaderResourceView(2, 1);							// (t2, space1) skinned CB
 	slotRootParameter[6].InitAsDescriptorTable(1, &displacementMapTable);			// (t0, space2) wave height map
 	slotRootParameter[7].InitAsDescriptorTable(1, &treeArrayTable, D3D12_SHADER_VISIBILITY_PIXEL);	// (t0, space3) tree billboard
 
@@ -1507,13 +1510,11 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	SkeletalMeshAsset skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
 
 	//단순 가중치 검증
-	for (int submeshIndex = 0; submeshIndex < skelMesh.Submeshes.size(); submeshIndex++)
+	for (const SkeletalMeshPart& meshPart : skelMesh.MeshParts)
 	{
-		const SkeletalSubmesh& submesh = skelMesh.Submeshes[submeshIndex];
+		const std::size_t paletteSize = meshPart.Skin.PaletteToSkeletonJoint.size();
 
-		const std::size_t paletteSize = submesh.Skin.PaletteToSkeletonJoint.size();
-
-		for (const SkinnedVertex& vertex : submesh.Vertices)
+		for (const SkinnedVertex& vertex : meshPart.Vertices)
 		{
 			float weightSum = 0.0f;
 
@@ -1537,10 +1538,10 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	std::vector<SkinnedVertex> vertices;
 	std::vector<std::uint32_t> indices;
 
-	for (auto& sm : skelMesh.Submeshes)
+	for (auto& part : skelMesh.MeshParts)
 	{
-		vertices.insert(vertices.end(), sm.Vertices.begin(), sm.Vertices.end());
-		indices.insert(indices.end(), sm.Indices.begin(), sm.Indices.end());
+		vertices.insert(vertices.end(), part.Vertices.begin(), part.Vertices.end());
+		indices.insert(indices.end(), part.Indices.begin(), part.Indices.end());
 	}
 
 	const UINT vbByteSize = static_cast<UINT>(vertices.size() * sizeof(SkinnedVertex));
@@ -1574,44 +1575,37 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	geometry->IndexBufferByteSize = ibByteSize;
 
 	int baseVertexLocation = 0;
-	UINT startIndexLocation = 0;
-	for (UINT i = 0; i < (UINT)skelMesh.Submeshes.size(); i++)
+	UINT partStartIndexLocation = 0;
+	for (const SkeletalMeshPart& part : skelMesh.MeshParts)
 	{
-		const auto& sourceSubmesh = skelMesh.Submeshes[i];
-
-		SubmeshGeometry submesh;
-
-		submesh.IndexCount = static_cast<UINT>(sourceSubmesh.Indices.size());
-		submesh.StartIndexLocation = startIndexLocation;
-		submesh.BaseVertexLocation = baseVertexLocation;
-		submesh.VertexCount = static_cast<UINT>(sourceSubmesh.Vertices.size());
-
-		if (!sourceSubmesh.Vertices.empty())
+		for (const SkeletalSubmesh& source : part.Submeshes)
 		{
-			DirectX::BoundingBox::CreateFromPoints(submesh.Bounds, sourceSubmesh.Vertices.size(),
-				&sourceSubmesh.Vertices.front().Position, sizeof(SkinnedVertex));
+			SubmeshGeometry submesh{};
+
+			submesh.IndexCount = source.IndexCount;
+			submesh.StartIndexLocation = partStartIndexLocation + source.StartIndexLocation;
+			submesh.BaseVertexLocation = baseVertexLocation;
+			submesh.VertexCount = static_cast<UINT>(part.Vertices.size());
+
+			if (!part.Vertices.empty())
+			{
+				BoundingBox::CreateFromPoints(
+					submesh.Bounds,
+					part.Vertices.size(),
+					&part.Vertices.front().Position,
+					sizeof(SkinnedVertex));
+			}
+
+			geometry->Submeshes[source.Name] = submesh;
 		}
 
-		geometry->Submeshes[sourceSubmesh.Name] = submesh;
-
-		baseVertexLocation += submesh.VertexCount;
-		startIndexLocation += submesh.IndexCount;
+		baseVertexLocation += static_cast<int>(part.Vertices.size());
+		partStartIndexLocation += static_cast<UINT>(part.Indices.size());
 	}
 
 	const std::string geometryName = geometry->Name;
 	mGeometries[geometryName] = std::move(geometry);
 	mSkeletalMesheAssets[geometryName] = std::move(skelMesh);
-	SkeletalMeshAsset& storedAsset = mSkeletalMesheAssets.at(geometryName);
-	mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
-	auto clipName = storedAsset.Animations.begin()->first;
-	for (const auto& [name, clip] : storedAsset.Animations)
-	{
-		Logger::Info(
-			L"Animation Clip: " +
-			AnsiToWString(name) +
-			L"\n");
-	}
-	mSkinnedModelInstance->Initialize(storedAsset, clipName);
 }
 
 void SceneRenderer::BuildScene()
@@ -1621,7 +1615,7 @@ void SceneRenderer::BuildScene()
 	BuildSceneObject_Common();
 	BuildSceneObject_InMirror();
 	BuildSceneObject_Gizmo();
-	//BuildSceneObject_FBX();
+	BuildSceneObject_FBX();
 
 	RebuildRenderBatches();
 }
@@ -1879,6 +1873,12 @@ void SceneRenderer::BuildSceneObject_FBX()
 	transform.Scale = { 0.03f, 0.03f, 0.03f };
 
 	CreateSkeletalMeshObject(L"FBX 미리보기", assetName.c_str(), "defaultMat", skeletalMesh, transform);
+
+	transform.Position = { 15.0f, 0.0f, 0.0f };
+	transform.Rotation = { 0.0f, 180.0f, 0.0f };
+	transform.Scale = { 0.03f, 0.03f, 0.03f };
+
+	CreateSkeletalMeshObject(L"FBX 미리보기2", assetName.c_str(), "defaultMat", skeletalMesh, transform);
 }
 
 SceneObject* SceneRenderer::CreateStaticMeshObject(
@@ -1923,29 +1923,48 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 	SceneObject& object = mScene.CreateObject(objName);
 	object.Transform = transform;
 
+	UINT submeshCount = asset.GetSubmeshCount();
+
 	auto& component = object.AddComponent<SkeletalMeshComponent>();
 	component.Asset = &asset;
 	component.Geometry = geometry;
 	component.Topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	component.SubmeshSlots.reserve(asset.Submeshes.size());
+	component.SubmeshSlots.reserve(submeshCount);
+	component.SkinnedBufferIndices.resize(submeshCount, UINT_MAX);
+	component.mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
 
-	for (int i = 0; i < asset.Submeshes.size(); i++)
+	SkeletalMeshAsset& storedAsset = mSkeletalMesheAssets.at(GeoName);
+	if (!storedAsset.Animations.empty())
 	{
-		const SkeletalSubmesh& source = asset.Submeshes[i];
-
-		auto geometryIt = geometry->Submeshes.find(source.Name);
-		if (geometryIt == geometry->Submeshes.end())
+		auto clipName = storedAsset.Animations.begin()->first;
+		for (const auto& [name, clip] : storedAsset.Animations)
 		{
-			std::wstring wfn = AnsiToWString(__FILE__);
-			throw DxException(1, L"Skeletal submesh geometry not found: ", wfn, __LINE__);
+			Logger::Info(
+				L"Animation Clip: " +
+				AnsiToWString(name) +
+				L"\n");
 		}
+		component.mSkinnedModelInstance->Initialize(storedAsset, clipName);
+	}
+	
+	for (auto& part : asset.MeshParts)
+	{
+		for (const SkeletalSubmesh& source : part.Submeshes)
+		{
+			auto geometryIt = geometry->Submeshes.find(source.Name);
+			if (geometryIt == geometry->Submeshes.end())
+			{
+				std::wstring wfn = AnsiToWString(__FILE__);
+				throw DxException(1, L"Skeletal submesh geometry not found: ", wfn, __LINE__);
+			}
 
-		SubmeshSlot slot{};
-		slot.Submesh = &geometryIt->second;
-		slot.MaterialData = material;
-		slot.Layers = { RenderPass::SkinnedOpaque };
+			SubmeshSlot slot{};
+			slot.Submesh = &geometryIt->second;
+			slot.MaterialData = material;
+			slot.Layers = { RenderPass::SkinnedOpaque };
 
-		component.SubmeshSlots.push_back(slot);
+			component.SubmeshSlots.push_back(slot);
+		}
 	}
 
 	mRenderBatchesDirty = true;
@@ -1955,13 +1974,20 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 
 void SceneRenderer::BuildFrameResources(D3D12Context& context)
 {
-	UINT skinnedCBCount = 1;
+	UINT skinnedCBCount = 0u;
 
-	if (mSkinnedModelInstance != nullptr)
+	for (auto& object : mScene.GetObjects())
 	{
-		skinnedCBCount = (UINT)mSkinnedModelInstance->SubmeshFinalTransforms.size();
-		skinnedCBCount = std::max(1u, skinnedCBCount);
+		auto* skinnedMesh = object->GetComponent<SkeletalMeshComponent>();
+		if (!skinnedMesh) continue;
+
+		const auto& palettes = skinnedMesh->mSkinnedModelInstance->SubmeshFinalTransforms;
+		for (const auto& palette : palettes)
+		{
+			skinnedCBCount += static_cast<UINT>(palette.size());
+		}
 	}
+	skinnedCBCount = std::max(1u, skinnedCBCount);
 
 	for (int i = 0; i < GlobalConfig::NumFrameResources; i++)
 	{
@@ -2356,34 +2382,40 @@ MeshData SceneRenderer::LoadModelFromFile_dx12ex(const std::wstring& path)
 	return md;
 }
 
-void SceneRenderer::UpdateSkinnedCBs()
+void SceneRenderer::UpdateSkinnedBuffer()
 {
-	auto currSkinnedCB = mCurrFrameResource->SkinnedCB.get();
+	auto currSkinnedBuffer = mCurrFrameResource->SkinnedDataBuffer.get();
 
-	// 캐릭터 인스턴스당 한 번만 애니메이션 평가
-	mSkinnedModelInstance->UpdateAnimation(mTimer.DeltaTime());
-
-	const auto& submeshPalettes = mSkinnedModelInstance->SubmeshFinalTransforms;
-
-	for (UINT submeshIndex = 0; submeshIndex < (UINT)submeshPalettes.size(); submeshIndex++)
+	// gBoneTransforms 전체에서 다음으로 기록할 행렬 인덱스
+	UINT skinnedMatrixIndex = 0;
+	for (auto& object : mScene.GetObjects())
 	{
-		const std::vector<XMFLOAT4X4>& finalTransforms = submeshPalettes[submeshIndex];
+		auto* skinnedMesh = object->GetComponent<SkeletalMeshComponent>();
+		if (!skinnedMesh) continue;
 
-		SkinnedConstants skinnedConstants{};
-		constexpr std::size_t maxPaletteSize = std::size(skinnedConstants.BoneTransforms);
+		// 캐릭터 인스턴스당 한 번만 애니메이션 평가
+		skinnedMesh->mSkinnedModelInstance->UpdateAnimation(mTimer.DeltaTime());
 
-		if (finalTransforms.size() > maxPaletteSize)
+		const auto& submeshPalettes = skinnedMesh->mSkinnedModelInstance->SubmeshFinalTransforms;
+
+		assert(skinnedMesh->SkinnedBufferIndices.size() == submeshPalettes.size());
+
+		for (UINT submeshIndex = 0; submeshIndex < (UINT)submeshPalettes.size(); submeshIndex++)
 		{
-			throw DxException(
-				E_FAIL,
-				L"Skin palette exceeds SkinnedConstants capacity.",
-				AnsiToWString(__FILE__),
-				__LINE__);
+			const std::vector<XMFLOAT4X4>& finalTransforms = submeshPalettes[submeshIndex];
+
+			skinnedMesh->SkinnedBufferIndices[submeshIndex] = skinnedMatrixIndex;
+
+			for (int i = 0; i < finalTransforms.size(); i++)
+			{
+				SkinnedData_GPU skinnedConstants{};
+				skinnedConstants.BoneTransforms = finalTransforms[i];
+
+				currSkinnedBuffer->CopyData(skinnedMatrixIndex, skinnedConstants);
+
+				skinnedMatrixIndex++;
+			}
 		}
-
-		std::copy(finalTransforms.begin(), finalTransforms.end(), std::begin(skinnedConstants.BoneTransforms));
-
-		currSkinnedCB->CopyData(submeshIndex, skinnedConstants);
 	}
 }
 
@@ -2492,7 +2524,6 @@ void SceneRenderer::UpdateInstanceBuffer()
 				SubmeshSlot& slot = mesh->SubmeshSlots[ref.SubMeshSlotIndex];
 				if (!slot.Visible || !slot.Submesh || !slot.MaterialData) continue;
 
-
 				XMMATRIX world = object->Transform.GetWorldMatrix();
 				XMMATRIX worldInvTranspose = MathHelper::InverseTranspose(world);
 
@@ -2504,10 +2535,18 @@ void SceneRenderer::UpdateInstanceBuffer()
 				{
 					object->FrustumVisible = true;
 
-					InstanceData_GPU gpuData;
+					InstanceData_GPU gpuData{};
 					XMStoreFloat4x4(&gpuData.World, XMMatrixTranspose(world));
 					XMStoreFloat4x4(&gpuData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
-					gpuData.MaterialIndex = slot.MaterialData->MatBufferIndex;
+					gpuData.GridSpatialStep = mWaves->SpatialStep();
+					gpuData.ImportedMaterialIndex = slot.MaterialData->MatBufferIndex;
+
+					if (SkeletalMeshComponent* skinnedMesh = object->GetComponent<SkeletalMeshComponent>())
+					{
+						const UINT submeshIndex = ref.SubMeshSlotIndex;
+
+						gpuData.SkinnedBufferIndex = skinnedMesh->SkinnedBufferIndices[submeshIndex];
+					}
 
 					// 컬링을 통과한 인스턴스를 배치 영역 앞쪽부터 압축한다.
 					const UINT gpuInstanceIndex = batch.StartInstanceLocation + batch.VisibleInstanceCount;
@@ -2538,7 +2577,6 @@ void SceneRenderer::RebuildRenderBatches()
 		if (!mesh || !mesh->Geometry || !mesh->Visible) continue;
 
 		SkeletalMeshComponent* skeletalMesh = object->GetComponent<SkeletalMeshComponent>();
-		const MeshType meshType = skeletalMesh ? MeshType::Skinned : MeshType::None;
 
 		for (int i = 0; i < mesh->SubmeshSlots.size(); i++)
 		{
@@ -2551,7 +2589,6 @@ void SceneRenderer::RebuildRenderBatches()
 				key.Geometry = mesh->Geometry;
 				key.Submesh = slot.Submesh;
 				key.Topology = mesh->Topology;
-				key.Type = meshType;
 
 				RenderBatch& batch = FindOrCreateBatch(layer, key);
 
@@ -2593,16 +2630,6 @@ void SceneRenderer::DrawLayer(ID3D12GraphicsCommandList* cmdList, RenderPass lay
 	for (const RenderBatch& batch : mRenderBatches[(int)layer])
 	{
 		if (batch.VisibleInstanceCount == 0) continue;
-
-		//if (batch.Key.Type == MeshType::Skinned)
-		//{
-		//	UINT skinnedCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(SkinnedConstants));
-		//	auto skinnedCB = mCurrFrameResource->SkinnedCB->Resource();
-		//	D3D12_GPU_VIRTUAL_ADDRESS skinnedCBAddress = skinnedCB->GetGPUVirtualAddress() + static_cast<UINT64>(batch.SkinnedCBIndex) * skinnedCBByteSize;
-		//	cmdList->SetGraphicsRootConstantBufferView(2, skinnedCBAddress);
-		//}
-		//else
-			cmdList->SetGraphicsRootConstantBufferView(2, 0);	//skinned
 
 		MeshGeometry& geometry = *batch.Key.Geometry;
 		const SubmeshGeometry& submesh = *batch.Key.Submesh;

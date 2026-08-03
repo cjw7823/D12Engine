@@ -3,10 +3,10 @@
 
 #include "Renderer/DirectX12/Scene/Scene.h"
 #include "Renderer/DirectX12/Scene/SceneObject.h"
-#include "EngineCore/StringUtil.h"
-
 #include "Renderer/DirectX12/D3D12Util.h"
-#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Resources/RenderData.h"
+
+#include "EngineCore/StringUtil.h"
 
 #include <unordered_set>
 

@@ -73,18 +73,23 @@ struct PassConstants
 	DirectX::XMFLOAT2 cbPassPadding2 = {};
 };
 
-struct SkinnedConstants
+struct SkinnedData_GPU
 {
-	DirectX::XMFLOAT4X4 BoneTransforms[96];
+	DirectX::XMFLOAT4X4 BoneTransforms;
 };
 
 struct InstanceData_GPU
 {
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 WorldInvTranspose = MathHelper::Identity4x4();
-	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f,1.0f };
+
 	float GridSpatialStep = 1.0f;
-	UINT MaterialIndex = 0;
+
+	UINT ImportedMaterialIndex = 0;
+
+	// 이 캐릭터의 본 팔레트가 시작되는 행렬 인덱스
+	std::uint32_t SkinnedBufferIndex = 0;
+	std::uint32_t InstancePad = 0;
 };
 
 struct MaterialData_GPU

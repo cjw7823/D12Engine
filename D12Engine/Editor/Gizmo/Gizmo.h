@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DirectX-Headers\d3dx12.h"
-#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Resources/RenderData.h"
 #include "Renderer/DirectX12/Scene/SceneRenderTypes.h"
 #include "Renderer/DirectX12/Scene/Camera/Camera.h"
 #include "Renderer/DirectX12/Scene/Scene.h"

@@ -124,7 +124,7 @@ private:
 	DirectX::XMVECTOR GetMirrorPlane();
 	float GetHillsHeight(float x, float z) const;
 
-	void UpdateSkinnedCBs();
+	void UpdateSkinnedBuffer();
 	void UpdateMainPassCB();
 	void UpdateReflectedPassCB();
 	void UpdateInstanceBuffer();
@@ -218,7 +218,6 @@ private:
 
 	//For FBX Animation
 	std::unordered_map<std::string, SkeletalMeshAsset> mSkeletalMesheAssets;
-	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;
 
 	//For Camera
 	DirectX::BoundingFrustum mCamFrustum;

@@ -16,5 +16,5 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInsta
 
 	InstanceBuffer = std::make_unique<UploadBuffer<InstanceData_GPU>>(device, maxInstanceCount, false);
 
-	SkinnedCB = std::make_unique<UploadBuffer<SkinnedConstants>>(device, skinnedObjectCount, true);
+	SkinnedDataBuffer = std::make_unique<UploadBuffer<SkinnedData_GPU>>(device, skinnedObjectCount, false);
 }

@@ -22,8 +22,6 @@ GpuWaves::GpuWaves(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int
 	mK[1] = (4.0f - 8.0f * e) / d;
 	mK[2] = (2.0f * e) / d;
 
-	DisplacementMapTexelSize = { 1.0f / mNumCols, 1.0f / mNumRows };
-
 	BuildResource(cmdList);
 }
 

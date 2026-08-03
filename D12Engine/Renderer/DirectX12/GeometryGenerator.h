@@ -2,10 +2,9 @@
 
 #include <cstdint>
 #include <vector>
-
 #include <DirectXMath.h>
 
-#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Resources/RenderData.h"
 
 class GeometryGenerator
 {

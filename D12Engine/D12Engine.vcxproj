@@ -211,7 +211,7 @@
     <ClCompile Include="Renderer\DirectX12\FrameResource.cpp" />
     <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp" />
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp" />
-    <ClCompile Include="Renderer\DirectX12\RenderData.cpp" />
+    <ClCompile Include="Renderer\Resources\RenderData.cpp" />
     <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp" />
     <ClCompile Include="Renderer\Resources\TextureManager.cpp" />
   </ItemGroup>
@@ -230,6 +230,7 @@
     <ClInclude Include="AssetPipeline\Importers\LoadM3d.h" />
     <ClInclude Include="Renderer\DirectX12\Components\MeshComponent.h" />
     <ClInclude Include="Renderer\DirectX12\Components\SkeletalMeshComponent.h" />
+    <ClInclude Include="Renderer\Resources\ImportedMaterial.h" />
     <ClInclude Include="Renderer\Resources\SkeletalMeshAsset.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
@@ -269,7 +270,7 @@
     <ClInclude Include="Renderer\DirectX12\MACRO.h" />
     <ClInclude Include="Renderer\DirectX12\MsaaOption.h" />
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h" />
-    <ClInclude Include="Renderer\DirectX12\RenderData.h" />
+    <ClInclude Include="Renderer\Resources\RenderData.h" />
     <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderTypes.h" />
     <ClInclude Include="Renderer\DirectX12\SceneRenderer.h" />
     <ClInclude Include="Renderer\DirectX12\UploadBuffer.h" />
@@ -309,12 +310,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ShaderInclude Include="$(ProjectDir)Resource\Shaders\LightingUtil.hlsli" />
+    <ShaderInclude_Common Include="$(ProjectDir)Resource\Shaders\CommonStructures.hlsli" />
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
       <Entry>VS</Entry>
       <Profile>vs_6_0</Profile>
       <OutputName>Default_vs.cso</OutputName>
       <AsmName>Default_vs.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
@@ -322,7 +324,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>Default_ps.cso</OutputName>
       <AsmName>Default_ps.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(FogDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
@@ -330,7 +332,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>Default_ps_TextureBlend.cso</OutputName>
       <AsmName>Default_ps_TextureBlend.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(TextureBlendDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
@@ -338,7 +340,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>Default_ps_AlphaTest.cso</OutputName>
       <AsmName>Default_ps_AlphaTest.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(AlphaTestDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
@@ -346,7 +348,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>Default_vs_Waves.cso</OutputName>
       <AsmName>Default_vs_Waves.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(WavesDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\WaveSim.hlsl">
@@ -382,7 +384,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>MirrorBaseFill.cso</OutputName>
       <AsmName>MirrorBaseFill.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\TreeBillboard.hlsl">
@@ -422,7 +424,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>LineToCylinderVS.cso</OutputName>
       <AsmName>LineToCylinderVS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -430,7 +432,7 @@
       <Profile>gs_6_0</Profile>
       <OutputName>LineToCylinderGS.cso</OutputName>
       <AsmName>LineToCylinderGS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -438,7 +440,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>LineToCylinderPS.cso</OutputName>
       <AsmName>LineToCylinderPS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(AlphaTestDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -446,7 +448,7 @@
       <Profile>gs_6_0</Profile>
       <OutputName>ExplodeGS.cso</OutputName>
       <AsmName>ExplodeGS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(AlphaTestDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -454,7 +456,7 @@
       <Profile>gs_6_0</Profile>
       <OutputName>LOD_GS.cso</OutputName>
       <AsmName>LOD_GS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -462,7 +464,7 @@
       <Profile>gs_6_0</Profile>
       <OutputName>VertexDebugGS.cso</OutputName>
       <AsmName>VertexDebugGS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Task_GS.hlsl">
@@ -470,7 +472,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>VertexDebugPS.cso</OutputName>
       <AsmName>VertexDebugPS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Blur.hlsl">
@@ -510,7 +512,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>tessVS.cso</OutputName>
       <AsmName>tessVS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
@@ -518,7 +520,7 @@
       <Profile>hs_6_0</Profile>
       <OutputName>tessHS.cso</OutputName>
       <AsmName>tessHS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
@@ -526,7 +528,7 @@
       <Profile>ds_6_0</Profile>
       <OutputName>tessDS.cso</OutputName>
       <AsmName>tessDS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
@@ -534,7 +536,7 @@
       <Profile>ds_6_0</Profile>
       <OutputName>tessDS_Wall.cso</OutputName>
       <AsmName>tessDS_Wall.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(tessWallDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Tessellation.hlsl">
@@ -542,7 +544,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>tessPS.cso</OutputName>
       <AsmName>tessPS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(FogDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
@@ -550,7 +552,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>highlightVS.cso</OutputName>
       <AsmName>highlightVS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
@@ -558,7 +560,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>highlightVS_Mask.cso</OutputName>
       <AsmName>highlightVS_Mask.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Outline.hlsl">
@@ -566,7 +568,7 @@
       <Profile>ps_6_0</Profile>
       <OutputName>highlightPS.cso</OutputName>
       <AsmName>highlightPS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(NullDefines)</Defines>
     </ShaderCompile>
     <ShaderCompile Include="$(ProjectDir)Resource\Shaders\Default.hlsl">
@@ -574,7 +576,7 @@
       <Profile>vs_6_0</Profile>
       <OutputName>skinnedVS.cso</OutputName>
       <AsmName>skinnedVS.asm</AsmName>
-      <DependsOn>@(ShaderInclude)</DependsOn>
+      <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(SkinnedDefines)</Defines>
     </ShaderCompile>
   </ItemGroup>

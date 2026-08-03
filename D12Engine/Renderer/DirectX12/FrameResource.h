@@ -4,7 +4,7 @@
 #include <wrl/client.h>
 
 #include "DirectX-Headers/d3dx12.h"
-#include "Renderer/DirectX12/RenderData.h"
+#include "Renderer/Resources/RenderData.h"
 #include "Renderer/DirectX12/UploadBuffer.h"
 
 struct FrameResource
@@ -17,10 +17,9 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAlloc;
 
-	//std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
-	std::unique_ptr<UploadBuffer<SkinnedConstants>> SkinnedCB = nullptr;
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
 	std::unique_ptr<UploadBuffer<MaterialData_GPU>> MaterialBuffer = nullptr;
+	std::unique_ptr<UploadBuffer<SkinnedData_GPU>> SkinnedDataBuffer = nullptr;
 
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
 

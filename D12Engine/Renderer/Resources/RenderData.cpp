@@ -34,12 +34,13 @@ void SkinnedModelInstance::Initialize(const SkeletalMeshAsset& asset, std::strin
     TimePos = clipIt->second.StartTime;
 
     JointToRootTransforms.resize(asset.Skeleton.Joints.size());
-    SubmeshFinalTransforms.resize(asset.Submeshes.size());
+    SubmeshFinalTransforms.clear();
+    SubmeshFinalTransforms.resize(asset.MeshParts.size());
 
-    for (std::size_t submeshIndex = 0; submeshIndex < asset.Submeshes.size(); submeshIndex++)
+    for (std::size_t partIndex = 0; partIndex < asset.MeshParts.size(); partIndex++)
     {
-        const SkinBinding& skin = asset.Submeshes[submeshIndex].Skin;
-        SubmeshFinalTransforms[submeshIndex].resize(skin.PaletteToSkeletonJoint.size());
+        const SkinBinding& skin = asset.MeshParts[partIndex].Skin;
+        SubmeshFinalTransforms[partIndex].resize(skin.PaletteToSkeletonJoint.size());
     }
 
     // 초기 프레임 Pose 생성
@@ -158,14 +159,14 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
     }
 
     // 4. 서브메시별 최종 GPU Skin Palette 생성
-    if (SubmeshFinalTransforms.size() != Asset->Submeshes.size())
+    if (SubmeshFinalTransforms.size() != Asset->GetSubmeshCount())
     {
-        SubmeshFinalTransforms.resize(Asset->Submeshes.size());
+        SubmeshFinalTransforms.resize(Asset->GetSubmeshCount());
     }
 
-    for (std::size_t submeshIndex = 0; submeshIndex < Asset->Submeshes.size(); submeshIndex++)
+    for (std::size_t submeshIndex = 0; submeshIndex < Asset->MeshParts.size(); submeshIndex++)
     {
-        const SkinBinding& skin = Asset->Submeshes[submeshIndex].Skin;
+        const SkinBinding& skin = Asset->MeshParts[submeshIndex].Skin;
         const std::size_t paletteSize = skin.PaletteToSkeletonJoint.size();
 
         if (skin.OffsetMatrices.size() != paletteSize)
