@@ -10,6 +10,7 @@
 #include "EngineCore/Math/MathHelper.h"
 #include "AssetPipeline/Desc/ImportedMaterial.h"
 #include "AssetPipeline/Desc/ImportedTexture.h"
+#include "Renderer/Resources/TextureDesc.h"
 
 using JointIndex = std::uint32_t;
 inline constexpr JointIndex InvalidJoint = (std::numeric_limits<JointIndex>::max)();
@@ -104,6 +105,7 @@ struct SkeletalSubmesh
 	std::uint32_t IndexCount = 0;
 	std::uint32_t StartIndexLocation = 0;
 
+	//SkeletalMeshAsset::Materials의 인덱스
 	ImportedMaterialIndex MaterialIndex = InvalidMaterialIndex;
 };
 
@@ -126,8 +128,13 @@ struct SkeletalMeshAsset
 
 	std::unordered_map<std::string, AnimationClip> Animations;
 
+	//임포트 데이터
 	std::vector<ImportedTexture> Textures;
 	std::vector<ImportedMaterial> Materials;
+
+	//런타임 변환 결과
+	std::vector<TextureHandle> TextureHandles;
+	std::vector<std::string> MaterialNames;
 
 	UINT GetSubmeshCount() const
 	{

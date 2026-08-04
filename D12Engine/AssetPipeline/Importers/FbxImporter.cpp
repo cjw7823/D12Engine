@@ -35,12 +35,12 @@ namespace
         };
     }
 
-    DirectX::XMFLOAT2 ToFloat2(const ufbx_vec2& value)
+    DirectX::XMFLOAT2 ConvertFbxTexCoord(const ufbx_vec2& value)
     {
         return
         {
             static_cast<float>(value.x),
-            static_cast<float>(value.y)
+            1.0f - static_cast<float>(value.y)
         };
     }
     
@@ -253,7 +253,7 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
                 vertex.Position = ToFloat3(position);
                 vertex.Normal = ToFloat3(normal);
                 vertex.TangentU = ToFloat3(tangent);
-                vertex.TexC = ToFloat2(texCoord);
+                vertex.TexC = ConvertFbxTexCoord(texCoord);
 
                 const std::uint32_t newIndex = static_cast<std::uint32_t>(result.Vertices.size());
 
@@ -780,7 +780,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                     {
                         texCoord = ufbx_get_vertex_vec2(&mesh->vertex_uv, meshIndex);
                     }
-                    vertex.TexCoord = ToFloat2(texCoord);
+                    vertex.TexCoord = ConvertFbxTexCoord(texCoord);
 
                     // Polygon vertex index ¡æ Logical vertex index
                     const std::uint32_t logicalVertexIndex = mesh->vertex_indices[meshIndex];
@@ -1057,7 +1057,7 @@ std::vector<ImportedMaterial> FbxImporter::ImportMaterials(const ufbx_scene& sce
             baseFactor = (float)pbr.base_factor.value_real;
         }
 
-		if (pbr.base_factor.has_value || pbr.base_factor.value_components >= 3)
+		if (pbr.base_color.has_value || pbr.base_color.value_components >= 3)
 		{
 			const ufbx_vec4& baseColor = pbr.base_color.value_vec4;
 			material.BaseColor = DirectX::XMFLOAT4(

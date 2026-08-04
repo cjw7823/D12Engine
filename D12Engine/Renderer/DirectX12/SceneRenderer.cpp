@@ -53,14 +53,15 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	mCamera.RotateY(-0.5f);
 
 	LoadBuiltInTextures(context);
+	BuildMaterials(context);
 
 	BuildDescriptorHeaps(context);
 	BuildRootSignature(context);
 	BuildShadersAndInputLayout();
 	BuildGeometry(context);
 
-	BuildImportedTextures(context);
-	BuildMaterials(context);
+	BuildImportedTextures();
+	BuildImportedMaterials();
 
 	BuildScene();
 	BuildFrameResources(context);
@@ -422,6 +423,7 @@ void SceneRenderer::LoadBuiltInTextures(D3D12Context& context)
 		{ "defaultTex",      L"Resource/Textures/White1x1.dds" },
 		{ "woodCrateTex",    L"Resource/Textures/MipmapTest.dds" },
 		{ "bricksTex0",      L"Resource/Textures/Bricks.dds" },
+		{ "bricksTex1",      L"Resource/Textures/Bricks2.dds" },
 		{ "stoneTex",        L"Resource/Textures/Stone.dds" },
 		{ "tileTex",         L"Resource/Textures/Tile.dds" },
 		{ "grassTex",        L"Resource/Textures/Grass.dds" },
@@ -429,7 +431,6 @@ void SceneRenderer::LoadBuiltInTextures(D3D12Context& context)
 		{ "swirlingTex",     L"Resource/Textures/Swirling.dds" },
 		{ "swirlingMaskTex", L"Resource/Textures/Swirling_Mask.dds" },
 		{ "fenceTex",        L"Resource/Textures/WireFence.dds" },
-		{ "bricksTex1",      L"Resource/Textures/Bricks2.dds" },
 		{ "checkboardTex",   L"Resource/Textures/Checkboard.dds" },
 		{ "iceTex",          L"Resource/Textures/Ice.dds" },
 		{ "helpTex",         L"Resource/Textures/Help.dds" },
@@ -487,25 +488,6 @@ void SceneRenderer::BuildDescriptorHeaps(D3D12Context& context)
 
 void SceneRenderer::BuildMaterials(D3D12Context& context)
 {
-	std::map<std::string, std::wstring> textures =
-	{
-		{ "defaultTex",      L"Resource/Textures/White1x1.dds" },
-		{ "woodCrateTex",    L"Resource/Textures/MipmapTest.dds" },
-		{ "bricksTex0",      L"Resource/Textures/Bricks.dds" },
-		{ "stoneTex",        L"Resource/Textures/Stone.dds" },
-		{ "tileTex",         L"Resource/Textures/Tile.dds" },
-		{ "grassTex",        L"Resource/Textures/Grass.dds" },
-		{ "waterTex",        L"Resource/Textures/Water1.dds" },
-		{ "swirlingTex",     L"Resource/Textures/Swirling.dds" },
-		{ "swirlingMaskTex", L"Resource/Textures/Swirling_Mask.dds" },
-		{ "fenceTex",        L"Resource/Textures/WireFence.dds" },
-		{ "bricksTex1",      L"Resource/Textures/Bricks2.dds" },
-		{ "checkboardTex",   L"Resource/Textures/Checkboard.dds" },
-		{ "iceTex",          L"Resource/Textures/Ice.dds" },
-		{ "helpTex",         L"Resource/Textures/Help.dds" },
-		{ "treeArrayTex",    L"Resource/Textures/Treearray2.dds" },
-	};
-
 	UINT index = 0;
 
 	auto defaultMat = std::make_unique<Material>();
@@ -599,7 +581,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto checkerTileMat = std::make_unique<Material>();
 	checkerTileMat->Name = "checkerTileMat";
 	checkerTileMat->MatBufferIndex = index++;
-	checkerTileMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("tileTex"); textures["checkboardTex"];
+	checkerTileMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("checkboardTex");
 	checkerTileMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	checkerTileMat->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
 	checkerTileMat->Roughness = 0.3f;
@@ -639,7 +621,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto highlightMat = std::make_unique<Material>();
 	highlightMat->Name = "highlightMat";
 	highlightMat->MatBufferIndex = index++;
-	highlightMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("tileTex"); textures["defaultTex"];
+	highlightMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	highlightMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.6f);
 	highlightMat->FresnelR0 = XMFLOAT3(0.06f, 0.06f, 0.06f);
 	highlightMat->Roughness = 0.0f;
@@ -1877,13 +1859,13 @@ void SceneRenderer::BuildSceneObject_FBX()
 	transform.Rotation = { 0.0f, 180.0f, 0.0f };
 	transform.Scale = { 0.03f, 0.03f, 0.03f };
 
-	CreateSkeletalMeshObject(L"FBX 미리보기", assetName.c_str(), "defaultMat", skeletalMesh, transform);
+	CreateSkeletalMeshObject(L"FBX 미리보기", assetName.c_str(), skeletalMesh, transform);
 
 	transform.Position = { 15.0f, 0.0f, 0.0f };
 	transform.Rotation = { 0.0f, 180.0f, 0.0f };
 	transform.Scale = { 0.03f, 0.03f, 0.03f };
 
-	CreateSkeletalMeshObject(L"FBX 미리보기2", assetName.c_str(), "defaultMat", skeletalMesh, transform);
+	CreateSkeletalMeshObject(L"FBX 미리보기2", assetName.c_str(), skeletalMesh, transform);
 }
 
 SceneObject* SceneRenderer::CreateStaticMeshObject(
@@ -1921,10 +1903,9 @@ SceneObject* SceneRenderer::CreateStaticMeshObject(
 	return &obj;
 }
 
-SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, const char* GeoName, const char* matName, const SkeletalMeshAsset& asset, const TransformComponent& transform)
+SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, const char* GeoName, const SkeletalMeshAsset& asset, const TransformComponent& transform)
 {
 	auto* geometry = mGeometries.at(GeoName).get();
-	Material* material = mMaterials.at(matName).get();
 	SceneObject& object = mScene.CreateObject(objName);
 	object.Transform = transform;
 
@@ -1952,16 +1933,23 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 		component.mSkinnedModelInstance->Initialize(storedAsset, clipName);
 	}
 	
-	for (auto& part : asset.MeshParts)
+	for (const auto& part : asset.MeshParts)
 	{
-		for (const SkeletalSubmesh& source : part.Submeshes)
+		for (int i = 0; i < part.Submeshes.size(); i++)
 		{
+			const SkeletalSubmesh source = part.Submeshes[i];
 			auto geometryIt = geometry->Submeshes.find(source.Name);
 			if (geometryIt == geometry->Submeshes.end())
 			{
 				std::wstring wfn = AnsiToWString(__FILE__);
 				throw DxException(1, L"Skeletal submesh geometry not found: ", wfn, __LINE__);
 			}
+
+			const ImportedMaterialIndex materialIndex = source.MaterialIndex;
+
+			Material* material = mMaterials.at("defaultMat").get();
+			if (materialIndex != InvalidMaterialIndex)
+				material = mMaterials.at(asset.MaterialNames[materialIndex]).get();
 
 			SubmeshSlot slot{};
 			slot.Submesh = &geometryIt->second;
@@ -2241,8 +2229,181 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 	}
 }
 
-void SceneRenderer::BuildImportedTextures(D3D12Context& context)
+void SceneRenderer::BuildImportedTextures()
 {
+	TextureManager& textureManager = TextureManager::GetInstance();
+
+	for (auto& [assetName, asset] : mSkeletalMesheAssets)
+	{
+		// ImportedTextureIndex와 동일한 인덱스 구조를 유지한다.
+		asset.TextureHandles.assign(asset.Textures.size(), InvalidTextureHandle);
+
+		std::vector<TextureManager::TextureFileRequest> fileRequests;
+		std::vector<std::size_t> fileTextureIndices;
+		std::vector<TextureManager::TextureMemoryRequest> memoryRequests;
+		std::vector<std::size_t> memoryTextureIndices;
+
+		fileRequests.reserve(asset.Textures.size());
+		fileTextureIndices.reserve(asset.Textures.size());
+		memoryRequests.reserve(asset.Textures.size());
+		memoryTextureIndices.reserve(asset.Textures.size());
+
+		for (int textureIndex = 0; textureIndex < asset.Textures.size(); textureIndex++)
+		{
+			const ImportedTexture& importedTexture = asset.Textures[textureIndex];
+
+			const std::string textureKey = assetName + "::Texture_" + std::to_string(textureIndex);
+
+			TextureLoadDesc loadDesc{};
+			loadDesc.ColorSpace = TextureColorSpace::SRGB;
+			loadDesc.Lifetime = TextureLifetime::Scene;
+			loadDesc.GenerateMips = false;
+
+			switch (importedTexture.Source)
+			{
+			case ImportedTextureSource::ExternalFile:
+			{
+				if (importedTexture.FilePath.empty())
+				{
+					throw DxException(
+						E_FAIL,
+						L"Imported external texture has no file path.",
+						AnsiToWString(__FILE__),
+						__LINE__);
+				}
+
+				TextureManager::TextureFileRequest request{};
+				request.Key = textureKey;
+				request.FilePath = importedTexture.FilePath;
+				request.Desc = loadDesc;
+
+				fileRequests.push_back(std::move(request));
+				fileTextureIndices.push_back(textureIndex);
+
+				break;
+			}
+
+			case ImportedTextureSource::Embedded:
+			{
+				if (importedTexture.EncodedData.empty())
+				{
+					throw DxException(
+						E_FAIL,
+						L"Imported embedded texture has no encoded data.",
+						AnsiToWString(__FILE__),
+						__LINE__);
+				}
+
+				TextureManager::TextureMemoryRequest request{};
+				request.Key = textureKey;
+				request.Data = importedTexture.EncodedData.data();
+				request.Size = importedTexture.EncodedData.size();
+				request.Desc = loadDesc;
+
+				memoryRequests.push_back(std::move(request));
+				memoryTextureIndices.push_back(textureIndex);
+
+				break;
+			}
+
+			case ImportedTextureSource::NotTextureFile:
+				// Shader/Layer wrapper이므로 GPU 텍스처를 생성하지 않는다.
+				break;
+			}
+		}
+
+		if (!fileRequests.empty())
+		{
+			std::vector<TextureHandle> loadedHandles;
+
+			ThrowIfFailed(textureManager.LoadFromFile(fileRequests, loadedHandles));
+
+			if (loadedHandles.size() != fileTextureIndices.size())
+			{
+				throw DxException(
+					E_FAIL,
+					L"Loaded file texture count does not match the request count.",
+					AnsiToWString(__FILE__),
+					__LINE__);
+			}
+
+			for (int i = 0; i < loadedHandles.size(); i++)
+			{
+				asset.TextureHandles[fileTextureIndices[i]] = loadedHandles[i];
+			}
+		}
+
+		if (!memoryRequests.empty())
+		{
+			std::vector<TextureHandle> loadedHandles;
+
+			ThrowIfFailed(textureManager.LoadFromMemory(memoryRequests, loadedHandles));
+
+			if (loadedHandles.size() != memoryTextureIndices.size())
+			{
+				throw DxException(
+					E_FAIL,
+					L"Loaded memory texture count does not match the request count.",
+					AnsiToWString(__FILE__),
+					__LINE__);
+			}
+
+			for (int i = 0; i < loadedHandles.size(); i++)
+			{
+				asset.TextureHandles[memoryTextureIndices[i]] = loadedHandles[i];
+			}
+		}
+	}
+}
+
+void SceneRenderer::BuildImportedMaterials()
+{
+	auto MakeMaterialName = [](const std::string& assetName, const ImportedMaterialIndex materialIndex) -> std::string
+		{
+			return assetName + "::Material_" + std::to_string(materialIndex);
+		};
+
+	TextureManager& textureManager = TextureManager::GetInstance();
+	const TextureHandle defaultTextureHandle = textureManager.FindHandle("defaultTex");
+
+	for (auto& [assetName, asset] : mSkeletalMesheAssets)
+	{
+		asset.MaterialNames.assign(asset.Materials.size(), std::string{});
+
+		for (ImportedMaterialIndex materialIndex = 0; materialIndex < asset.Materials.size(); materialIndex++)
+		{
+			const ImportedMaterial& importedMaterial = asset.Materials[materialIndex];
+
+			auto material = std::make_unique<Material>();
+			material->Name = MakeMaterialName(assetName, materialIndex);
+			material->MatBufferIndex = (UINT)mMaterials.size();
+			material->DiffuseAlbedo = importedMaterial.BaseColor;
+			material->Roughness = importedMaterial.Roughness;
+
+			const float metallic = importedMaterial.Metallic;
+			material->FresnelR0 =
+			{
+				0.04f + (importedMaterial.BaseColor.x - 0.04f) * metallic,
+				0.04f + (importedMaterial.BaseColor.y - 0.04f) * metallic,
+				0.04f + (importedMaterial.BaseColor.z - 0.04f) * metallic
+			};
+
+			material->DiffuseTextureHandle = defaultTextureHandle;
+			if (importedMaterial.BaseColorTexture != InvalidTextureIndex && importedMaterial.BaseColorTexture < asset.TextureHandles.size())
+			{
+				const TextureHandle textureHandle = asset.TextureHandles[importedMaterial.BaseColorTexture];
+
+				if (textureHandle.IsValid())
+					material->DiffuseTextureHandle = textureHandle;
+			}
+
+			if (importedMaterial.NormalTexture != InvalidTextureIndex && importedMaterial.NormalTexture < asset.TextureHandles.size())
+				material->NormalTextureHandle = asset.TextureHandles[importedMaterial.NormalTexture];
+
+			asset.MaterialNames[materialIndex] = material->Name;
+			mMaterials[material->Name] = std::move(material);
+		}
+	}
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSamplers()

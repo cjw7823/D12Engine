@@ -103,7 +103,8 @@ private:
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
 
-	void BuildImportedTextures(D3D12Context& context);
+	void BuildImportedTextures();
+	void BuildImportedMaterials();
 
 	SceneObject* CreateStaticMeshObject(
 		const wchar_t* objName,
@@ -118,7 +119,6 @@ private:
 	SceneObject* CreateSkeletalMeshObject(
 		const wchar_t* objName,
 		const char* GeoName,
-		const char* matName,
 		const SkeletalMeshAsset& asset,
 		const TransformComponent& transform);
 
