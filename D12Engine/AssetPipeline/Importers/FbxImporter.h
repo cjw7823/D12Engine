@@ -5,6 +5,7 @@
 
 #include "Renderer/Resources/RenderData.h"
 #include "Renderer/Resources/SkeletalMeshAsset.h"
+#include "AssetPipeline/Desc/ImportedMaterial.h"
 
 struct ufbx_scene;
 struct ufbx_node;
@@ -36,17 +37,14 @@ private:
     static SkeletonAsset BuildSkeletonAsset(const ufbx_scene& scene, std::unordered_map<std::uint32_t, JointIndex>& outNodeIdToJointIndex);
 
     [[nodiscard]]
-    static std::vector<SkeletalMeshPart> BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex, const std::unordered_map<std::uint32_t, ImportedMaterialIndex>& materialIdToIndex);
+    static std::vector<SkeletalMeshPart> BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex);
 
     [[nodiscard]]
     static std::unordered_map<std::string, AnimationClip> ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skeleton, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex);
 
 	[[nodiscard]]
-	static std::vector<ImportedMaterial> ImportMaterials(const ufbx_scene& scene, std::unordered_map<std::uint32_t, ImportedMaterialIndex>& outMaterialIdToIndex);
+    static std::vector<ImportedMaterial> ImportMaterials(const ufbx_scene& scene);
 
-    static ImportedMaterialIndex ResolveMaterialIndex(
-        const ufbx_node& node,
-        const ufbx_mesh& mesh,
-        std::size_t materialSlot,
-        const std::unordered_map<std::uint32_t, ImportedMaterialIndex>& materialIdToIndex);
+    [[nodiscard]]
+    static std::vector<ImportedTexture> ImportTextures(const ufbx_scene& scene);
 };

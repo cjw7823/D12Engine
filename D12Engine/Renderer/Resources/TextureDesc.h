@@ -6,6 +6,36 @@
 #include <limits>
 #include <filesystem>
 
+struct TextureHandle
+{
+    static constexpr std::uint32_t InvalidIndex = (std::numeric_limits<std::uint32_t>::max)();
+
+    std::uint32_t Index = InvalidIndex;
+
+    [[nodiscard]]
+    bool IsValid() const noexcept
+    {
+        return Index != InvalidIndex;
+    }
+
+    explicit operator bool() const noexcept
+    {
+        return IsValid();
+    }
+
+    friend bool operator==(TextureHandle lhs, TextureHandle rhs) noexcept
+    {
+        return lhs.Index == rhs.Index;
+    }
+
+    friend bool operator!=(TextureHandle lhs, TextureHandle rhs) noexcept
+    {
+        return !(lhs == rhs);
+    }
+};
+
+inline constexpr TextureHandle InvalidTextureHandle{};
+
 enum class TextureColorSpace
 {
 	Linear,
@@ -24,7 +54,8 @@ struct TextureLoadDesc
 	TextureColorSpace ColorSpace = TextureColorSpace::SRGB;
 	TextureLifetime Lifetime = TextureLifetime::Scene;
 
-	bool GenerateMips = true;
+    //현재 TextureManager는 없는 mip을 생성하지 않는다.
+	bool GenerateMips = false;
 };
 
 struct Texture
@@ -33,5 +64,5 @@ struct Texture
 
 	D3D12DescriptorHandle Srv;
 
-	TextureLoadDesc desc;
+	TextureLoadDesc Desc;
 };

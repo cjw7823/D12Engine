@@ -5,15 +5,12 @@
 #include <DirectXMath.h>
 #include <vector>
 
+#include "ImportedTexture.h"
+
 struct Vertex;
 
 using ImportedMaterialIndex = std::uint32_t;
 inline constexpr ImportedMaterialIndex InvalidMaterialIndex = (std::numeric_limits<ImportedMaterialIndex>::max)();
-
-struct ImportedTextureInfo
-{
-	std::filesystem::path FilePath;
-};
 
 struct ImportedMaterial
 {
@@ -27,11 +24,11 @@ struct ImportedMaterial
 	float Metallic = 0.0f;
 	float Roughness = 1.0f;
 
-	std::optional<ImportedTextureInfo> BaseColorTexture;
-	std::optional<ImportedTextureInfo> NormalTexture;
-	std::optional<ImportedTextureInfo> MetallicTexture;
-	std::optional<ImportedTextureInfo> RoughnessTexture;
-	std::optional<ImportedTextureInfo> EmissiveTexture;
+	ImportedTextureIndex BaseColorTexture = InvalidTextureIndex;
+	ImportedTextureIndex NormalTexture = InvalidTextureIndex;
+	ImportedTextureIndex MetallicTexture = InvalidTextureIndex;
+	ImportedTextureIndex RoughnessTexture = InvalidTextureIndex;
+	ImportedTextureIndex EmissiveTexture = InvalidTextureIndex;
 };
 
 struct StaticSubmeshData
@@ -41,11 +38,12 @@ struct StaticSubmeshData
 	std::vector<Vertex> Vertices;
 	std::vector<std::uint32_t> Indices;
 
-	std::uint32_t ImportedMaterialIndex = InvalidMaterialIndex;
+	ImportedMaterialIndex MaterialIndex = InvalidMaterialIndex;
 };
 
 struct StaticMeshImportResult
 {
 	std::vector<StaticSubmeshData> Submeshes;
+	std::vector<ImportedTexture> Textures;
 	std::vector<ImportedMaterial> Materials;
 };

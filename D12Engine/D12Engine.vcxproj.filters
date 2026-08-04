@@ -85,6 +85,9 @@
     <Filter Include="Renderer\DirectX12\Effects">
       <UniqueIdentifier>{89f310e9-743f-449a-8cad-fe81d606b674}</UniqueIdentifier>
     </Filter>
+    <Filter Include="=========\ThirdParty\WICTextureLoader">
+      <UniqueIdentifier>{378867f0-fee2-4a99-9abe-0cd6666b9362}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -204,8 +207,9 @@
     <ClCompile Include="Renderer\Resources\SkeletalMeshAsset.cpp">
       <Filter>EngineCore\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\RenderData.cpp">
-      <Filter>Renderer\DirectX12</Filter>
+    <ClCompile Include="Renderer\Resources\RenderData.cpp" />
+    <ClCompile Include="..\ThirdParty\WICTextureLoader\WICTextureLoader12.cpp">
+      <Filter>=========\ThirdParty\WICTextureLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -344,9 +348,6 @@
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\RenderData.h">
-      <Filter>Renderer\DirectX12</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\DirectX12\SceneRenderer.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
@@ -374,6 +375,12 @@
     <ClInclude Include="Renderer\DirectX12\Scene\RenderBatch.h" />
     <ClInclude Include="Renderer\DirectX12\Components\MeshComponent.h" />
     <ClInclude Include="Renderer\DirectX12\Components\SkeletalMeshComponent.h" />
+    <ClInclude Include="AssetPipeline\Desc\ImportedMaterial.h" />
+    <ClInclude Include="Renderer\Resources\RenderData.h" />
+    <ClInclude Include="AssetPipeline\Desc\ImportedTexture.h" />
+    <ClInclude Include="..\ThirdParty\WICTextureLoader\WICTextureLoader12.h">
+      <Filter>=========\ThirdParty\WICTextureLoader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="imgui.ini">

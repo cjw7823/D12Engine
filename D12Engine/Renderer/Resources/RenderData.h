@@ -85,7 +85,7 @@ struct InstanceData_GPU
 
 	float GridSpatialStep = 1.0f;
 
-	UINT ImportedMaterialIndex = 0;
+	UINT MaterialIndex = 0;
 
 	// 이 캐릭터의 본 팔레트가 시작되는 행렬 인덱스
 	std::uint32_t SkinnedBufferIndex = 0;

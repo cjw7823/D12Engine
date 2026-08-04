@@ -13,6 +13,7 @@
 #include <system_error>
 #include <unordered_set>
 #include <unordered_map>
+#include <cstring>
 
 namespace
 {
@@ -66,10 +67,102 @@ namespace
             static_cast<float>(value.cols[3].z),
             1.0f);
     }
+
+    std::filesystem::path ToPath(const ufbx_string& value)
+    {
+        if (value.data == nullptr || value.length == 0)
+            return {};
+
+        // ufbx 문자열은 UTF-8이다.
+        return std::filesystem::u8path(
+            value.data,
+            value.data + value.length);
+    }
+
+    ufbx_blob FindEmbeddedTextureContent(
+        const ufbx_texture& texture)
+    {
+        if (texture.content.data != nullptr && texture.content.size > 0)
+            return texture.content;
+
+        // 일부 FBX에서는 이미지 데이터가 Video 요소에 들어간다.
+        if (texture.video != nullptr &&
+            texture.video->content.data != nullptr &&
+            texture.video->content.size > 0)
+            return texture.video->content;
+
+        return {};
+    }
+
+    std::filesystem::path FindTextureSourcePath(const ufbx_texture& texture)
+    {
+        // ufbx_load_file()을 사용했으므로 filename은
+        // FBX 경로를 기준으로 해석된 경로다.
+        std::filesystem::path path = ToPath(texture.filename);
+
+        Logger::Info(path.native());
+
+        if (path.empty())
+            path = ToPath(texture.relative_filename);
+
+        if (path.empty() && texture.video != nullptr)
+            path = ToPath(texture.video->filename);
+
+        if (path.empty() && texture.video != nullptr)
+            path = ToPath(texture.video->relative_filename);
+
+        return path;
+    }
+
+    const ufbx_texture* ResolveFileTexture(const ufbx_texture* texture)
+    {
+        if (texture == nullptr)
+            return nullptr;
+
+        if (texture->type == UFBX_TEXTURE_FILE)
+            return texture;
+
+        // Shader/Layer wrapper 안에 실제 파일 텍스처가
+        // 한 개만 연결된 경우 해당 파일 텍스처를 사용한다.
+        if (texture->file_textures.count == 1 &&
+            texture->file_textures[0] != nullptr)
+        {
+            return texture->file_textures[0];
+        }
+
+        return nullptr;
+    }
+
+    ImportedTextureIndex ResolveTextureIndex(const ufbx_material_map& map, std::size_t textureCount)
+    {
+        if (!map.texture_enabled || map.texture == nullptr)
+            return InvalidTextureIndex;
+
+        const ufbx_texture* fileTexture = ResolveFileTexture(map.texture);
+
+        if (fileTexture == nullptr)
+        {
+            throw DxException(
+                E_NOTIMPL,
+                L"Layered or multi-file material textures are not supported.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        if (fileTexture->typed_id >= textureCount)
+        {
+            throw DxException(
+                E_FAIL,
+                L"Material texture index is out of range.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        return static_cast<ImportedTextureIndex>(fileTexture->typed_id);
+    }
 }
 
-void FbxImporter::SceneDeleter::operator()(
-    ufbx_scene* scene) const noexcept
+void FbxImporter::SceneDeleter::operator()(ufbx_scene* scene) const noexcept
 {
     if (scene != nullptr)
         ufbx_free_scene(scene);
@@ -186,10 +279,11 @@ SkeletalMeshAsset FbxImporter::ImportSkeletalMesh(const std::filesystem::path& f
     std::unordered_map<std::uint32_t, JointIndex> nodeIdToJointIndex;
     SkeletonAsset skeleton = BuildSkeletonAsset(*scene, nodeIdToJointIndex);
 
-    std::unordered_map<std::uint32_t, ImportedMaterialIndex> materialIdToIndex;
-	std::vector<ImportedMaterial> materials = ImportMaterials(*scene, materialIdToIndex);
+    std::vector<ImportedTexture> textures = ImportTextures(*scene);
 
-    std::vector<SkeletalMeshPart> meshParts = BuildSkeletalSubmeshes(*scene, nodeIdToJointIndex, materialIdToIndex);
+    std::vector<ImportedMaterial> materials = ImportMaterials(*scene);
+
+    std::vector<SkeletalMeshPart> meshParts = BuildSkeletalSubmeshes(*scene, nodeIdToJointIndex);
 
     std::unordered_map<std::string, AnimationClip> anims = ImportAnimations(*scene, skeleton, nodeIdToJointIndex);
 
@@ -197,6 +291,7 @@ SkeletalMeshAsset FbxImporter::ImportSkeletalMesh(const std::filesystem::path& f
     skeletalMesh.Skeleton = std::move(skeleton);
     skeletalMesh.MeshParts = std::move(meshParts);
     skeletalMesh.Animations = std::move(anims);
+    skeletalMesh.Textures = std::move(textures);
     skeletalMesh.Materials = std::move(materials);
 
     return skeletalMesh;
@@ -494,7 +589,7 @@ SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unor
     return skeleton;
 }
 
-std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex, const std::unordered_map<std::uint32_t, ImportedMaterialIndex>& materialIdToIndex)
+std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_scene& scene, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex)
 {
     std::vector<SkeletalMeshPart> result;
 
@@ -582,11 +677,28 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
 
             SkeletalSubmesh submesh;
             submesh.StartIndexLocation = (UINT)meshPart.Indices.size();
-            submesh.MaterialIndex = ResolveMaterialIndex(
-                *node,
-                *mesh,
-                i,
-                materialIdToIndex);
+
+			// Material index 결정
+            const ufbx_material* sourceMaterial = nullptr;
+
+            if (i < node->materials.count)
+                sourceMaterial = node->materials[i];
+            else if (i < mesh->materials.count)
+                sourceMaterial = mesh->materials[i];
+
+            if (sourceMaterial != nullptr)
+            {
+                if (sourceMaterial->typed_id >= scene.materials.count)
+                {
+                    throw DxException(
+                        E_FAIL,
+                        L"Submesh material index is out of range.",
+                        AnsiToWString(__FILE__),
+                        __LINE__);
+                }
+
+                submesh.MaterialIndex = static_cast<ImportedMaterialIndex>(sourceMaterial->typed_id);
+            }
 
             //submesh 이름 생성
             {
@@ -789,8 +901,6 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
 std::unordered_map<std::string, AnimationClip>
 FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skeleton, const std::unordered_map<std::uint32_t, JointIndex>& nodeIdToJointIndex)
 {
-    PrintSceneInfo(scene);
-
     std::unordered_map<std::string, AnimationClip> animations;
 
     for (const ufbx_anim_stack* stack : scene.anim_stacks)
@@ -901,51 +1011,148 @@ FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skel
     return animations;
 }
 
-std::vector<ImportedMaterial> FbxImporter::ImportMaterials(const ufbx_scene& scene, std::unordered_map<std::uint32_t, ImportedMaterialIndex>& outMaterialIdToIndex)
+std::vector<ImportedMaterial> FbxImporter::ImportMaterials(const ufbx_scene& scene)
 {
     std::vector<ImportedMaterial> result;
+    result.resize(scene.materials.count);
 
-    outMaterialIdToIndex.clear();
-    result.reserve(scene.materials.count);
-
-    for (const ufbx_material* sourceMaterial : scene.materials)
+    for (int i = 0; i < scene.materials.count; i++)
     {
+        const ufbx_material* sourceMaterial = scene.materials[i];
         if (sourceMaterial == nullptr)
-            continue;
+        {
+            throw DxException(
+                E_FAIL,
+                L"FBX contains a null material element.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
 
-        ImportedMaterial material;
-        material.Name = ToString(sourceMaterial->name);
+        //Texture와 마찬가지로 순서 보존.
+        if (sourceMaterial->typed_id != i)
+        {
+            throw DxException(
+                E_FAIL,
+                L"FBX material typed ID does not match its scene index.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
 
-        if (material.Name.empty())
-            material.Name = "Material_" + std::to_string(sourceMaterial->typed_id);
+		ImportedMaterial material;
+		material.Name = ToString(sourceMaterial->name);
+		if (material.Name.empty())
+			material.Name = "Material_" + std::to_string(sourceMaterial->typed_id);
 
-        //ImportMaterialProperties(*sourceMaterial, material);
-        //ImportMaterialTextures(*sourceMaterial, material);
+		const ufbx_material_pbr_maps& pbr = sourceMaterial->pbr;
+        /*
+         * BaseColor
+         *
+         * 현재 엔진에는 BaseFactor가 별도 필드로 없으므로
+         * BaseColor에 미리 곱해서 저장한다.
+         */
+        float baseFactor = 1.0f;
+        
+        if (pbr.base_factor.has_value || pbr.base_factor.value_components > 0)
+        {
+            baseFactor = (float)pbr.base_factor.value_real;
+        }
 
-        outMaterialIdToIndex.emplace(
-            sourceMaterial->typed_id,
-            (ImportedMaterialIndex)result.size());
+		if (pbr.base_factor.has_value || pbr.base_factor.value_components >= 3)
+		{
+			const ufbx_vec4& baseColor = pbr.base_color.value_vec4;
+			material.BaseColor = DirectX::XMFLOAT4(
+				static_cast<float>(baseColor.x) * baseFactor,
+				static_cast<float>(baseColor.y) * baseFactor,
+				static_cast<float>(baseColor.z) * baseFactor,
+                pbr.base_color.value_components >= 4
+                ? static_cast<float>(baseColor.w)
+                : 1.0f);
+		}
 
-        result.push_back(std::move(material));
+        material.Metallic = (float)pbr.metalness.value_real;
+        material.Roughness = (float)pbr.roughness.value_real;
+        material.BaseColorTexture = ResolveTextureIndex(pbr.base_color, scene.textures.count);
+        material.NormalTexture = ResolveTextureIndex(pbr.normal_map, scene.textures.count);
+        material.MetallicTexture = ResolveTextureIndex(pbr.metalness, scene.textures.count);
+        material.RoughnessTexture = ResolveTextureIndex(pbr.roughness, scene.textures.count);
+        material.EmissiveTexture = ResolveTextureIndex(pbr.emission_color, scene.textures.count);
+
+        result[i] = std::move(material);
     }
 
     return result;
 }
 
-ImportedMaterialIndex FbxImporter::ResolveMaterialIndex(const ufbx_node& node, const ufbx_mesh& mesh, std::size_t materialSlot, const std::unordered_map<std::uint32_t, ImportedMaterialIndex>& materialIdToIndex)
+std::vector<ImportedTexture> FbxImporter::ImportTextures(const ufbx_scene& scene)
 {
-    const ufbx_material* material = nullptr;
-    if (materialSlot < node.materials.count)
-        material = node.materials[materialSlot];
-    else if (materialSlot < mesh.materials.count)
-        material = mesh.materials[materialSlot];
+    std::vector<ImportedTexture> result;
+    result.resize(scene.textures.count);
 
-    if (material == nullptr)
-        return InvalidMaterialIndex;
+    for (int i = 0; i < scene.textures.count; i++)
+    {
+        const ufbx_texture* sourceTexture = scene.textures[i];
 
-    const auto it = materialIdToIndex.find(material->typed_id);
-    if (it == materialIdToIndex.end())
-        return InvalidMaterialIndex;
+		if (sourceTexture == nullptr)
+		{
+			throw DxException(
+				E_FAIL,
+				L"FBX texture is null.",
+				AnsiToWString(__FILE__),
+				__LINE__);
+		}
 
-    return it->second;
+        //scene.textures 순서와 ImportedTexture 순서를 동일하게
+		if (sourceTexture->typed_id != i)
+		{
+			throw DxException(
+				E_FAIL,
+				L"FBX texture typed_id does not match its index.",
+				AnsiToWString(__FILE__),
+				__LINE__);
+		}
+
+        ImportedTexture texture;
+		texture.Name = ToString(sourceTexture->name);
+		if (texture.Name.empty())
+			texture.Name = "Texture_" + std::to_string(sourceTexture->typed_id);
+
+		texture.OriginalFileName = ToPath(sourceTexture->relative_filename);
+
+        //Shader/Layered 텍스처 자체는 실제 이미지 데이터가 아님.
+        //Material에서는 ResolveFileTexture()로 내부 파일 텍스처를 참조해야 함.
+		if (sourceTexture->type != UFBX_TEXTURE_FILE)
+		{
+			texture.Source = ImportedTextureSource::NotTextureFile;
+			result[i] = std::move(texture);
+            continue;
+		}
+
+		texture.FilePath = FindTextureSourcePath(*sourceTexture);
+
+		const ufbx_blob embeddedContent = FindEmbeddedTextureContent(*sourceTexture);
+
+        if (embeddedContent.data != nullptr && embeddedContent.size > 0)
+        {
+            const auto* begin = static_cast<const std::uint8_t*>(embeddedContent.data);
+
+            texture.EncodedData.assign(begin, begin + embeddedContent.size);
+
+            texture.Source = ImportedTextureSource::Embedded;
+        }
+        else
+            texture.Source = ImportedTextureSource::ExternalFile;
+
+        if (texture.FilePath.empty() && texture.EncodedData.empty())
+        {
+            throw DxException(
+                E_FAIL,
+                L"FBX file texture contains neither a file path nor embedded data.",
+                AnsiToWString(__FILE__),
+                __LINE__);
+        }
+
+        result[i] = std::move(texture);
+    }
+
+    return result;
 }

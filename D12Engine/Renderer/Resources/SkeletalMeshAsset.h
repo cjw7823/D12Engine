@@ -8,7 +8,8 @@
 #include <DirectXMath.h>
 
 #include "EngineCore/Math/MathHelper.h"
-#include "Renderer/Resources/ImportedMaterial.h"
+#include "AssetPipeline/Desc/ImportedMaterial.h"
+#include "AssetPipeline/Desc/ImportedTexture.h"
 
 using JointIndex = std::uint32_t;
 inline constexpr JointIndex InvalidJoint = (std::numeric_limits<JointIndex>::max)();
@@ -124,6 +125,8 @@ struct SkeletalMeshAsset
 	std::vector<SkeletalMeshPart> MeshParts;
 
 	std::unordered_map<std::string, AnimationClip> Animations;
+
+	std::vector<ImportedTexture> Textures;
 	std::vector<ImportedMaterial> Materials;
 
 	UINT GetSubmeshCount() const

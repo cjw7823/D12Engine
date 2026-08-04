@@ -34,3 +34,4 @@
 #include "imgui_impl_win32.h"
 
 #include "DDSTextureLoader\DDSTextureLoader12.h"
+#include "WICTextureLoader\WICTextureLoader12.h"

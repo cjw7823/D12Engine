@@ -52,13 +52,16 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	mCamera.Pitch(0.5f);
 	mCamera.RotateY(-0.5f);
 
-	LoadTextures(context);
+	LoadBuiltInTextures(context);
 
 	BuildDescriptorHeaps(context);
 	BuildRootSignature(context);
 	BuildShadersAndInputLayout();
 	BuildGeometry(context);
+
+	BuildImportedTextures(context);
 	BuildMaterials(context);
+
 	BuildScene();
 	BuildFrameResources(context);
 	BuildPSOs(context);
@@ -206,7 +209,8 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	UINT passCBByteSize = D3D12Util::CalcConstantBufferByteSize(sizeof(PassConstants));
 
-	UINT treeArrayTexIndex = TextureManager::GetInstance().Find(L"Resource/Textures/Treearray2.dds")->Srv.Index;
+	TextureHandle h = TextureManager::GetInstance().FindHandle("treeArrayTex");
+	UINT treeArrayTexIndex = TextureManager::GetInstance().Get(h)->Srv.Index;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE hTable(context.GetSrvUavHeap()->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetGraphicsRootDescriptorTable(2, hTable);
 	hTable.Offset(treeArrayTexIndex, context.GetCbvSrvUavDescriptorSize());
@@ -409,31 +413,32 @@ void SceneRenderer::ReadbackTimestampData(int frameResourceIndex)
 	}
 }
 
-void SceneRenderer::LoadTextures(D3D12Context& context)
+void SceneRenderer::LoadBuiltInTextures(D3D12Context& context)
 {
 	double start = mTimer.TotalTime();
 
-	std::vector<std::filesystem::path> paths =
+	std::vector<TextureManager::TextureFileRequest> requests =
 	{
-		L"Resource/Textures/White1x1.dds",
-		L"Resource/Textures/MipmapTest.dds",
-		L"Resource/Textures/Bricks.dds",
-		L"Resource/Textures/Stone.dds",
-		L"Resource/Textures/Tile.dds",
-		L"Resource/Textures/Grass.dds",
-		L"Resource/Textures/Water1.dds",
-		L"Resource/Textures/Swirling.dds",
-		L"Resource/Textures/Swirling_Mask.dds",
-		L"Resource/Textures/WireFence.dds",
-		L"Resource/Textures/Bricks2.dds",
-		L"Resource/Textures/Checkboard.dds",
-		L"Resource/Textures/Ice.dds",
-		L"Resource/Textures/Help.dds",
-		L"Resource/Textures/Treearray2.dds",
+		{ "defaultTex",      L"Resource/Textures/White1x1.dds" },
+		{ "woodCrateTex",    L"Resource/Textures/MipmapTest.dds" },
+		{ "bricksTex0",      L"Resource/Textures/Bricks.dds" },
+		{ "stoneTex",        L"Resource/Textures/Stone.dds" },
+		{ "tileTex",         L"Resource/Textures/Tile.dds" },
+		{ "grassTex",        L"Resource/Textures/Grass.dds" },
+		{ "waterTex",        L"Resource/Textures/Water1.dds" },
+		{ "swirlingTex",     L"Resource/Textures/Swirling.dds" },
+		{ "swirlingMaskTex", L"Resource/Textures/Swirling_Mask.dds" },
+		{ "fenceTex",        L"Resource/Textures/WireFence.dds" },
+		{ "bricksTex1",      L"Resource/Textures/Bricks2.dds" },
+		{ "checkboardTex",   L"Resource/Textures/Checkboard.dds" },
+		{ "iceTex",          L"Resource/Textures/Ice.dds" },
+		{ "helpTex",         L"Resource/Textures/Help.dds" },
+		{ "treeArrayTex",    L"Resource/Textures/Treearray2.dds" },
 	};
 
+	std::vector<TextureHandle> handles;
 	//묶음 로딩 : 텍스처 15개 기준 3ms 단축.
-	ThrowIfFailed(TextureManager::GetInstance().LoadDDS(context, paths));
+	ThrowIfFailed(TextureManager::GetInstance().LoadFromFile(requests, handles));
 
 	double elapsedMs = (mTimer.TotalTime() - start) * 1000.0;
 	std::wstring s = L"Texture Load elapsed : "
@@ -484,21 +489,21 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 {
 	std::map<std::string, std::wstring> textures =
 	{
-		{"defaultTex", L"Resource/Textures/White1x1.dds"},
-		{"woodCrateTex", L"Resource/Textures/MipmapTest.dds"},
-		{"bricksTex0", L"Resource/Textures/Bricks.dds"},
-		{"stoneTex", L"Resource/Textures/Stone.dds"},
-		{"tileTex", L"Resource/Textures/Tile.dds"},
-		{"grassTex", L"Resource/Textures/Grass.dds"},
-		{"waterTex", L"Resource/Textures/Water1.dds"},
-		{"swirlingTex", L"Resource/Textures/Swirling.dds"},
-		{"swirlingMaskTex", L"Resource/Textures/Swirling_Mask.dds"},
-		{"fenceTex", L"Resource/Textures/WireFence.dds"},
-		{"bricksTex1", L"Resource/Textures/Bricks2.dds"},
-		{"checkboardTex", L"Resource/Textures/Checkboard.dds"},
-		{"iceTex", L"Resource/Textures/Ice.dds"},
-		{"helpTex", L"Resource/Textures/Help.dds"},
-		{"treeArrayTex", L"Resource/Textures/Treearray2.dds"}
+		{ "defaultTex",      L"Resource/Textures/White1x1.dds" },
+		{ "woodCrateTex",    L"Resource/Textures/MipmapTest.dds" },
+		{ "bricksTex0",      L"Resource/Textures/Bricks.dds" },
+		{ "stoneTex",        L"Resource/Textures/Stone.dds" },
+		{ "tileTex",         L"Resource/Textures/Tile.dds" },
+		{ "grassTex",        L"Resource/Textures/Grass.dds" },
+		{ "waterTex",        L"Resource/Textures/Water1.dds" },
+		{ "swirlingTex",     L"Resource/Textures/Swirling.dds" },
+		{ "swirlingMaskTex", L"Resource/Textures/Swirling_Mask.dds" },
+		{ "fenceTex",        L"Resource/Textures/WireFence.dds" },
+		{ "bricksTex1",      L"Resource/Textures/Bricks2.dds" },
+		{ "checkboardTex",   L"Resource/Textures/Checkboard.dds" },
+		{ "iceTex",          L"Resource/Textures/Ice.dds" },
+		{ "helpTex",         L"Resource/Textures/Help.dds" },
+		{ "treeArrayTex",    L"Resource/Textures/Treearray2.dds" },
 	};
 
 	UINT index = 0;
@@ -506,7 +511,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto defaultMat = std::make_unique<Material>();
 	defaultMat->Name = "defaultMat";
 	defaultMat->MatBufferIndex = index++;
-	defaultMat->DiffuseTexturePath = textures["defaultTex"];
+	defaultMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	defaultMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	defaultMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
 	defaultMat->Roughness = 0.3f;
@@ -514,7 +519,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto tileMat = std::make_unique<Material>();
 	tileMat->Name = "tile0";
 	tileMat->MatBufferIndex = index++;
-	tileMat->DiffuseTexturePath = textures["tileTex"];
+	tileMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("tileTex");
 	tileMat->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
 	tileMat->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	tileMat->Roughness = 0.2f;
@@ -522,7 +527,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto bricksMat0 = std::make_unique<Material>();
 	bricksMat0->Name = "bricks0";
 	bricksMat0->MatBufferIndex = index++;
-	bricksMat0->DiffuseTexturePath = textures["bricksTex0"];
+	bricksMat0->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("bricksTex0");
 	bricksMat0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	bricksMat0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	bricksMat0->Roughness = 0.1f;
@@ -530,7 +535,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto stoneMat = std::make_unique<Material>();
 	stoneMat->Name = "stone0";
 	stoneMat->MatBufferIndex = index++;
-	stoneMat->DiffuseTexturePath = textures["stoneTex"];
+	stoneMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("stoneTex");
 	stoneMat->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
 	stoneMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
 	stoneMat->Roughness = 0.3f;
@@ -538,7 +543,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto grassMat = std::make_unique<Material>();
 	grassMat->Name = "grass0";
 	grassMat->MatBufferIndex = index++;
-	grassMat->DiffuseTexturePath = textures["grassTex"];
+	grassMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("grassTex");
 	grassMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	grassMat->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	grassMat->Roughness = 0.125f;
@@ -546,7 +551,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto waterMat = std::make_unique<Material>();
 	waterMat->Name = "water0";
 	waterMat->MatBufferIndex = index++;
-	waterMat->DiffuseTexturePath = textures["waterTex"];
+	waterMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("waterTex");
 	waterMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
 	waterMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	waterMat->Roughness = 0.0f;
@@ -554,7 +559,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto woodCrateMat = std::make_unique<Material>();
 	woodCrateMat->Name = "woodCrate";
 	woodCrateMat->MatBufferIndex = index++;
-	woodCrateMat->DiffuseTexturePath = textures["woodCrateTex"];
+	woodCrateMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("woodCrateTex");
 	woodCrateMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	woodCrateMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
 	woodCrateMat->Roughness = 0.0f;
@@ -562,7 +567,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto swirlingMat = std::make_unique<Material>();
 	swirlingMat->Name = "swirling";
 	swirlingMat->MatBufferIndex = index++;
-	swirlingMat->DiffuseTexturePath = textures["swirlingTex"];
+	swirlingMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("swirlingTex");
 	swirlingMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	swirlingMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
 	swirlingMat->Roughness = 0.0f;
@@ -570,7 +575,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto swirlingMaskMat = std::make_unique<Material>();
 	swirlingMaskMat->Name = "swirlingMask";
 	swirlingMaskMat->MatBufferIndex = index++;
-	swirlingMaskMat->DiffuseTexturePath = textures["swirlingMaskTex"];
+	swirlingMaskMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("swirlingMaskTex");
 	swirlingMaskMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	swirlingMaskMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
 	swirlingMaskMat->Roughness = 0.0f;
@@ -578,7 +583,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto wireFence = std::make_unique<Material>();
 	wireFence->Name = "wireFence";
 	wireFence->MatBufferIndex = index++;
-	wireFence->DiffuseTexturePath = textures["fenceTex"];
+	wireFence->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("fenceTex");
 	wireFence->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	wireFence->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	wireFence->Roughness = 0.25f;
@@ -586,7 +591,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto bricksMat1 = std::make_unique<Material>();
 	bricksMat1->Name = "bricks1";
 	bricksMat1->MatBufferIndex = index++;
-	bricksMat1->DiffuseTexturePath = textures["bricksTex1"];
+	bricksMat1->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("bricksTex1");
 	bricksMat1->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	bricksMat1->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
 	bricksMat1->Roughness = 0.25f;
@@ -594,7 +599,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto checkerTileMat = std::make_unique<Material>();
 	checkerTileMat->Name = "checkerTileMat";
 	checkerTileMat->MatBufferIndex = index++;
-	checkerTileMat->DiffuseTexturePath = textures["checkboardTex"];
+	checkerTileMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("tileTex"); textures["checkboardTex"];
 	checkerTileMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	checkerTileMat->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
 	checkerTileMat->Roughness = 0.3f;
@@ -602,7 +607,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto iceMirrorMat = std::make_unique<Material>();
 	iceMirrorMat->Name = "iceMirrorMat";
 	iceMirrorMat->MatBufferIndex = index++;
-	iceMirrorMat->DiffuseTexturePath = textures["iceTex"];
+	iceMirrorMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("iceTex");
 	iceMirrorMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.3f);
 	iceMirrorMat->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	iceMirrorMat->Roughness = 0.5f;
@@ -610,7 +615,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto shadowMat_skull = std::make_unique<Material>();
 	shadowMat_skull->Name = "shadowMat_skull";
 	shadowMat_skull->MatBufferIndex = index++;
-	shadowMat_skull->DiffuseTexturePath = textures["defaultTex"];
+	shadowMat_skull->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	shadowMat_skull->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.5f);
 	shadowMat_skull->FresnelR0 = XMFLOAT3(0.001f, 0.001f, 0.001f);
 	shadowMat_skull->Roughness = 0.0f;
@@ -618,7 +623,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto treeBillboardMat = std::make_unique<Material>();
 	treeBillboardMat->Name = "treeBillboardMat";
 	treeBillboardMat->MatBufferIndex = index++;
-	treeBillboardMat->DiffuseTexturePath = textures["treeArrayTex"];
+	treeBillboardMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("treeArrayTex");
 	treeBillboardMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	treeBillboardMat->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	treeBillboardMat->Roughness = 0.125f;
@@ -626,7 +631,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto mirrorBaseMat = std::make_unique<Material>();
 	mirrorBaseMat->Name = "mirrorBaseMat";
 	mirrorBaseMat->MatBufferIndex = index++;
-	mirrorBaseMat->DiffuseTexturePath = textures["defaultTex"];
+	mirrorBaseMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	mirrorBaseMat->DiffuseAlbedo = mMainPassCB.gFogColor;
 	mirrorBaseMat->FresnelR0 = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	mirrorBaseMat->Roughness = 1.0f;
@@ -634,7 +639,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto highlightMat = std::make_unique<Material>();
 	highlightMat->Name = "highlightMat";
 	highlightMat->MatBufferIndex = index++;
-	highlightMat->DiffuseTexturePath = textures["defaultTex"];
+	highlightMat->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("tileTex"); textures["defaultTex"];
 	highlightMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.6f);
 	highlightMat->FresnelR0 = XMFLOAT3(0.06f, 0.06f, 0.06f);
 	highlightMat->Roughness = 0.0f;
@@ -642,7 +647,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto gizmoX = std::make_unique<Material>();
 	gizmoX->Name = "gizmoX";
 	gizmoX->MatBufferIndex = index++;
-	gizmoX->DiffuseTexturePath = textures["defaultTex"];
+	gizmoX->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	gizmoX->DiffuseAlbedo = XMFLOAT4(1.0f, 0.05f, 0.05f, 0.5f);
 	gizmoX->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	gizmoX->Roughness = 0.4f;
@@ -650,7 +655,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto gizmoY = std::make_unique<Material>();
 	gizmoY->Name = "gizmoY";
 	gizmoY->MatBufferIndex = index++;
-	gizmoY->DiffuseTexturePath = textures["defaultTex"];
+	gizmoY->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	gizmoY->DiffuseAlbedo = XMFLOAT4(0.05f, 1.0f, 0.05f, 0.5f);
 	gizmoY->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	gizmoY->Roughness = 0.4f;
@@ -658,7 +663,7 @@ void SceneRenderer::BuildMaterials(D3D12Context& context)
 	auto gizmoZ = std::make_unique<Material>();
 	gizmoZ->Name = "gizmoZ";
 	gizmoZ->MatBufferIndex = index++;
-	gizmoZ->DiffuseTexturePath = textures["defaultTex"];
+	gizmoZ->DiffuseTextureHandle = TextureManager::GetInstance().FindHandle("defaultTex");
 	gizmoZ->DiffuseAlbedo = XMFLOAT4(0.05f, 0.25f, 1.0f, 0.5f);
 	gizmoZ->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	gizmoZ->Roughness = 0.4f;
@@ -2236,6 +2241,10 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 	}
 }
 
+void SceneRenderer::BuildImportedTextures(D3D12Context& context)
+{
+}
+
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSamplers()
 {
 	static const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
@@ -2539,7 +2548,7 @@ void SceneRenderer::UpdateInstanceBuffer()
 					XMStoreFloat4x4(&gpuData.World, XMMatrixTranspose(world));
 					XMStoreFloat4x4(&gpuData.WorldInvTranspose, XMMatrixTranspose(worldInvTranspose));
 					gpuData.GridSpatialStep = mWaves->SpatialStep();
-					gpuData.ImportedMaterialIndex = slot.MaterialData->MatBufferIndex;
+					gpuData.MaterialIndex = slot.MaterialData->MatBufferIndex;
 
 					if (SkeletalMeshComponent* skinnedMesh = object->GetComponent<SkeletalMeshComponent>())
 					{
@@ -2687,8 +2696,7 @@ void SceneRenderer::UpdateMaterialBuffer()
 			matConstants.FresnelR0 = mat->FresnelR0;
 			matConstants.Roughness = mat->Roughness;
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
-			matConstants.DiffuseMapIndex =
-				TextureManager::GetInstance().Find(mat->DiffuseTexturePath)->Srv.Index;
+			matConstants.DiffuseMapIndex = TextureManager::GetInstance().Get(mat->DiffuseTextureHandle)->Srv.Index;
 
 			currMaterialCB->CopyData(mat->MatBufferIndex, matConstants);
 			mat->NumFramesDirty--;

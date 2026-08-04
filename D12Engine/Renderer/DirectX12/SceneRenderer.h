@@ -75,7 +75,7 @@ private:
 
 	MeshData LoadModelFromFile_dx12ex(const std::wstring& path);
 	void LoadSkinnedModel_dx12ex(D3D12Context& context);
-	void LoadTextures(D3D12Context& context);
+	void LoadBuiltInTextures(D3D12Context& context);
 
 	void BuildDescriptorHeaps(D3D12Context& context);
 	void BuildMaterials(D3D12Context& context);
@@ -102,6 +102,8 @@ private:
 	void BuildSceneObject_FBX();
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
+
+	void BuildImportedTextures(D3D12Context& context);
 
 	SceneObject* CreateStaticMeshObject(
 		const wchar_t* objName,
