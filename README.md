@@ -83,3 +83,16 @@ EditorApplication
 - 향후 외부 모델과 애니메이션을 불러올 수 있는 런타임 렌더러 구축
 
 ---
+
+## 사용 라이브러리
+
+- [Dear ImGui](https://github.com/ocornut/imgui)  
+  Docking 기반 에디터 UI 구현
+
+- [ufbx](https://github.com/ufbx/ufbx)  
+  FBX 메시, 스켈레톤, 애니메이션, 머티리얼 및 텍스처 데이터 임포트
+
+- [DirectX-Headers](https://github.com/microsoft/DirectX-Headers)  
+  DirectX 12 헤더와 `d3dx12.h` 헬퍼 사용
+  
+---
