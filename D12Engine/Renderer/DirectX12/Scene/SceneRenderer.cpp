@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
-#include "D3D12Context.h"
 #include "EngineCore/GameTimer.h"
 #include "EngineCore/Logging/Logger.h"
 
 #include "Renderer/Resources/RenderData.h"
+#include "Renderer/DirectX12/D3D12Context.h"
 #include "Renderer/DirectX12/Scene/Scene.h"
+#include "Renderer/DirectX12/Scene/SceneSerializer.h"
 #include "Renderer/DirectX12/MACRO.h"
 #include "Renderer/DirectX12/GeometryGenerator.h"
 #include "Renderer/DirectX12/PipelineStateFactory.h"
@@ -21,6 +22,52 @@
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
+
+namespace
+{
+	struct RuntimeSceneObjects
+	{
+		SceneObject* Mirror = nullptr;
+		SceneObject* Skull = nullptr;
+		SceneObject* SkullShadow = nullptr;
+		SceneObject* Waves = nullptr;
+	};
+
+	bool FindRuntimeSceneObjects(Scene& scene, RuntimeSceneObjects& result)
+	{
+		for (const auto& objectPtr : scene.GetObjects())
+		{
+			if (!objectPtr) continue;
+
+			SceneObject* object = objectPtr.get();
+			MeshComponent* mesh = object->GetComponent<MeshComponent>();
+			if (!mesh) continue;
+
+			for (const SubmeshSlot& slot : mesh->SubmeshSlots)
+			{
+				for (RenderPass pass : slot.Layers)
+				{
+					if (pass == RenderPass::MirrorStencil)
+						result.Mirror = object;
+
+					if (pass == RenderPass::Waves)
+						result.Waves = object;
+
+					if (slot.SubmeshName == "skull" && pass == RenderPass::Opaque)
+						result.Skull = object;
+
+					if (slot.SubmeshName == "skull" && pass == RenderPass::Shadow)
+						result.SkullShadow = object;
+				}
+			}
+		}
+
+		if (!result.Mirror) return false;
+		if (result.SkullShadow && !result.Skull) return false;
+
+		return true;
+	}
+}
 
 SceneRenderer::SceneRenderer(Scene& scene) : mScene(scene), mGizmo(scene)
 {
@@ -63,7 +110,9 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	BuildImportedTextures();
 	BuildImportedMaterials();
 
-	BuildScene();
+	//BuildScene();
+	LoadScene();
+
 	BuildFrameResources(context);
 	BuildPSOs(context);
 
@@ -1029,6 +1078,145 @@ void SceneRenderer::BuildShadersAndInputLayout()
 	};
 }
 
+void SceneRenderer::LoadScene()
+{
+	Scene loadedScene;
+
+	if (!SceneSerializer::Load(loadedScene, L"Resource/Scenes/Main.d12scene"))
+		throw DxException(E_FAIL, L"Scene file load failed.", AnsiToWString(__FILE__), __LINE__);
+
+	if (!ResolveSceneResources(loadedScene))
+		throw DxException(E_FAIL, L"Scene resource resolution failed.", AnsiToWString(__FILE__), __LINE__);
+
+	mScene.Swap(loadedScene);
+	BuildSceneRuntimeObjects();
+}
+
+bool SceneRenderer::ResolveSceneResources(Scene& scene)
+{
+	for (const auto& objectPtr : scene.GetObjects())
+	{
+		if (!objectPtr) continue;
+
+		SceneObject& object = *objectPtr;
+		MeshComponent* mesh = object.GetComponent<MeshComponent>();
+		if (!mesh) continue;
+
+		const auto geometryIt = mGeometries.find(mesh->GeometryName);
+		if (geometryIt == mGeometries.end())
+			return false;
+
+		mesh->Geometry = geometryIt->second.get();
+
+		if (mesh->SubmeshSlots.empty())
+			return false;
+
+		for (SubmeshSlot& slot : mesh->SubmeshSlots)
+		{
+			const auto submeshIt = mesh->Geometry->Submeshes.find(slot.SubmeshName);
+			if (submeshIt == mesh->Geometry->Submeshes.end())
+				return false;
+
+			if (slot.Layers.empty())
+				return false;
+
+			for (RenderPass pass : slot.Layers)
+			{
+				const int passIndex = static_cast<int>(pass);
+				if (passIndex < 0 || passIndex >= static_cast<int>(RenderPass::Count))
+					return false;
+			}
+
+			const auto materialIt = mMaterials.find(slot.MaterialName);
+			if (materialIt == mMaterials.end())
+				return false;
+
+			Material* material = materialIt->second.get();
+			material->MatTransform = slot.MatTransform;
+			material->NumFramesDirty = GlobalConfig::NumFrameResources;
+
+			slot.Submesh = &submeshIt->second;
+			slot.MaterialData = materialIt->second.get();
+		}
+
+		SkeletalMeshComponent* skeletalMesh = object.GetComponent<SkeletalMeshComponent>();
+		if (!skeletalMesh) continue;
+
+		const auto assetIt = mSkeletalMesheAssets.find(skeletalMesh->SkeletalAssetName);
+		if (assetIt == mSkeletalMesheAssets.end())
+			return false;
+
+		SkeletalMeshAsset& asset = assetIt->second;
+
+		if (asset.Animations.empty())
+			return false;
+
+		const UINT submeshCount = asset.GetSubmeshCount();
+		if (skeletalMesh->SubmeshSlots.size() != submeshCount)
+			return false;
+
+		skeletalMesh->Asset = &asset;
+		skeletalMesh->SkinnedBufferIndices.assign(submeshCount, UINT_MAX);
+		skeletalMesh->mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
+
+		const std::string clipName = asset.Animations.begin()->first;
+		skeletalMesh->mSkinnedModelInstance->Initialize(asset, clipName);
+	}
+
+	RuntimeSceneObjects objects;
+	return FindRuntimeSceneObjects(scene, objects);
+}
+
+void SceneRenderer::BuildSceneRuntimeObjects()
+{
+	if (!BindSpecialSceneObjects())
+		throw DxException(E_FAIL, L"Required runtime scene objects were not found.", AnsiToWString(__FILE__), __LINE__);
+
+	BuildSceneObject_InMirror();
+	BuildSceneObject_Gizmo();
+	RebuildRenderBatches();
+}
+
+void SceneRenderer::RebuildSceneRuntime(D3D12Context& context)
+{
+	mScene.ClearSelection();
+
+	BuildSceneRuntimeObjects();
+
+	mFrameResources.clear();
+	mCurrFrameResource = nullptr;
+	mCurrFrameResourceIndex = 0;
+
+	BuildFrameResources(context);
+
+	for (auto& [name, material] : mMaterials)
+	{
+		if (material)
+			material->NumFramesDirty = GlobalConfig::NumFrameResources;
+	}
+}
+
+bool SceneRenderer::BindSpecialSceneObjects()
+{
+	mMirror = nullptr;
+	mSkull = nullptr;
+	mSkullMirror = nullptr;
+	mSkullShadow = nullptr;
+	mSkullShadowMirror = nullptr;
+	mWavesRenderItem = nullptr;
+
+	RuntimeSceneObjects objects;
+	if (!FindRuntimeSceneObjects(mScene, objects))
+		return false;
+
+	mMirror = objects.Mirror;
+	mSkull = objects.Skull;
+	mSkullShadow = objects.SkullShadow;
+	mWavesRenderItem = objects.Waves;
+
+	return true;
+}
+
 
 void SceneRenderer::BuildGeometry(D3D12Context& context)
 {
@@ -1595,18 +1783,6 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	mSkeletalMesheAssets[geometryName] = std::move(skelMesh);
 }
 
-void SceneRenderer::BuildScene()
-{
-	mRenderBatchesDirty = true;
-
-	BuildSceneObject_Common();
-	BuildSceneObject_InMirror();
-	BuildSceneObject_Gizmo();
-	BuildSceneObject_FBX();
-
-	RebuildRenderBatches();
-}
-
 void SceneRenderer::BuildSceneObject_Common()
 {
 	{
@@ -1791,83 +1967,6 @@ void SceneRenderer::BuildSceneObject_Common()
 	}
 }
 
-void SceneRenderer::BuildSceneObject_InMirror()
-{
-	const XMMATRIX R = XMMatrixReflect(GetMirrorPlane()); // x = -10 plane
-
-	std::vector<SceneObject*> copySceneObjects;
-	for (const auto& obj : mScene.GetObjects())
-		copySceneObjects.push_back(obj.get());
-
-	for (auto sceneObjPtr : copySceneObjects)
-	{
-		MeshComponent* originMesh = sceneObjPtr->GetComponent<MeshComponent>();
-		if (!originMesh || originMesh->InMirror == false) continue;
-	
-		SceneObject& reflected = mScene.CreateObject(sceneObjPtr->Name + L"_InMirror");
-		XMStoreFloat4x4(&reflected.Transform.WorldOverride,
-			sceneObjPtr->Transform.GetWorldMatrix() * R);
-		reflected.Transform.UseWorldOverride = true;
-		reflected.mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable);
-
-		auto& reflectedMesh = reflected.AddComponent<MeshComponent>();
-		reflectedMesh = *originMesh;
-		reflectedMesh.InMirror = false;
-
-		for (SubmeshSlot& slot : reflectedMesh.SubmeshSlots)
-			slot.Layers = { RenderPass::Reflected };
-
-		if (sceneObjPtr == mSkullShadow) mSkullShadowMirror = &reflected;
-		if (sceneObjPtr == mSkull) mSkullMirror = &reflected;
-	}
-}
-
-void SceneRenderer::BuildSceneObject_Gizmo()
-{
-	TransformComponent transform;
-
-	auto gizmoX = CreateStaticMeshObject(L"기즈모 X", "shapeGeo", "box", "gizmoX",
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderPass::Gizmo }, false);
-	gizmoX->Visible = false;
-
-	auto gizmoY = CreateStaticMeshObject(L"기즈모 Y", "shapeGeo", "box", "gizmoY",
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderPass::Gizmo }, false);
-	gizmoY->Visible = false;
-
-	auto gizmoZ = CreateStaticMeshObject(L"기즈모 Z", "shapeGeo", "box", "gizmoZ",
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-		{ RenderPass::Gizmo }, false);
-	gizmoZ->Visible = false;
-
-	gizmoX->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
-	gizmoY->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
-	gizmoZ->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::HideInHierarchy | SceneObjectFlags::NotSelectable | SceneObjectFlags::EditorOnly);
-
-	mGizmo.SetGigmoObjects(gizmoX, gizmoY, gizmoZ);
-}
-
-void SceneRenderer::BuildSceneObject_FBX()
-{
-	const std::string assetName = "fbxPreviewGeo";
-	const auto skeletalMeshIt = mSkeletalMesheAssets.find(assetName);
-	SkeletalMeshAsset& skeletalMesh = skeletalMeshIt->second;
-
-	TransformComponent transform;
-	transform.Position = { 5.0f, 0.0f, 0.0f };
-	transform.Rotation = { 0.0f, 180.0f, 0.0f };
-	transform.Scale = { 0.03f, 0.03f, 0.03f };
-
-	CreateSkeletalMeshObject(L"FBX 미리보기", assetName.c_str(), skeletalMesh, transform);
-
-	transform.Position = { 15.0f, 0.0f, 0.0f };
-	transform.Rotation = { 0.0f, 180.0f, 0.0f };
-	transform.Scale = { 0.03f, 0.03f, 0.03f };
-
-	CreateSkeletalMeshObject(L"FBX 미리보기2", assetName.c_str(), skeletalMesh, transform);
-}
-
 SceneObject* SceneRenderer::CreateStaticMeshObject(
 	const wchar_t* objName,
 	const char* GeoName,
@@ -1884,6 +1983,7 @@ SceneObject* SceneRenderer::CreateStaticMeshObject(
 	obj.Transform = transform;
 
 	auto& component = obj.AddComponent<StaticMeshComponent>();
+	component.GeometryName = GeoName;
 	component.Geometry = geometry;
 	component.Topology = topology;
 	component.InMirror = InMirror;
@@ -1893,6 +1993,9 @@ SceneObject* SceneRenderer::CreateStaticMeshObject(
 	SubmeshGeometry& sm = component.Geometry->Submeshes[subMeshName];
 
 	SubmeshSlot smSlot{};
+	smSlot.SubmeshName = subMeshName;
+	smSlot.MaterialName = matName;
+	smSlot.MatTransform = material->MatTransform;
 	smSlot.Submesh = &sm;
 	smSlot.MaterialData = material;
 	smSlot.Layers = layer;
@@ -1912,6 +2015,8 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 	UINT submeshCount = asset.GetSubmeshCount();
 
 	auto& component = object.AddComponent<SkeletalMeshComponent>();
+	component.GeometryName = GeoName;
+	component.SkeletalAssetName = GeoName;
 	component.Asset = &asset;
 	component.Geometry = geometry;
 	component.Topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1952,6 +2057,9 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 				material = mMaterials.at(asset.MaterialNames[materialIndex]).get();
 
 			SubmeshSlot slot{};
+			slot.SubmeshName = source.Name;
+			slot.MaterialName = material->Name;
+			slot.MatTransform = material->MatTransform;
 			slot.Submesh = &geometryIt->second;
 			slot.MaterialData = material;
 			slot.Layers = { RenderPass::SkinnedOpaque };
@@ -1988,7 +2096,7 @@ void SceneRenderer::BuildFrameResources(D3D12Context& context)
 			std::make_unique<FrameResource>(
 				context.GetDevice(),
 				2,
-				mInstanceCount,
+				(UINT)std::max(1u, mInstanceCount),
 				(UINT)mWaves->VertexCount(),
 				(UINT)mMaterials.size(),
 				skinnedCBCount));
@@ -2473,6 +2581,8 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSampler
 
 DirectX::XMVECTOR SceneRenderer::GetMirrorPlane()
 {
+	if (mMirror == nullptr) return XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f);
+
 	XMMATRIX W = mMirror->Transform.GetWorldMatrix();
 
 	XMVECTOR pLocal = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);	// 점 벡터

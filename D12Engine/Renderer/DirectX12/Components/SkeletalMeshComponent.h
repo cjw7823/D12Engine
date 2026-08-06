@@ -10,6 +10,8 @@
 
 struct SkeletalMeshComponent : public MeshComponent
 {
+	std::string SkeletalAssetName;
+
 	const SkeletalMeshAsset* Asset = nullptr;
 
 	std::unique_ptr<SkinnedModelInstance> mSkinnedModelInstance;

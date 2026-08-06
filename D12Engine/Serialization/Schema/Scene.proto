@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package d12engine.serialization;
+
+/*
+    Protobuf의 string은 UTF-8 문자열
+    std::wstring인 오브젝트 이름은 변환해서 저장 필요
+*/
+
+message Vector3Data
+{
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Vector4Data
+{
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float w = 4;
+}
+
+message TransformData
+{
+    Vector3Data position = 1;
+    Vector3Data rotation = 2;
+    Vector3Data scale = 3;
+}
+
+message Float4X4
+{
+    Vector4Data row1 = 1;
+    Vector4Data row2 = 2;
+    Vector4Data row3 = 3;
+    Vector4Data row4 = 4;
+}
+
+message MaterialData
+{
+    Float4X4 MatTransform = 1;
+}
+
+message SubmeshSlotData
+{
+    string submesh_name = 1;
+    string material_name = 2;
+
+    repeated uint32 render_passes = 3;
+
+    bool visible = 4;
+
+    MaterialData materialData = 5;
+}
+
+// Static/Skeletal 메시가 공통으로 사용하는 부분
+message MeshComponentData
+{
+    string geometry_name = 1;
+
+    uint32 topology = 2;
+
+    bool visible = 3;
+    bool in_mirror = 4;
+
+    repeated SubmeshSlotData slots = 5;
+}
+
+message StaticMeshComponentData
+{
+    MeshComponentData mesh = 1;
+}
+
+message SkeletalMeshComponentData
+{
+    MeshComponentData mesh = 1;
+
+    // SkeletalMeshComponent에만 존재
+    string skeletal_asset_name = 2;
+}
+
+message SceneObjectData
+{
+    uint64 id = 1;
+    uint64 parent_id = 2;
+
+    string name = 3;
+    TransformData transform = 4;
+
+    bool visible = 5;
+    uint32 flags = 6;
+
+    oneof mesh_component
+    {
+        StaticMeshComponentData static_mesh = 7;
+        SkeletalMeshComponentData skeletal_mesh = 8;
+    }
+}
+
+message SceneFile
+{
+    uint32 format_version = 1;
+    repeated SceneObjectData objects = 2;
+}

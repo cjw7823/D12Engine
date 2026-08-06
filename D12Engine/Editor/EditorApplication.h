@@ -13,8 +13,8 @@
 #include "Editor/Input/SceneViewInputHandler.h"
 
 #include "Renderer/DirectX12/D3D12Context.h"
-#include "Renderer/DirectX12/SceneRenderer.h"
 #include "Renderer/DirectX12/D3D12RenderTarget.h"
+#include "Renderer/DirectX12/Scene/SceneRenderer.h"
 #include "Renderer/DirectX12/Scene/Scene.h"
 
 #include "EngineCore/Input/InputSystem.h"
@@ -55,6 +55,8 @@ protected:
 	void CalculateFrameStats();
 
 private:
+	bool SaveActiveScene(bool AsDiffName);
+	bool LoadActiveScene();
 
 private:
 	inline static EditorApplication* mApp = nullptr;
@@ -72,6 +74,7 @@ private:
 
 	// 의존 대상이므로 가장 먼저 선언
 	Scene mActiveScene;
+	std::filesystem::path mActiveScenePath = L"Resource/Scenes/Main.d12scene";
 
 	// mActiveScene을 참조
 	SceneRenderer mSceneRenderer;

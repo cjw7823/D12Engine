@@ -195,6 +195,8 @@
     <ClCompile Include="Editor\Input\SceneViewInputHandler.cpp" />
     <ClCompile Include="Editor\Panels\ConsolePanel.cpp" />
     <ClCompile Include="Editor\Panels\SceneViewPanel.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneRenderer_Legacy.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Renderer\Resources\SkeletalMeshAsset.cpp" />
     <ClCompile Include="Renderer\DirectX12\Scene\Camera\Camera.cpp" />
     <ClCompile Include="EngineCore\Input\GlobalInputHandler.cpp" />
@@ -216,8 +218,12 @@
     <ClCompile Include="Renderer\DirectX12\GeometryGenerator.cpp" />
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp" />
     <ClCompile Include="Renderer\Resources\RenderData.cpp" />
-    <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneRenderer.cpp" />
     <ClCompile Include="Renderer\Resources\TextureManager.cpp" />
+    <ClCompile Include="Serialization\Generated\Scene.pb.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ThirdParty\DDSTextureLoader\DDSTextureLoader12.h" />
@@ -237,6 +243,7 @@
     <ClInclude Include="Renderer\DirectX12\Components\MeshComponent.h" />
     <ClInclude Include="Renderer\DirectX12\Components\SkeletalMeshComponent.h" />
     <ClInclude Include="AssetPipeline\Desc\ImportedMaterial.h" />
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneSerializer.h" />
     <ClInclude Include="Renderer\Resources\SkeletalMeshAsset.h" />
     <ClInclude Include="Editor\EditorApplication.h" />
     <ClInclude Include="Editor\EditorLayer.h" />
@@ -278,12 +285,13 @@
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h" />
     <ClInclude Include="Renderer\Resources\RenderData.h" />
     <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderTypes.h" />
-    <ClInclude Include="Renderer\DirectX12\SceneRenderer.h" />
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderer.h" />
     <ClInclude Include="Renderer\DirectX12\UploadBuffer.h" />
     <ClInclude Include="Renderer\Resources\Material.h" />
     <ClInclude Include="Renderer\Resources\MeshGeometry.h" />
     <ClInclude Include="Renderer\Resources\TextureDesc.h" />
     <ClInclude Include="Renderer\Resources\TextureManager.h" />
+    <ClInclude Include="Serialization\Generated\Scene.pb.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="imgui.ini">
@@ -591,6 +599,9 @@
       <DependsOn>@(ShaderInclude_Common)</DependsOn>
       <Defines>$(SkinnedDefines)</Defines>
     </ShaderCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Serialization\Schema\Scene.proto" />
   </ItemGroup>
   <Target Name="BuildShaders" BeforeTargets="ClCompile" Inputs="%(ShaderCompile.FullPath);%(ShaderCompile.DependsOn)" Outputs="$(ShaderDir)%(ShaderCompile.OutputName);$(ShaderDir)%(ShaderCompile.AsmName)">
     <MakeDir Directories="$(ShaderDir)" />

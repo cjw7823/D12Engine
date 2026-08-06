@@ -2,6 +2,7 @@
 #include "Scene.h"
 
 #include <algorithm>
+#include <cassert>
 
 SceneObject& Scene::CreateObject(const std::wstring& name)
 {
@@ -12,6 +13,32 @@ SceneObject& Scene::CreateObject(const std::wstring& name)
     SceneObject& result = *object;
     mObjects.push_back(std::move(object));
     return result;
+}
+
+SceneObject& Scene::CreateObjectWithId(SceneObjectId id, const std::wstring& name)
+{
+    assert(id != 0);
+    assert(FindObject(id) == nullptr);
+
+    auto object = std::make_unique<SceneObject>();
+
+    object->Id = id;
+    object->Name = name;
+
+    SceneObject& result = *object;
+
+    mObjects.push_back(std::move(object));
+
+    mNextObjectId = std::max(mNextObjectId, id + 1);
+
+    return result;
+}
+
+void Scene::Clear()
+{
+    mObjects.clear();
+    mSelectedObjectIds.clear();
+    mNextObjectId = 1;
 }
 
 void Scene::DestroyObject(SceneObjectId id)
@@ -92,6 +119,15 @@ SceneObject* Scene::GetSelectedObject(SceneObjectId index)
 const SceneObject* Scene::GetSelectedObject(SceneObjectId index) const
 {
     return FindObject(mSelectedObjectIds[index]);
+}
+
+void Scene::Swap(Scene& other) noexcept
+{
+    using std::swap;
+
+    swap(mObjects, other.mObjects);
+    swap(mNextObjectId, other.mNextObjectId);
+    swap(mSelectedObjectIds, other.mSelectedObjectIds);
 }
 
 SceneObjectId Scene::GenerateObjectId()

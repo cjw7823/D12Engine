@@ -47,3 +47,35 @@ inline std::wstring AnsiToWString(const std::string& str)
 	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
 	return std::wstring(buffer);
 }
+
+inline std::wstring Utf8ToWide(const std::string& value)
+{
+	if (value.empty())
+		return {};
+
+	const int requiredSize = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		value.data(),
+		static_cast<int>(value.size()),
+		nullptr,
+		0);
+
+	if (requiredSize <= 0)
+		throw std::runtime_error("Failed to convert UTF-8 to wide string.");
+
+	std::wstring result(requiredSize, L'\0');
+
+	const int convertedSize = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		value.data(),
+		static_cast<int>(value.size()),
+		result.data(),
+		requiredSize);
+
+	if (convertedSize != requiredSize)
+		throw std::runtime_error("Failed to convert UTF-8 to wide string.");
+
+	return result;
+}

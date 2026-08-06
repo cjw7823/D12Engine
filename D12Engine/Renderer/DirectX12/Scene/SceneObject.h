@@ -17,6 +17,8 @@ enum SceneObjectFlags
     HideInHierarchy = 1 << 0,
     NotSelectable = 1 << 1,
     EditorOnly = 1 << 2,
+
+    Transient = 1 << 3, // 저장되지 않고 씬 활성화 시 다시 생성
 };
 
 using SceneObjectId = std::uint64_t;
@@ -46,6 +48,24 @@ public:
         {
             if (auto* result = dynamic_cast<T*>(component.get()))
                 return result;
+        }
+
+        return nullptr;
+    }
+
+    template<typename T>
+    const T* GetComponent() const
+    {
+        static_assert(std::is_base_of_v<IComponent, T>,
+            "T must derive from IComponent.");
+
+        for (const auto& component : mComponents)
+        {
+            if (const auto* result =
+                dynamic_cast<const T*>(component.get()))
+            {
+                return result;
+            }
         }
 
         return nullptr;

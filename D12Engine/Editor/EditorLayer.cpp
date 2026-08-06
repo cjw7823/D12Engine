@@ -9,6 +9,13 @@
 #include "EngineCore/StringUtil.h"
 
 #include <unordered_set>
+#include <utility>
+
+void EditorLayer::RegisterSceneCommands(std::function<void(bool)> saveSceneCommand, std::function<void()> loadSceneCommand)
+{
+	mSaveSceneCommand = std::move(saveSceneCommand);
+	mLoadSceneCommand = std::move(loadSceneCommand);
+}
 
 EditorLayer::EditorLayer(Scene& scene) : mScene(scene)
 {
@@ -101,10 +108,22 @@ void EditorLayer::DrawMainMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
+			const bool canSaveScene = static_cast<bool>(mSaveSceneCommand);
+			const bool canLoadScene = static_cast<bool>(mLoadSceneCommand);
+
+			if (ImGui::MenuItem("Save Scene", nullptr, false, canSaveScene))
+				mSaveSceneCommand(false);
+
+			if (ImGui::MenuItem("Save Scene As...", nullptr, false, canSaveScene))
+				mSaveSceneCommand(true);
+
+			if (ImGui::MenuItem("Open Scene...", nullptr, false, canLoadScene))
+				mLoadSceneCommand();
+
+			ImGui::Separator();
+
 			if (ImGui::MenuItem("Exit"))
-			{
 				::PostQuitMessage(0);
-			}
 
 			ImGui::EndMenu();
 		}

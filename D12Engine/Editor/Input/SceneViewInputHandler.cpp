@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "SceneViewInputHandler.h"
 
-#include "Renderer/DirectX12/SceneRenderer.h"
+#include "Renderer/DirectX12/Scene/SceneRenderer.h"
 #include "Renderer/DirectX12/Scene/Scene.h"
 
 SceneViewInputHandler::SceneViewInputHandler(SceneRenderer& sceneRenderer) : mSceneRenderer(sceneRenderer)

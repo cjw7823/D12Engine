@@ -192,7 +192,7 @@
     <ClCompile Include="Renderer\DirectX12\PipelineStateFactory.cpp">
       <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\DirectX12\SceneRenderer.cpp">
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneRenderer.cpp">
       <Filter>Renderer\DirectX12</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\DirectX12\Effects\BlurFilter.cpp">
@@ -211,6 +211,9 @@
     <ClCompile Include="..\ThirdParty\WICTextureLoader\WICTextureLoader12.cpp">
       <Filter>=========\ThirdParty\WICTextureLoader</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneSerializer.cpp" />
+    <ClCompile Include="Renderer\DirectX12\Scene\SceneRenderer_Legacy.cpp" />
+    <ClCompile Include="Serialization\Generated\Scene.pb.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -348,7 +351,7 @@
     <ClInclude Include="Renderer\DirectX12\PipelineStateFactory.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DirectX12\SceneRenderer.h">
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneRenderer.h">
       <Filter>Renderer\DirectX12</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\DirectX12\UploadBuffer.h">
@@ -381,10 +384,15 @@
     <ClInclude Include="..\ThirdParty\WICTextureLoader\WICTextureLoader12.h">
       <Filter>=========\ThirdParty\WICTextureLoader</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\DirectX12\Scene\SceneSerializer.h" />
+    <ClInclude Include="Serialization\Generated\Scene.pb.h" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="imgui.ini">
       <Filter>=========</Filter>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Serialization\Schema\Scene.proto" />
   </ItemGroup>
 </Project>

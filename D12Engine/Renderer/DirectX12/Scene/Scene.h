@@ -11,7 +11,9 @@ class Scene
 {
 public:
 	SceneObject& CreateObject(const std::wstring& name = L"오브젝트");
+	SceneObject& CreateObjectWithId(SceneObjectId id, const std::wstring& name);
 
+	void Clear();
 	void DestroyObject(SceneObjectId id);
 
 	std::vector<std::unique_ptr<SceneObject>>& GetObjects() { return mObjects; }
@@ -27,6 +29,8 @@ public:
 	const SceneObject* GetSelectedObject(SceneObjectId index) const;
 
 	std::vector<SceneObjectId> GetSelectedObjectIds() const { return mSelectedObjectIds; }
+
+	void Swap(Scene& other) noexcept;
 
 private:
 	SceneObjectId GenerateObjectId();

@@ -1,8 +1,82 @@
 #include "pch.h"
 #include "EditorApplication.h"
 #include "Renderer/Resources/TextureManager.h"
+#include "Renderer/DirectX12/Scene/SceneSerializer.h"
+
+#include <array>
+#include <optional>
+#include <system_error>
+#include <commdlg.h>
+
+#pragma comment(lib, "Comdlg32.lib")
 
 using namespace Microsoft::WRL;
+
+namespace
+{
+	constexpr wchar_t SceneFileFilter[] =
+		L"D12 Scene (*.d12scene)\0*.d12scene\0"
+		L"All Files (*.*)\0*.*\0\0";
+
+	std::optional<std::filesystem::path> ShowSceneFileDialog(
+		HWND owner,
+		const std::filesystem::path& currentPath,
+		bool saveDialog)
+	{
+		std::array<wchar_t, 32768> fileBuffer{};
+
+		std::wstring initialFileName = currentPath.filename().wstring();
+		if (initialFileName.empty())
+			initialFileName = L"Main.d12scene";
+
+		wcsncpy_s(
+			fileBuffer.data(),
+			fileBuffer.size(),
+			initialFileName.c_str(),
+			_TRUNCATE);
+
+		std::wstring initialDirectory;
+
+		if (!currentPath.parent_path().empty())
+		{
+			std::error_code error;
+			const std::filesystem::path absoluteDirectory =
+				std::filesystem::absolute(currentPath.parent_path(), error);
+
+			initialDirectory = error
+				? currentPath.parent_path().wstring()
+				: absoluteDirectory.wstring();
+		}
+
+		OPENFILENAMEW dialog{};
+		dialog.lStructSize = sizeof(dialog);
+		dialog.hwndOwner = owner;
+		dialog.lpstrFilter = SceneFileFilter;
+		dialog.lpstrFile = fileBuffer.data();
+		dialog.nMaxFile = static_cast<DWORD>(fileBuffer.size());
+		dialog.lpstrInitialDir = initialDirectory.empty() ? nullptr : initialDirectory.c_str();
+		dialog.lpstrDefExt = L"d12scene";
+		dialog.Flags =
+			OFN_EXPLORER |
+			OFN_NOCHANGEDIR |
+			OFN_PATHMUSTEXIST |
+			OFN_HIDEREADONLY;
+
+		if (saveDialog)
+			dialog.Flags |= OFN_OVERWRITEPROMPT;
+		else
+			dialog.Flags |= OFN_FILEMUSTEXIST;
+
+		const BOOL accepted = saveDialog
+			? GetSaveFileNameW(&dialog)
+			: GetOpenFileNameW(&dialog);
+
+		if (!accepted)
+			return std::nullopt;
+
+		return std::filesystem::path(fileBuffer.data());
+	}
+}
 
 // Win32 메시지 핸들러
 // io.WantCaptureMouse 및 io.WantCaptureKeyboard 플래그를 확인하여 Dear ImGui가 현재 입력을 사용하려는지 파악할 수 있습니다.
@@ -66,6 +140,15 @@ bool EditorApplication::Initialize()
 		return false;
 
 	mEditorLayer.Initialize();
+	mEditorLayer.RegisterSceneCommands(
+		[this](bool AsDiffName)
+		{
+			SaveActiveScene(AsDiffName);
+		},
+		[this]()
+		{
+			LoadActiveScene();
+		});
 
 	mSceneRenderTarget.Create(
 		mD3D12Context,
@@ -278,6 +361,60 @@ void EditorApplication::CalculateFrameStats()
 		frameCount = 0;
 		timeElapsed = currTime;
 	}
+}
+
+bool EditorApplication::SaveActiveScene(bool AsDiffName)
+{
+	std::optional<std::filesystem::path> selectedPath;
+	if (AsDiffName)
+	{
+		selectedPath = ShowSceneFileDialog(mhMainWnd, mActiveScenePath, true);
+		if (!selectedPath) return false;
+	}
+	else
+		selectedPath = mActiveScenePath;
+
+	const bool succeeded = SceneSerializer::Save(mActiveScene, *selectedPath);
+
+	if (!succeeded)
+	{
+		MessageBoxW(mhMainWnd, L"Scene 파일 저장에 실패했습니다.", L"Save Scene", MB_OK | MB_ICONERROR);
+		return false;
+	}
+
+	mActiveScenePath = *selectedPath;
+
+	MessageBoxW(mhMainWnd, mActiveScenePath.c_str(), L"Scene 저장 완료", MB_OK | MB_ICONINFORMATION);
+	return true;
+}
+
+bool EditorApplication::LoadActiveScene()
+{
+	const auto selectedPath = ShowSceneFileDialog(mhMainWnd, mActiveScenePath, false);
+	if (!selectedPath) return false;
+
+	Scene loadedScene;
+
+	if (!SceneSerializer::Load(loadedScene, *selectedPath))
+	{
+		MessageBoxW(mhMainWnd, L"Scene 파일을 읽지 못했습니다.", L"Load Scene", MB_OK | MB_ICONERROR);
+		return false;
+	}
+
+	if (!mSceneRenderer.ResolveSceneResources(loadedScene))
+	{
+		MessageBoxW(mhMainWnd, L"Scene 리소스 연결에 실패했습니다.", L"Load Scene", MB_OK | MB_ICONERROR);
+		return false;
+	}
+
+	mD3D12Context.FlushCommandQueue();
+
+	mActiveScene.Swap(loadedScene);
+	mSceneRenderer.RebuildSceneRuntime(mD3D12Context);
+
+	mActiveScenePath = *selectedPath;
+
+	return true;
 }
 
 int EditorApplication::Run()

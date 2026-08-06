@@ -74,7 +74,6 @@ private:
 	void ReadbackTimestampData(int frameResourceIndex);
 
 	MeshData LoadModelFromFile_dx12ex(const std::wstring& path);
-	void LoadSkinnedModel_dx12ex(D3D12Context& context);
 	void LoadBuiltInTextures(D3D12Context& context);
 
 	void BuildDescriptorHeaps(D3D12Context& context);
@@ -87,6 +86,12 @@ private:
 	void BuildRootSignature_Waves(D3D12Context& context);
 	void BuildShadersAndInputLayout();
 
+	void LoadScene();
+	bool ResolveSceneResources(Scene& scene);
+	void BuildSceneRuntimeObjects();
+	bool BindSpecialSceneObjects();
+	void RebuildSceneRuntime(D3D12Context& context);
+
 	void BuildGeometry(D3D12Context& context);
 	void BuildShapeGeometry(D3D12Context& context);
 	void BuildLandGeometry(D3D12Context& context);
@@ -95,11 +100,16 @@ private:
 	void BuildCylinderWithoutTopGeometry(D3D12Context& context);
 	void BuildBrickWallGeometry(D3D12Context& context);
 	void BuildFBXGeometry(D3D12Context& context);
+
+	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
 	void BuildScene();
+	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
 	void BuildSceneObject_Common();
+	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
+	void BuildSceneObject_FBX();
 	void BuildSceneObject_InMirror();
 	void BuildSceneObject_Gizmo();
-	void BuildSceneObject_FBX();
+
 	void BuildFrameResources(D3D12Context& context);
 	void BuildPSOs(const D3D12Context& context);
 
