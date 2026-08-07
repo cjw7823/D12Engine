@@ -100,7 +100,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> D3D12Util::LoadBinary(const std::wstring& path)
 
 	if (!fin)
 	{
-		std::wstring wfn = AnsiToWString(__FILE__);
+		std::wstring wfn = AnsiToWide(__FILE__);
 		throw DxException(HRESULT(), path, wfn, __LINE__);
 	}
 
@@ -109,7 +109,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> D3D12Util::LoadBinary(const std::wstring& path)
 
 	if (size <= 0)
 	{
-		std::wstring wfn = AnsiToWString(__FILE__);
+		std::wstring wfn = AnsiToWide(__FILE__);
 		throw DxException(HRESULT(), path, wfn, __LINE__);
 	}
 

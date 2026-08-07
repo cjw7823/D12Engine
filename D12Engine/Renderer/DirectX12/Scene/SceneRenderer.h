@@ -35,6 +35,21 @@ class Scene;
 class GameTimer;
 struct GizmoState;
 
+struct SceneRenderStatistics
+{
+	bool GpuTimestampValid = false;
+
+	double RendererGpuMs = 0.0;
+	double ScenePassGpuMs = 0.0;
+
+	bool FrustumCullingEnabled = true;
+
+	UINT BatchedInstanceCount = 0;
+	UINT CullCandidateCount = 0;
+	UINT VisibleInstanceCount = 0;
+	UINT FrustumCulledInstanceCount = 0;
+};
+
 class SceneRenderer
 {
 	friend class EditorApplication;
@@ -67,6 +82,12 @@ public:
 	void MoveSun(float deltaTheta, float deltaPhi);
 	void ChangeMsaa(const D3D12Context& context);
 
+	//For Performance Measurement
+	SceneRenderStatistics GetStatistics() const noexcept;
+	void SetFrustumCullingEnabled(bool enabled) noexcept
+	{
+		mFrustumCullingEnabled = enabled;
+	}
 private:
 	void Update(const Scene& scene, float deltaTime);
 	void Render(D3D12Context& context, D3D12RenderTarget& renderTarget, const Scene& scene);
@@ -99,14 +120,10 @@ private:
 	void BuildTreeBillboardGeometry(D3D12Context& context);
 	void BuildCylinderWithoutTopGeometry(D3D12Context& context);
 	void BuildBrickWallGeometry(D3D12Context& context);
-	void BuildFBXGeometry(D3D12Context& context);
+	std::string BuildFBXGeometry(D3D12Context& context, const std::filesystem::path& path);
 
-	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
 	void BuildScene();
-	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
 	void BuildSceneObject_Common();
-	[[deprecated("Moved in SceneRenderer_Legacy.cpp")]]
-	void BuildSceneObject_FBX();
 	void BuildSceneObject_InMirror();
 	void BuildSceneObject_Gizmo();
 
@@ -114,7 +131,12 @@ private:
 	void BuildPSOs(const D3D12Context& context);
 
 	void BuildImportedTextures();
+	void BuildImportedTextures(const std::string& assetName, SkeletalMeshAsset& asset);
 	void BuildImportedMaterials();
+	void BuildImportedMaterials(const std::string& assetName, SkeletalMeshAsset& asset);
+
+	SceneObject* AddFbxToScene(D3D12Context& context, const std::filesystem::path& path);
+	void LoadFbxResource(D3D12Context& context, const std::filesystem::path& path);
 
 	SceneObject* CreateStaticMeshObject(
 		const wchar_t* objName,
@@ -131,6 +153,8 @@ private:
 		const char* GeoName,
 		const SkeletalMeshAsset& asset,
 		const TransformComponent& transform);
+	//믹사모 모델 사용으로 인한 임시 구현.
+	std::string SelectDefaultAnimation(const SkeletalMeshAsset& asset);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	DirectX::XMVECTOR GetMirrorPlane();
@@ -223,10 +247,13 @@ private:
 	bool mFrustumCullingEnabled = true;
 
 	//For Performance Measurement
+	bool mGpuTimestampValid = false;
 	double mFullGpuMs = 0.0;
 	double mSceneGpuMs = 0.0;
 	UINT mInstanceCount = 0;
+	UINT mCullCandidateCount = 0;
 	UINT mVisibleInstanceCount = 0;
+	UINT mFrustumCulledInstanceCount = 0;
 
 	//For FBX Animation
 	std::unordered_map<std::string, SkeletalMeshAsset> mSkeletalMesheAssets;

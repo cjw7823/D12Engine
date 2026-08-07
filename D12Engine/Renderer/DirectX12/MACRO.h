@@ -16,7 +16,7 @@
 	HRESULT hr__ = (x);												\
 	if(FAILED(hr__))												\
 	{																\
-		std::wstring wfn = AnsiToWString(__FILE__);					\
+		std::wstring wfn = AnsiToWide(__FILE__);					\
 		throw DxException(hr__, L#x, wfn, __LINE__);				\
 	}																\
 }

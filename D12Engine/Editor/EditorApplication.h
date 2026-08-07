@@ -53,10 +53,12 @@ protected:
 	void EndRelativeMouseMode();
 
 	void CalculateFrameStats();
+	void OpenAsset(const std::filesystem::path& path);
 
 private:
 	bool SaveActiveScene(bool AsDiffName);
 	bool LoadActiveScene();
+	bool LoadScene(const std::filesystem::path& path);
 
 private:
 	inline static EditorApplication* mApp = nullptr;
@@ -75,6 +77,7 @@ private:
 	// 의존 대상이므로 가장 먼저 선언
 	Scene mActiveScene;
 	std::filesystem::path mActiveScenePath = L"Resource/Scenes/Main.d12scene";
+	std::optional<std::filesystem::path> mPendingFbxPath;
 
 	// mActiveScene을 참조
 	SceneRenderer mSceneRenderer;

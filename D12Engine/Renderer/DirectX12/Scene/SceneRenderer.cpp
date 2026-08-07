@@ -107,13 +107,36 @@ bool SceneRenderer::Initialize(D3D12Context& context, DXGI_FORMAT colorFormat, D
 	BuildShadersAndInputLayout();
 	BuildGeometry(context);
 
-	BuildImportedTextures();
-	BuildImportedMaterials();
+	const std::filesystem::path modelDirectory = "Resource/Models";
+	std::vector<std::filesystem::path> fbxPaths;
+	for (const auto& entry : std::filesystem::directory_iterator(modelDirectory))
+	{
+		if (!entry.is_regular_file()) continue;
 
-	//BuildScene();
+		std::filesystem::path path = entry.path();
+
+		std::wstring extension = path.extension().wstring();
+		std::transform(extension.begin(), extension.end(), extension.begin(), ::towlower);
+
+		if (extension == L".fbx")
+			fbxPaths.push_back(std::move(path));
+	}
+
+#ifdef BUILD_SCENE
+	for (const auto& path : fbxPaths)
+		AddFbxToScene(context, path);
+	BuildScene();
+
+#else
+	for (const auto& path : fbxPaths)
+		LoadFbxResource(context, path);
 	LoadScene();
 
+#endif
+
+	RebuildRenderBatches();
 	BuildFrameResources(context);
+
 	BuildPSOs(context);
 
 	CreateQueryHeap(context);
@@ -212,6 +235,23 @@ void SceneRenderer::ChangeMsaa(const D3D12Context& context)
 	BuildPSOs(context);
 }
 
+SceneRenderStatistics SceneRenderer::GetStatistics() const noexcept
+{
+	SceneRenderStatistics result{};
+
+	result.GpuTimestampValid = mGpuTimestampValid;
+	result.RendererGpuMs = mFullGpuMs;
+	result.ScenePassGpuMs = mSceneGpuMs;
+
+	result.FrustumCullingEnabled = mFrustumCullingEnabled;
+	result.BatchedInstanceCount = mInstanceCount;
+	result.CullCandidateCount = mCullCandidateCount;
+	result.VisibleInstanceCount = mVisibleInstanceCount;
+	result.FrustumCulledInstanceCount = mFrustumCulledInstanceCount;
+
+	return result;
+}
+
 void SceneRenderer::Update(const Scene& scene, float deltaTime)
 {
 	if (!mInitialized) return;
@@ -275,10 +315,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 	auto skinnedBuffer = mCurrFrameResource->SkinnedDataBuffer->Resource();
 	mCommandList->SetGraphicsRootShaderResourceView(5, skinnedBuffer->GetGPUVirtualAddress());
 
-	mCommandList->EndQuery(
-		mTimestampQueryHeap.Get(),
-		queryType,
-		SceneStart);
+	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, SceneStart);
 
 	for (int layer = 0; layer < (int)RenderPass::Count; layer++)
 	{
@@ -327,10 +364,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 		DrawDebugColorTriangle(mCommandList);
 	}
 
-	mCommandList->EndQuery(
-		mTimestampQueryHeap.Get(),
-		queryType,
-		SceneEnd);
+	mCommandList->EndQuery(mTimestampQueryHeap.Get(), queryType, SceneEnd);
 
 	if (context.mMsaaOption.IsEnable())
 		renderTarget.ResolveMsaaToColorBuffer(mCommandList);
@@ -448,19 +482,22 @@ void SceneRenderer::ReadbackTimestampData(int frameResourceIndex)
 	mTimestampReadbackBuffer->Unmap(0, nullptr);
 
 	// 첫 몇 프레임 또는 query 누락 방어.
-	if (fullEnd > fullStart)
+	const bool fullValid = fullEnd > fullStart;
+	const bool sceneValid = sceneEnd > sceneStart;
+
+	if (fullValid)
 	{
-		mFullGpuMs =
-			double(fullEnd - fullStart) * 1000.0 /
+		mFullGpuMs = double(fullEnd - fullStart) * 1000.0 /
 			double(mGpuTimestampFrequency);
 	}
 
-	if (sceneEnd > sceneStart)
+	if (sceneValid)
 	{
-		mSceneGpuMs =
-			double(sceneEnd - sceneStart) * 1000.0 /
+		mSceneGpuMs = double(sceneEnd - sceneStart) * 1000.0 / 
 			double(mGpuTimestampFrequency);
 	}
+
+	mGpuTimestampValid = fullValid && sceneValid;
 }
 
 void SceneRenderer::LoadBuiltInTextures(D3D12Context& context)
@@ -1083,10 +1120,10 @@ void SceneRenderer::LoadScene()
 	Scene loadedScene;
 
 	if (!SceneSerializer::Load(loadedScene, L"Resource/Scenes/Main.d12scene"))
-		throw DxException(E_FAIL, L"Scene file load failed.", AnsiToWString(__FILE__), __LINE__);
+		throw DxException(E_FAIL, L"Scene file load failed.", AnsiToWide(__FILE__), __LINE__);
 
 	if (!ResolveSceneResources(loadedScene))
-		throw DxException(E_FAIL, L"Scene resource resolution failed.", AnsiToWString(__FILE__), __LINE__);
+		throw DxException(E_FAIL, L"Scene resource resolution failed.", AnsiToWide(__FILE__), __LINE__);
 
 	mScene.Swap(loadedScene);
 	BuildSceneRuntimeObjects();
@@ -1159,18 +1196,16 @@ bool SceneRenderer::ResolveSceneResources(Scene& scene)
 		skeletalMesh->SkinnedBufferIndices.assign(submeshCount, UINT_MAX);
 		skeletalMesh->mSkinnedModelInstance = std::make_unique<SkinnedModelInstance>();
 
-		const std::string clipName = asset.Animations.begin()->first;
+		const std::string clipName = SelectDefaultAnimation(asset);
 		skeletalMesh->mSkinnedModelInstance->Initialize(asset, clipName);
 	}
-
-	RuntimeSceneObjects objects;
-	return FindRuntimeSceneObjects(scene, objects);
+	return true;
 }
 
 void SceneRenderer::BuildSceneRuntimeObjects()
 {
 	if (!BindSpecialSceneObjects())
-		throw DxException(E_FAIL, L"Required runtime scene objects were not found.", AnsiToWString(__FILE__), __LINE__);
+		throw DxException(E_FAIL, L"Required runtime scene objects were not found.", AnsiToWide(__FILE__), __LINE__);
 
 	BuildSceneObject_InMirror();
 	BuildSceneObject_Gizmo();
@@ -1188,12 +1223,6 @@ void SceneRenderer::RebuildSceneRuntime(D3D12Context& context)
 	mCurrFrameResourceIndex = 0;
 
 	BuildFrameResources(context);
-
-	for (auto& [name, material] : mMaterials)
-	{
-		if (material)
-			material->NumFramesDirty = GlobalConfig::NumFrameResources;
-	}
 }
 
 bool SceneRenderer::BindSpecialSceneObjects()
@@ -1226,7 +1255,6 @@ void SceneRenderer::BuildGeometry(D3D12Context& context)
 	BuildTreeBillboardGeometry(context);
 	BuildCylinderWithoutTopGeometry(context);
 	BuildBrickWallGeometry(context);
-	BuildFBXGeometry(context);
 }
 
 void SceneRenderer::BuildShapeGeometry(D3D12Context& context)
@@ -1680,9 +1708,9 @@ void SceneRenderer::BuildBrickWallGeometry(D3D12Context& context)
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
+std::string SceneRenderer::BuildFBXGeometry(D3D12Context& context, const std::filesystem::path& path)
 {
-	SkeletalMeshAsset skelMesh = FbxImporter::ImportSkeletalMesh("Resource/Models/rp_nathan_animated_003_walking.fbx");
+	SkeletalMeshAsset skelMesh = FbxImporter::ImportSkeletalMesh(path);
 
 	//단순 가중치 검증
 	for (const SkeletalMeshPart& meshPart : skelMesh.MeshParts)
@@ -1722,8 +1750,10 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 	const UINT vbByteSize = static_cast<UINT>(vertices.size() * sizeof(SkinnedVertex));
 	const UINT ibByteSize = static_cast<UINT>(indices.size() * sizeof(std::uint32_t));
 
+	const std::string geoName = path.stem().string();
 	auto geometry = std::make_unique<MeshGeometry>();
-	geometry->Name = "fbxPreviewGeo";
+	geometry->Name = geoName;
+	Logger::Info("FBX Geometry Name : " + geometry->Name);
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, geometry->VertexBufferCPU.GetAddressOf()));
 	CopyMemory(geometry->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -1751,10 +1781,12 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 
 	int baseVertexLocation = 0;
 	UINT partStartIndexLocation = 0;
-	for (const SkeletalMeshPart& part : skelMesh.MeshParts)
+	for (int partIndex = 0; partIndex < skelMesh.MeshParts.size(); partIndex++)
 	{
-		for (const SkeletalSubmesh& source : part.Submeshes)
+		const SkeletalMeshPart& part = skelMesh.MeshParts[partIndex];
+		for (int submeshIndex = 0; submeshIndex < part.Submeshes.size(); submeshIndex++)
 		{
+			const SkeletalSubmesh& source = part.Submeshes[submeshIndex];
 			SubmeshGeometry submesh{};
 
 			submesh.IndexCount = source.IndexCount;
@@ -1771,200 +1803,18 @@ void SceneRenderer::BuildFBXGeometry(D3D12Context& context)
 					sizeof(SkinnedVertex));
 			}
 
-			geometry->Submeshes[source.Name] = submesh;
+			const std::string submeshKey = geometry->MakeSubmeshKey(partIndex, submeshIndex);
+			geometry->Submeshes[submeshKey] = submesh;
 		}
 
 		baseVertexLocation += static_cast<int>(part.Vertices.size());
 		partStartIndexLocation += static_cast<UINT>(part.Indices.size());
 	}
 
-	const std::string geometryName = geometry->Name;
-	mGeometries[geometryName] = std::move(geometry);
-	mSkeletalMesheAssets[geometryName] = std::move(skelMesh);
-}
+	mGeometries[geoName] = std::move(geometry);
+	mSkeletalMesheAssets[geoName] = std::move(skelMesh);
 
-void SceneRenderer::BuildSceneObject_Common()
-{
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 0.5f, 2.0f };
-		transform.Rotation = { 0.0f, 0.0f, 0.0f };
-		transform.Scale = { 2.0f, 2.0f / 3.0f, 2.0f };
-
-		CreateStaticMeshObject(L"밉맵 상자", "shapeGeo", "box", "woodCrate",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::Opaque }, true);
-	}
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 2.0f, 15.0f };
-		transform.Scale = { 2.0f, 2.0f, 2.0f };
-
-		CreateStaticMeshObject(L"회전 블랜딩 상자", "shapeGeo", "box", "swirling",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::MultiTextureBlend }, true);
-	}
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 1.0f, -3.0f };
-
-		CreateStaticMeshObject(L"철망 상자", "shapeGeo", "box", "wireFence",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::AlphaTestOpaque }, true);
-	}
-	{
-		TransformComponent transform;
-		transform.Position = { -3.0f, 0.0f, 7.0f };
-		transform.Scale = { 1.5f, 1.0f, 1.4f };
-
-		CreateStaticMeshObject(L"바닥", "shapeGeo", "grid", "checkerTileMat",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::Opaque }, true, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-	}
-
-	for (int i = 0; i < 8; ++i)
-	{
-		TransformComponent leftCylTransform;
-		leftCylTransform.Position = { -12.0f, 1.5f, -10.0f + i * 5.0f };
-
-		TransformComponent rightCylTransform;
-		rightCylTransform.Position = { -2.0f, 1.5f, -10.0f + i * 5.0f };
-
-		TransformComponent leftSphereTransform;
-		leftSphereTransform.Position = { -12.0f, 3.5f, -10.0f + i * 5.0f };
-
-		TransformComponent rightSphereTransform;
-		rightSphereTransform.Position = { -2.0f, 3.5f, -10.0f + i * 5.0f };
-		rightSphereTransform.Scale = { 2.0f, 2.0f, 2.0f };
-
-		std::wstring objectName1 = L"왼쪽 기둥" + std::to_wstring(i);
-		std::wstring objectName2 = L"오른쪽 기둥" + std::to_wstring(i);
-		std::wstring objectName3 = L"왼쪽 돌" + std::to_wstring(i);
-		std::wstring objectName4 = L"오른쪽 돌" + std::to_wstring(i);
-
-		CreateStaticMeshObject(objectName1.c_str(), "shapeGeo", "cylinder", "bricks0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftCylTransform,
-			{ RenderPass::Opaque }, true);
-		CreateStaticMeshObject(objectName2.c_str(), "shapeGeo", "cylinder", "bricks0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightCylTransform,
-			{ RenderPass::Opaque }, true);
-
-		CreateStaticMeshObject(objectName3.c_str(), "shapeGeo", "sphere", "stone0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftSphereTransform,
-			{ RenderPass::Opaque }, true);
-		CreateStaticMeshObject(objectName4.c_str(), "shapeGeo", "geoSphere", "stone0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightSphereTransform,
-			{ RenderPass::GeoSphereLOD }, true);
-	}
-
-	//skull
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 1.0f, 7.0f };
-		transform.Scale = { 0.2f, 0.2f, 0.2f };
-
-		mSkull = CreateStaticMeshObject(L"해골", "shapeGeo", "skull", "defaultMat",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::Opaque }, true);
-	}
-
-	//land
-	{
-		TransformComponent transform;
-		transform.Position = { 0.0f, -5.0f, 0.0f };
-
-		CreateStaticMeshObject(L"땅", "landGeo", "grid", "grass0",
-			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
-			{ RenderPass::TessLand }, false,
-			XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	}
-
-	//wave
-	{
-		TransformComponent transform;
-		transform.Position = { 0.0f, -1.0f, 0.0f };
-
-		CreateStaticMeshObject(L"물", "waterGeo", "grid", "water0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::Waves }, false,
-			XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	}
-
-	//mirror
-	{
-		TransformComponent transform;
-		transform.Position = { -18.0f, 2.0f, 7.0f };
-		transform.Rotation = { 0.0f, 0.0f, -90.0f };
-		transform.Scale = { 0.2f, 1.0f, 0.5f };
-
-		mMirror = CreateStaticMeshObject(L"거울", "shapeGeo", "grid", "iceMirrorMat",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::MirrorStencil, RenderPass::Transparent }, false,
-			XMMatrixScaling(1.0f, 2.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
-	}
-	{
-		TransformComponent transform;
-		transform.Position = { -18.001f, 3.0f, 7.0f };
-		transform.Rotation = { 0.0f, 0.0f, -90.0f };
-		transform.Scale = { 0.3f, 1.0f, 1.4f };
-
-		auto ri = CreateStaticMeshObject(L"거울 벽", "brickWallGeo", "brickWall", "bricks1",
-			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
-			{ RenderPass::TessWall }, false,
-			XMMatrixScaling(2.5f, 11.0f, 1.0f)* XMMatrixRotationZ(XM_PIDIV2));
-		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
-	}
-	//거울 백플레이트
-	{
-		TransformComponent transform;
-		transform.Position = { -18.0f, 2.0f, 7.0f };
-		transform.Rotation = { 0.0f, 0.0f, -90.0f };
-		transform.Scale = { 0.2f, 1.0f, 0.5f };
-
-		CreateStaticMeshObject(L"거울 백플레이트", "shapeGeo", "grid", "mirrorBaseMat",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::MirrorBaseFill }, false);
-	}
-
-	//skull shadow
-	{
-		TransformComponent transform;
-		transform.Position = { 3.0f, 3.0f, 0.0f };
-
-		mSkullShadow = CreateStaticMeshObject(L"해골 그림자", "shapeGeo", "skull", "shadowMat_skull",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::Shadow }, true);
-		mSkullShadow->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
-	}
-
-	//tree billboard
-	{
-		TransformComponent transform;
-		auto ri = CreateStaticMeshObject(L"나무 빌보드", "treeBillboard", "tree", "treeBillboardMat",
-			D3D_PRIMITIVE_TOPOLOGY_POINTLIST, transform,
-			{ RenderPass::A2C_TreeBillboard }, false);
-		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
-	}
-
-	//extended Cylinder
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 0.0f, 20.0f };
-
-		CreateStaticMeshObject(L"GS확장 원통", "cylinderWithoutTop", "cylinderWithoutTop", "bricks0",
-			D3D_PRIMITIVE_TOPOLOGY_LINESTRIP, transform,
-			{ RenderPass::LineToCylinder }, false);
-	}
-
-	//explode
-	{
-		TransformComponent transform;
-		transform.Position = { -7.0f, 6.0f, 7.0f };
-
-		CreateStaticMeshObject(L"폭발하는 돌", "shapeGeo", "geoSphere", "bricks0",
-			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
-			{ RenderPass::GeoExplode }, true);
-	}
+	return geoName;
 }
 
 SceneObject* SceneRenderer::CreateStaticMeshObject(
@@ -2027,26 +1877,25 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 	SkeletalMeshAsset& storedAsset = mSkeletalMesheAssets.at(GeoName);
 	if (!storedAsset.Animations.empty())
 	{
-		auto clipName = storedAsset.Animations.begin()->first;
 		for (const auto& [name, clip] : storedAsset.Animations)
-		{
-			Logger::Info(
-				L"Animation Clip: " +
-				AnsiToWString(name) +
-				L"\n");
-		}
+			Logger::Info(L"Animation Clip: " + AnsiToWide(name) + L"\n");
+
+		//믹사모 모델 사용으로 인한 임시 구현.
+		const std::string clipName = SelectDefaultAnimation(asset);
 		component.mSkinnedModelInstance->Initialize(storedAsset, clipName);
 	}
 	
+	int partIndex = 0;
 	for (const auto& part : asset.MeshParts)
 	{
 		for (int i = 0; i < part.Submeshes.size(); i++)
 		{
 			const SkeletalSubmesh source = part.Submeshes[i];
-			auto geometryIt = geometry->Submeshes.find(source.Name);
+			std::string key = geometry->MakeSubmeshKey(partIndex, i);
+			auto geometryIt = geometry->Submeshes.find(key);
 			if (geometryIt == geometry->Submeshes.end())
 			{
-				std::wstring wfn = AnsiToWString(__FILE__);
+				std::wstring wfn = AnsiToWide(__FILE__);
 				throw DxException(1, L"Skeletal submesh geometry not found: ", wfn, __LINE__);
 			}
 
@@ -2057,7 +1906,7 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 				material = mMaterials.at(asset.MaterialNames[materialIndex]).get();
 
 			SubmeshSlot slot{};
-			slot.SubmeshName = source.Name;
+			slot.SubmeshName = key;
 			slot.MaterialName = material->Name;
 			slot.MatTransform = material->MatTransform;
 			slot.Submesh = &geometryIt->second;
@@ -2066,11 +1915,23 @@ SceneObject* SceneRenderer::CreateSkeletalMeshObject(const wchar_t* objName, con
 
 			component.SubmeshSlots.push_back(slot);
 		}
+		partIndex++;
 	}
 
 	mRenderBatchesDirty = true;
 
 	return &object;
+}
+
+std::string SceneRenderer::SelectDefaultAnimation(const SkeletalMeshAsset& asset)
+{
+	if (asset.Animations.count("mixamo.com"))
+		return "mixamo.com";
+
+	if (asset.Animations.empty())
+		return {};
+
+	return asset.Animations.begin()->first;
 }
 
 void SceneRenderer::BuildFrameResources(D3D12Context& context)
@@ -2090,6 +1951,7 @@ void SceneRenderer::BuildFrameResources(D3D12Context& context)
 	}
 	skinnedCBCount = std::max(1u, skinnedCBCount);
 
+	mFrameResources.clear();
 	for (int i = 0; i < GlobalConfig::NumFrameResources; i++)
 	{
 		mFrameResources.push_back(
@@ -2100,6 +1962,13 @@ void SceneRenderer::BuildFrameResources(D3D12Context& context)
 				(UINT)mWaves->VertexCount(),
 				(UINT)mMaterials.size(),
 				skinnedCBCount));
+	}
+
+	// 새 MaterialBuffer가 생성되었으므로 모든 Material을 다시 업로드해야 한다.
+	for (auto& [name, material] : mMaterials)
+	{
+		if (material)
+			material->NumFramesDirty = GlobalConfig::NumFrameResources;
 	}
 }
 
@@ -2359,7 +2228,7 @@ void SceneRenderer::BuildImportedTextures()
 		for (int textureIndex = 0; textureIndex < asset.Textures.size(); textureIndex++)
 		{
 			const ImportedTexture& importedTexture = asset.Textures[textureIndex];
-
+			
 			const std::string textureKey = assetName + "::Texture_" + std::to_string(textureIndex);
 
 			TextureLoadDesc loadDesc{};
@@ -2376,7 +2245,7 @@ void SceneRenderer::BuildImportedTextures()
 					throw DxException(
 						E_FAIL,
 						L"Imported external texture has no file path.",
-						AnsiToWString(__FILE__),
+						AnsiToWide(__FILE__),
 						__LINE__);
 				}
 
@@ -2398,7 +2267,7 @@ void SceneRenderer::BuildImportedTextures()
 					throw DxException(
 						E_FAIL,
 						L"Imported embedded texture has no encoded data.",
-						AnsiToWString(__FILE__),
+						AnsiToWide(__FILE__),
 						__LINE__);
 				}
 
@@ -2431,7 +2300,7 @@ void SceneRenderer::BuildImportedTextures()
 				throw DxException(
 					E_FAIL,
 					L"Loaded file texture count does not match the request count.",
-					AnsiToWString(__FILE__),
+					AnsiToWide(__FILE__),
 					__LINE__);
 			}
 
@@ -2452,7 +2321,7 @@ void SceneRenderer::BuildImportedTextures()
 				throw DxException(
 					E_FAIL,
 					L"Loaded memory texture count does not match the request count.",
-					AnsiToWString(__FILE__),
+					AnsiToWide(__FILE__),
 					__LINE__);
 			}
 
@@ -2460,6 +2329,130 @@ void SceneRenderer::BuildImportedTextures()
 			{
 				asset.TextureHandles[memoryTextureIndices[i]] = loadedHandles[i];
 			}
+		}
+	}
+}
+
+void SceneRenderer::BuildImportedTextures(const std::string& assetName, SkeletalMeshAsset& asset)
+{
+	TextureManager& textureManager = TextureManager::GetInstance();
+
+	// ImportedTextureIndex와 동일한 인덱스 구조를 유지한다.
+	asset.TextureHandles.assign(asset.Textures.size(), InvalidTextureHandle);
+
+	std::vector<TextureManager::TextureFileRequest> fileRequests;
+	std::vector<std::size_t> fileTextureIndices;
+	std::vector<TextureManager::TextureMemoryRequest> memoryRequests;
+	std::vector<std::size_t> memoryTextureIndices;
+
+	fileRequests.reserve(asset.Textures.size());
+	fileTextureIndices.reserve(asset.Textures.size());
+	memoryRequests.reserve(asset.Textures.size());
+	memoryTextureIndices.reserve(asset.Textures.size());
+
+	for (int textureIndex = 0; textureIndex < asset.Textures.size(); textureIndex++)
+	{
+		const ImportedTexture& importedTexture = asset.Textures[textureIndex];
+
+		const std::string textureKey = assetName + "::Texture_" + std::to_string(textureIndex);
+
+		TextureLoadDesc loadDesc{};
+		loadDesc.ColorSpace = TextureColorSpace::SRGB;
+		loadDesc.Lifetime = TextureLifetime::Scene;
+		loadDesc.GenerateMips = false;
+
+		switch (importedTexture.Source)
+		{
+		case ImportedTextureSource::ExternalFile:
+		{
+			if (importedTexture.FilePath.empty())
+			{
+				throw DxException(
+					E_FAIL,
+					L"Imported external texture has no file path.",
+					AnsiToWide(__FILE__),
+					__LINE__);
+			}
+
+			TextureManager::TextureFileRequest request{};
+			request.Key = textureKey;
+			request.FilePath = importedTexture.FilePath;
+			request.Desc = loadDesc;
+
+			fileRequests.push_back(std::move(request));
+			fileTextureIndices.push_back(textureIndex);
+
+			break;
+		}
+
+		case ImportedTextureSource::Embedded:
+		{
+			if (importedTexture.EncodedData.empty())
+			{
+				throw DxException(
+					E_FAIL,
+					L"Imported embedded texture has no encoded data.",
+					AnsiToWide(__FILE__),
+					__LINE__);
+			}
+
+			TextureManager::TextureMemoryRequest request{};
+			request.Key = textureKey;
+			request.Data = importedTexture.EncodedData.data();
+			request.Size = importedTexture.EncodedData.size();
+			request.Desc = loadDesc;
+
+			memoryRequests.push_back(std::move(request));
+			memoryTextureIndices.push_back(textureIndex);
+
+			break;
+		}
+
+		case ImportedTextureSource::NotTextureFile:
+			// Shader/Layer wrapper이므로 GPU 텍스처를 생성하지 않는다.
+			break;
+		}
+	}
+
+	if (!fileRequests.empty())
+	{
+		std::vector<TextureHandle> loadedHandles;
+
+		ThrowIfFailed(textureManager.LoadFromFile(fileRequests, loadedHandles));
+
+		if (loadedHandles.size() != fileTextureIndices.size())
+		{
+			throw DxException(
+				E_FAIL,
+				L"Loaded file texture count does not match the request count.",
+				AnsiToWide(__FILE__),
+				__LINE__);
+		}
+
+		for (int i = 0; i < loadedHandles.size(); i++)
+		{
+			asset.TextureHandles[fileTextureIndices[i]] = loadedHandles[i];
+		}
+	}
+
+	if (!memoryRequests.empty())
+	{
+		std::vector<TextureHandle> loadedHandles;
+
+		ThrowIfFailed(textureManager.LoadFromMemory(memoryRequests, loadedHandles));
+
+		if (loadedHandles.size() != memoryTextureIndices.size())
+		{
+			throw DxException(
+				E_FAIL,
+				L"Loaded memory texture count does not match the request count.",
+				AnsiToWide(__FILE__),
+				__LINE__);
+		}
+
+		for (int i = 0; i < loadedHandles.size(); i++)
+		{
+			asset.TextureHandles[memoryTextureIndices[i]] = loadedHandles[i];
 		}
 	}
 }
@@ -2512,6 +2505,95 @@ void SceneRenderer::BuildImportedMaterials()
 			mMaterials[material->Name] = std::move(material);
 		}
 	}
+}
+
+void SceneRenderer::BuildImportedMaterials(const std::string& assetName, SkeletalMeshAsset& asset)
+{
+	for (auto& [name, mat] : mMaterials)
+	{
+		if (name.find(assetName) != std::string::npos) return;
+	}
+
+	auto MakeMaterialName = [](const std::string& assetName, const ImportedMaterialIndex materialIndex) -> std::string
+		{
+			return assetName + "::Material_" + std::to_string(materialIndex);
+		};
+
+	TextureManager& textureManager = TextureManager::GetInstance();
+	const TextureHandle defaultTextureHandle = textureManager.FindHandle("defaultTex");
+
+	asset.MaterialNames.assign(asset.Materials.size(), std::string{});
+
+	for (ImportedMaterialIndex materialIndex = 0; materialIndex < asset.Materials.size(); materialIndex++)
+	{
+		const ImportedMaterial& importedMaterial = asset.Materials[materialIndex];
+
+		auto material = std::make_unique<Material>();
+		material->Name = MakeMaterialName(assetName, materialIndex);
+		material->MatBufferIndex = (UINT)mMaterials.size();
+		material->DiffuseAlbedo = importedMaterial.BaseColor;
+		material->Roughness = importedMaterial.Roughness;
+
+		const float metallic = importedMaterial.Metallic;
+		material->FresnelR0 =
+		{
+			0.04f + (importedMaterial.BaseColor.x - 0.04f) * metallic,
+			0.04f + (importedMaterial.BaseColor.y - 0.04f) * metallic,
+			0.04f + (importedMaterial.BaseColor.z - 0.04f) * metallic
+		};
+
+		material->DiffuseTextureHandle = defaultTextureHandle;
+		if (importedMaterial.BaseColorTexture != InvalidTextureIndex && importedMaterial.BaseColorTexture < asset.TextureHandles.size())
+		{
+			const TextureHandle textureHandle = asset.TextureHandles[importedMaterial.BaseColorTexture];
+
+			if (textureHandle.IsValid())
+				material->DiffuseTextureHandle = textureHandle;
+		}
+
+		if (importedMaterial.NormalTexture != InvalidTextureIndex && importedMaterial.NormalTexture < asset.TextureHandles.size())
+			material->NormalTextureHandle = asset.TextureHandles[importedMaterial.NormalTexture];
+
+		asset.MaterialNames[materialIndex] = material->Name;
+		mMaterials[material->Name] = std::move(material);
+	}
+}
+
+SceneObject* SceneRenderer::AddFbxToScene(D3D12Context& context, const std::filesystem::path& path)
+{
+	LoadFbxResource(context, path);
+
+	const std::string geometryName = path.stem().string();
+	SkeletalMeshAsset& asset = mSkeletalMesheAssets.at(geometryName);
+
+	TransformComponent transform{};
+	transform.Position = { 5.0f, 0.0f, 0.0f };
+	transform.Rotation = { 0.0f, 180.0f, 0.0f };
+	transform.Scale = { 0.03f, 0.03f, 0.03f };
+
+	auto sceneObj = CreateSkeletalMeshObject(
+		path.stem().c_str(),
+		geometryName.c_str(),
+		asset,
+		transform);
+
+	RebuildRenderBatches();
+	BuildFrameResources(context);
+
+	return sceneObj;
+}
+
+void SceneRenderer::LoadFbxResource(D3D12Context& context, const std::filesystem::path& path)
+{
+	const std::string name = path.stem().string();
+
+	if (mGeometries.count(name))
+		return;
+
+	BuildFBXGeometry(context, path);
+	SkeletalMeshAsset& asset = mSkeletalMesheAssets.at(name);
+	BuildImportedTextures(name, asset);
+	BuildImportedMaterials(name, asset);
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> SceneRenderer::GetStaticSamplers()
@@ -2609,7 +2691,7 @@ MeshData SceneRenderer::LoadModelFromFile_dx12ex(const std::wstring& path)
 	std::ifstream file(path);
 	if (!file)
 	{
-		std::wstring wfn = AnsiToWString(__FILE__);
+		std::wstring wfn = AnsiToWide(__FILE__);
 		throw DxException(1, path, wfn, __LINE__);
 	}
 
@@ -2676,26 +2758,34 @@ void SceneRenderer::UpdateSkinnedBuffer()
 		// 캐릭터 인스턴스당 한 번만 애니메이션 평가
 		skinnedMesh->mSkinnedModelInstance->UpdateAnimation(mTimer.DeltaTime());
 
-		const auto& submeshPalettes = skinnedMesh->mSkinnedModelInstance->SubmeshFinalTransforms;
+		const auto& partPalettes = skinnedMesh->mSkinnedModelInstance->SubmeshFinalTransforms;
+		const SkeletalMeshAsset& asset = *skinnedMesh->Asset;
+		assert(partPalettes.size() == asset.MeshParts.size());
 
-		assert(skinnedMesh->SkinnedBufferIndices.size() == submeshPalettes.size());
-
-		for (UINT submeshIndex = 0; submeshIndex < (UINT)submeshPalettes.size(); submeshIndex++)
+		UINT flatSubmeshIndex = 0;
+		for (UINT partIndex = 0; partIndex < (UINT)partPalettes.size(); partIndex++)
 		{
-			const std::vector<XMFLOAT4X4>& finalTransforms = submeshPalettes[submeshIndex];
+			const std::vector<XMFLOAT4X4>& finalTransforms = partPalettes[partIndex];
+			const UINT paletteStart = skinnedMatrixIndex;
 
-			skinnedMesh->SkinnedBufferIndices[submeshIndex] = skinnedMatrixIndex;
-
-			for (int i = 0; i < finalTransforms.size(); i++)
+			// 이 MeshPart의 palette를 GPU에 한 번만 기록
+			for (const XMFLOAT4X4& transform : finalTransforms)
 			{
-				SkinnedData_GPU skinnedConstants{};
-				skinnedConstants.BoneTransforms = finalTransforms[i];
+				SkinnedData_GPU gpuData{};
+				gpuData.BoneTransforms = transform;
 
-				currSkinnedBuffer->CopyData(skinnedMatrixIndex, skinnedConstants);
+				currSkinnedBuffer->CopyData(skinnedMatrixIndex, gpuData);
 
 				skinnedMatrixIndex++;
 			}
+
+			// 이 Part의 모든 material submesh는 같은 Skin Palette 사용
+			for (UINT i = 0; i < asset.MeshParts[partIndex].Submeshes.size(); i++)
+			{
+				skinnedMesh->SkinnedBufferIndices[flatSubmeshIndex++] = paletteStart;
+			}
 		}
+		assert(flatSubmeshIndex == skinnedMesh->SkinnedBufferIndices.size());
 	}
 }
 
@@ -2783,6 +2873,8 @@ void SceneRenderer::UpdateInstanceBuffer()
 	auto currInstanceBuffer = mCurrFrameResource->InstanceBuffer.get();
 
 	mVisibleInstanceCount = 0;
+	mCullCandidateCount = 0;
+	mFrustumCulledInstanceCount = 0;
 	UINT instanceRegionStart = 0;
 	for (std::vector<RenderBatch>& batches : mRenderBatches)
 	{
@@ -2810,6 +2902,9 @@ void SceneRenderer::UpdateInstanceBuffer()
 				BoundingBox worldBounds;
 				slot.Submesh->Bounds.Transform(worldBounds, world);
 
+				// 실제로 렌더링 가능한 인스턴스만 컬링 후보로 계산한다.
+				mCullCandidateCount++;
+
 				// 월드 공간에서 박스/프러스텀 교차 테스트를 수행한다.
 				if ((worldFrustum.Contains(worldBounds) != DirectX::DISJOINT) || !mFrustumCullingEnabled)
 				{
@@ -2836,6 +2931,8 @@ void SceneRenderer::UpdateInstanceBuffer()
 					batch.VisibleInstanceCount++;
 					mVisibleInstanceCount++;
 				}
+				else
+					mFrustumCulledInstanceCount++;
 			}
 		}
 	}

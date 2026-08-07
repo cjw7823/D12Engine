@@ -145,7 +145,7 @@ namespace
             throw DxException(
                 E_NOTIMPL,
                 L"Layered or multi-file material textures are not supported.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -154,7 +154,7 @@ namespace
             throw DxException(
                 E_FAIL,
                 L"Material texture index is out of range.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -265,8 +265,8 @@ MeshData FbxImporter::ImportStaticMesh(const std::filesystem::path& filePath)
 
     if (result.Vertices.empty() || result.Indices32.empty())
     {
-        std::wstring msg = AnsiToWString("FBX contains no renderable triangle mesh: " + filePath.string());
-        throw DxException(HRESULT(), msg, AnsiToWString(__FILE__), __LINE__);
+        std::wstring msg = AnsiToWide("FBX contains no renderable triangle mesh: " + filePath.string());
+        throw DxException(HRESULT(), msg, AnsiToWide(__FILE__), __LINE__);
     }
 
     return result;
@@ -309,7 +309,7 @@ FbxImporter::ScenePtr FbxImporter::LoadScene(
         throw DxException(
             HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND),
             message,
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -320,7 +320,7 @@ FbxImporter::ScenePtr FbxImporter::LoadScene(
         throw DxException(
             E_INVALIDARG,
             message,
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -342,7 +342,7 @@ FbxImporter::ScenePtr FbxImporter::LoadScene(
             << "Path: " << utf8Path << '\n'
             << "Error: " << errorBuffer;
 
-        throw DxException(HRESULT(), AnsiToWString(oss.str()), AnsiToWString(__FILE__), __LINE__);
+        throw DxException(HRESULT(), AnsiToWide(oss.str()), AnsiToWide(__FILE__), __LINE__);
     }
 
     return ScenePtr(rawScene);
@@ -438,7 +438,7 @@ SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unor
             throw DxException(
                 E_NOTIMPL,
                 L"Only one skin deformer per mesh is supported.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -461,7 +461,7 @@ SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unor
                 throw DxException(
                     E_FAIL,
                     L"Skin contains an invalid cluster.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -479,7 +479,7 @@ SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unor
         throw DxException(
             E_FAIL,
             L"FBX contains no skinned mesh or skeleton.",
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -582,7 +582,7 @@ SkeletonAsset FbxImporter::BuildSkeletonAsset(const ufbx_scene& scene, std::unor
         throw DxException(
             E_FAIL,
             L"Skeleton hierarchy contains an invalid parent relationship or cycle.",
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -606,7 +606,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
             throw DxException(
                 E_NOTIMPL,
                 L"Only one skin deformer per mesh is supported.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -616,7 +616,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
             throw DxException(
                 E_FAIL,
                 L"Skinned mesh contains no valid skin clusters.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -625,7 +625,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
             throw DxException(
                 E_FAIL,
                 L"Skinned mesh contains no vertex positions.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -647,7 +647,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                 throw DxException(
                     E_FAIL,
                     L"Skin contains an invalid cluster.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -657,7 +657,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                 throw DxException(
                     E_FAIL,
                     L"Skin cluster bone is not part of the skeleton.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -693,7 +693,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                     throw DxException(
                         E_FAIL,
                         L"Submesh material index is out of range.",
-                        AnsiToWString(__FILE__),
+                        AnsiToWide(__FILE__),
                         __LINE__);
                 }
 
@@ -745,7 +745,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                         throw DxException(
                             E_FAIL,
                             L"Polygon vertex index is out of range.",
-                            AnsiToWString(__FILE__),
+                            AnsiToWide(__FILE__),
                             __LINE__);
                     }
 
@@ -789,7 +789,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                         throw DxException(
                             E_FAIL,
                             L"Skin logical vertex index is out of range.",
-                            AnsiToWString(__FILE__),
+                            AnsiToWide(__FILE__),
                             __LINE__);
                     }
 
@@ -810,7 +810,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                             throw DxException(
                                 E_FAIL,
                                 L"Skin weight index is out of range.",
-                                AnsiToWString(__FILE__),
+                                AnsiToWide(__FILE__),
                                 __LINE__);
                         }
 
@@ -820,7 +820,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
                             throw DxException(
                                 E_FAIL,
                                 L"Skin cluster index is out of range.",
-                                AnsiToWString(__FILE__),
+                                AnsiToWide(__FILE__),
                                 __LINE__);
                         }
 
@@ -879,7 +879,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
             throw DxException(
                 E_FAIL,
                 L"Skinned mesh contains no renderable triangles.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -891,7 +891,7 @@ std::vector<SkeletalMeshPart> FbxImporter::BuildSkeletalSubmeshes(const ufbx_sce
         throw DxException(
             E_FAIL,
             L"FBX contains no supported skinned submeshes.",
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -930,8 +930,8 @@ FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skel
             ufbx_format_error(errorBuffer, sizeof(errorBuffer), &error);
             throw DxException(
                 E_FAIL,
-                AnsiToWString(errorBuffer),
-                AnsiToWString(__FILE__),
+                AnsiToWide(errorBuffer),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -958,7 +958,7 @@ FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skel
                 throw DxException(
                     E_FAIL,
                     L"Animation joint index is out of range.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -1003,7 +1003,7 @@ FbxImporter::ImportAnimations(const ufbx_scene& scene, const SkeletonAsset& skel
             throw DxException(
                 E_FAIL,
                 L"Duplicate animation clip name.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
     }
@@ -1024,7 +1024,7 @@ std::vector<ImportedMaterial> FbxImporter::ImportMaterials(const ufbx_scene& sce
             throw DxException(
                 E_FAIL,
                 L"FBX contains a null material element.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -1034,7 +1034,7 @@ std::vector<ImportedMaterial> FbxImporter::ImportMaterials(const ufbx_scene& sce
             throw DxException(
                 E_FAIL,
                 L"FBX material typed ID does not match its scene index.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -1097,7 +1097,7 @@ std::vector<ImportedTexture> FbxImporter::ImportTextures(const ufbx_scene& scene
 			throw DxException(
 				E_FAIL,
 				L"FBX texture is null.",
-				AnsiToWString(__FILE__),
+				AnsiToWide(__FILE__),
 				__LINE__);
 		}
 
@@ -1107,7 +1107,7 @@ std::vector<ImportedTexture> FbxImporter::ImportTextures(const ufbx_scene& scene
 			throw DxException(
 				E_FAIL,
 				L"FBX texture typed_id does not match its index.",
-				AnsiToWString(__FILE__),
+				AnsiToWide(__FILE__),
 				__LINE__);
 		}
 
@@ -1147,7 +1147,7 @@ std::vector<ImportedTexture> FbxImporter::ImportTextures(const ufbx_scene& scene
             throw DxException(
                 E_FAIL,
                 L"FBX file texture contains neither a file path nor embedded data.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 

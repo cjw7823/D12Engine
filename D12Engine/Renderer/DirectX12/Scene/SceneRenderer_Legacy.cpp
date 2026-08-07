@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "SceneRenderer.h"
 
+#include "Renderer/DirectX12/Components/SkeletalMeshComponent.h"
+#include "EngineCore/Logging/Logger.h"
+
 #include <DirectXMath.h>
 
 using namespace Microsoft::WRL;
@@ -10,12 +13,193 @@ void SceneRenderer::BuildScene()
 {
 	mRenderBatchesDirty = true;
 
-	//BuildSceneObject_Common();
+	BuildSceneObject_Common();
 	BuildSceneObject_InMirror();
 	BuildSceneObject_Gizmo();
-	//BuildSceneObject_FBX();
+}
 
-	RebuildRenderBatches();
+void SceneRenderer::BuildSceneObject_Common()
+{
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 0.5f, 2.0f };
+		transform.Rotation = { 0.0f, 0.0f, 0.0f };
+		transform.Scale = { 2.0f, 2.0f / 3.0f, 2.0f };
+
+		CreateStaticMeshObject(L"¹Ó¸Ê »óÀÚ", "shapeGeo", "box", "woodCrate",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::Opaque }, true);
+	}
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 2.0f, 15.0f };
+		transform.Scale = { 2.0f, 2.0f, 2.0f };
+
+		CreateStaticMeshObject(L"È¸Àü ºí·£µù »óÀÚ", "shapeGeo", "box", "swirling",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::MultiTextureBlend }, true);
+	}
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 1.0f, -3.0f };
+
+		CreateStaticMeshObject(L"Ã¶¸Á »óÀÚ", "shapeGeo", "box", "wireFence",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::AlphaTestOpaque }, true);
+	}
+	{
+		TransformComponent transform;
+		transform.Position = { -3.0f, 0.0f, 7.0f };
+		transform.Scale = { 1.5f, 1.0f, 1.4f };
+
+		CreateStaticMeshObject(L"¹Ù´Ú", "shapeGeo", "grid", "checkerTileMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::Opaque }, true, XMMatrixScaling(8.0f, 8.0f, 1.0f));
+	}
+
+	for (int i = 0; i < 8; ++i)
+	{
+		TransformComponent leftCylTransform;
+		leftCylTransform.Position = { -12.0f, 1.5f, -10.0f + i * 5.0f };
+
+		TransformComponent rightCylTransform;
+		rightCylTransform.Position = { -2.0f, 1.5f, -10.0f + i * 5.0f };
+
+		TransformComponent leftSphereTransform;
+		leftSphereTransform.Position = { -12.0f, 3.5f, -10.0f + i * 5.0f };
+
+		TransformComponent rightSphereTransform;
+		rightSphereTransform.Position = { -2.0f, 3.5f, -10.0f + i * 5.0f };
+		rightSphereTransform.Scale = { 2.0f, 2.0f, 2.0f };
+
+		std::wstring objectName1 = L"¿ÞÂÊ ±âµÕ" + std::to_wstring(i);
+		std::wstring objectName2 = L"¿À¸¥ÂÊ ±âµÕ" + std::to_wstring(i);
+		std::wstring objectName3 = L"¿ÞÂÊ µ¹" + std::to_wstring(i);
+		std::wstring objectName4 = L"¿À¸¥ÂÊ µ¹" + std::to_wstring(i);
+
+		CreateStaticMeshObject(objectName1.c_str(), "shapeGeo", "cylinder", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftCylTransform,
+			{ RenderPass::Opaque }, true);
+		CreateStaticMeshObject(objectName2.c_str(), "shapeGeo", "cylinder", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightCylTransform,
+			{ RenderPass::Opaque }, true);
+
+		CreateStaticMeshObject(objectName3.c_str(), "shapeGeo", "sphere", "stone0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, leftSphereTransform,
+			{ RenderPass::Opaque }, true);
+		CreateStaticMeshObject(objectName4.c_str(), "shapeGeo", "geoSphere", "stone0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, rightSphereTransform,
+			{ RenderPass::GeoSphereLOD }, true);
+	}
+
+	//skull
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 1.0f, 7.0f };
+		transform.Scale = { 0.2f, 0.2f, 0.2f };
+
+		mSkull = CreateStaticMeshObject(L"ÇØ°ñ", "shapeGeo", "skull", "defaultMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::Opaque }, true);
+	}
+
+	//land
+	{
+		TransformComponent transform;
+		transform.Position = { 0.0f, -5.0f, 0.0f };
+
+		CreateStaticMeshObject(L"¶¥", "landGeo", "grid", "grass0",
+			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
+			{ RenderPass::TessLand }, false,
+			XMMatrixScaling(5.0f, 5.0f, 1.0f));
+	}
+
+	//wave
+	{
+		TransformComponent transform;
+		transform.Position = { 0.0f, -1.0f, 0.0f };
+
+		CreateStaticMeshObject(L"¹°", "waterGeo", "grid", "water0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::Waves }, false,
+			XMMatrixScaling(5.0f, 5.0f, 1.0f));
+	}
+
+	//mirror
+	{
+		TransformComponent transform;
+		transform.Position = { -18.0f, 2.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.2f, 1.0f, 0.5f };
+
+		mMirror = CreateStaticMeshObject(L"°Å¿ï", "shapeGeo", "grid", "iceMirrorMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::MirrorStencil, RenderPass::Transparent }, false,
+			XMMatrixScaling(1.0f, 2.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2));
+	}
+	{
+		TransformComponent transform;
+		transform.Position = { -18.001f, 3.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.3f, 1.0f, 1.4f };
+
+		auto ri = CreateStaticMeshObject(L"°Å¿ï º®", "brickWallGeo", "brickWall", "bricks1",
+			D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST, transform,
+			{ RenderPass::TessWall }, false,
+			XMMatrixScaling(2.5f, 11.0f, 1.0f) * XMMatrixRotationZ(XM_PIDIV2));
+		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
+	}
+	//°Å¿ï ¹éÇÃ·¹ÀÌÆ®
+	{
+		TransformComponent transform;
+		transform.Position = { -18.0f, 2.0f, 7.0f };
+		transform.Rotation = { 0.0f, 0.0f, -90.0f };
+		transform.Scale = { 0.2f, 1.0f, 0.5f };
+
+		CreateStaticMeshObject(L"°Å¿ï ¹éÇÃ·¹ÀÌÆ®", "shapeGeo", "grid", "mirrorBaseMat",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::MirrorBaseFill }, false);
+	}
+
+	//skull shadow
+	{
+		TransformComponent transform;
+		transform.Position = { 3.0f, 3.0f, 0.0f };
+
+		mSkullShadow = CreateStaticMeshObject(L"ÇØ°ñ ±×¸²ÀÚ", "shapeGeo", "skull", "shadowMat_skull",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::Shadow }, true);
+		mSkullShadow->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
+	}
+
+	//tree billboard
+	{
+		TransformComponent transform;
+		auto ri = CreateStaticMeshObject(L"³ª¹« ºôº¸µå", "treeBillboard", "tree", "treeBillboardMat",
+			D3D_PRIMITIVE_TOPOLOGY_POINTLIST, transform,
+			{ RenderPass::A2C_TreeBillboard }, false);
+		ri->mObjectFlags = static_cast<SceneObjectFlags>(SceneObjectFlags::NotSelectable);
+	}
+
+	//extended Cylinder
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 0.0f, 20.0f };
+
+		CreateStaticMeshObject(L"GSÈ®Àå ¿øÅë", "cylinderWithoutTop", "cylinderWithoutTop", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_LINESTRIP, transform,
+			{ RenderPass::LineToCylinder }, false);
+	}
+
+	//explode
+	{
+		TransformComponent transform;
+		transform.Position = { -7.0f, 6.0f, 7.0f };
+
+		CreateStaticMeshObject(L"Æø¹ßÇÏ´Â µ¹", "shapeGeo", "geoSphere", "bricks0",
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
+			{ RenderPass::GeoExplode }, true);
+	}
 }
 
 void SceneRenderer::BuildSceneObject_InMirror()
@@ -58,17 +242,17 @@ void SceneRenderer::BuildSceneObject_Gizmo()
 {
 	TransformComponent transform;
 
-	auto gizmoX = CreateStaticMeshObject(L"ê¸°ì¦ˆëª¨ X", "shapeGeo", "box", "gizmoX",
+	auto gizmoX = CreateStaticMeshObject(L"±âÁî¸ð X", "shapeGeo", "box", "gizmoX",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
 		{ RenderPass::Gizmo }, false);
 	gizmoX->Visible = false;
 
-	auto gizmoY = CreateStaticMeshObject(L"ê¸°ì¦ˆëª¨ Y", "shapeGeo", "box", "gizmoY",
+	auto gizmoY = CreateStaticMeshObject(L"±âÁî¸ð Y", "shapeGeo", "box", "gizmoY",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
 		{ RenderPass::Gizmo }, false);
 	gizmoY->Visible = false;
 
-	auto gizmoZ = CreateStaticMeshObject(L"ê¸°ì¦ˆëª¨ Z", "shapeGeo", "box", "gizmoZ",
+	auto gizmoZ = CreateStaticMeshObject(L"±âÁî¸ð Z", "shapeGeo", "box", "gizmoZ",
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, transform,
 		{ RenderPass::Gizmo }, false);
 	gizmoZ->Visible = false;
@@ -80,24 +264,4 @@ void SceneRenderer::BuildSceneObject_Gizmo()
 	gizmoZ->mObjectFlags = flag;
 
 	mGizmo.SetGigmoObjects(gizmoX, gizmoY, gizmoZ);
-}
-
-void SceneRenderer::BuildSceneObject_FBX()
-{
-	const std::string assetName = "fbxPreviewGeo";
-	const auto skeletalMeshIt = mSkeletalMesheAssets.find(assetName);
-	SkeletalMeshAsset& skeletalMesh = skeletalMeshIt->second;
-
-	TransformComponent transform;
-	transform.Position = { 5.0f, 0.0f, 0.0f };
-	transform.Rotation = { 0.0f, 180.0f, 0.0f };
-	transform.Scale = { 0.03f, 0.03f, 0.03f };
-
-	CreateSkeletalMeshObject(L"FBX ë¯¸ë¦¬ë³´ê¸°", assetName.c_str(), skeletalMesh, transform);
-
-	transform.Position = { 15.0f, 0.0f, 0.0f };
-	transform.Rotation = { 0.0f, 180.0f, 0.0f };
-	transform.Scale = { 0.03f, 0.03f, 0.03f };
-
-	CreateSkeletalMeshObject(L"FBX ë¯¸ë¦¬ë³´ê¸°2", assetName.c_str(), skeletalMesh, transform);
 }

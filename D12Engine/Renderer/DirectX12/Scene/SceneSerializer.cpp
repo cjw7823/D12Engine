@@ -209,8 +209,8 @@ bool SceneSerializer::Load(Scene& scene, const std::filesystem::path& filePath)
 
     d12engine::serialization::SceneFile sceneFile;
 
-    // íŒŒì‹±ì— ì‹¤íŒ¨í–ˆì„ ë•Œ ê¸°ì¡´ Sceneì„ ìœ ì§€í•˜ê¸° ìœ„í•´
-    // Clear()ë³´ë‹¤ ë¨¼ì € ìˆ˜í–‰í•œë‹¤.
+    // ÆÄ½Ì¿¡ ½ÇÆĞÇßÀ» ¶§ ±âÁ¸ SceneÀ» À¯ÁöÇÏ±â À§ÇØ
+    // Clear()º¸´Ù ¸ÕÀú ¼öÇàÇÑ´Ù.
     if (!sceneFile.ParseFromIstream(&input)) return false;
 
     if (sceneFile.format_version() != CurrentSceneFormatVersion)

@@ -349,7 +349,7 @@ void TextureManager::CreateSRV(Texture& texture)
 		throw DxException(
 			E_NOTIMPL,
 			L"Only 2D textures are currently supported.",
-			AnsiToWString(__FILE__),
+			AnsiToWide(__FILE__),
 			__LINE__);
 	}
 

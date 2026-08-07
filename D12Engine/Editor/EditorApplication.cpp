@@ -92,7 +92,7 @@ EditorApplication::EditorApplication(HINSTANCE hInstance) :
 	mActiveScene(),
 	mSceneRenderer(mActiveScene),
 	mSceneViewInputHandler(mSceneRenderer),
-	mEditorLayer(mActiveScene)
+	mEditorLayer(mActiveScene, mSceneRenderer)
 {
 	assert(mApp == nullptr);
 	mApp = this;
@@ -148,6 +148,11 @@ bool EditorApplication::Initialize()
 		[this]()
 		{
 			LoadActiveScene();
+		});
+	mEditorLayer.RegisterAssetOpenCommand(
+		[this](const std::filesystem::path& path)
+		{
+			OpenAsset(path);
 		});
 
 	mSceneRenderTarget.Create(
@@ -248,7 +253,16 @@ void EditorApplication::Tick()
 		}
 	}
 
+	if (mPendingFbxPath)
+		mD3D12Context.FlushCommandQueue();
+
 	mD3D12Context.BeginFrame();
+
+	if (mPendingFbxPath)
+	{
+		mSceneRenderer.AddFbxToScene(mD3D12Context, *mPendingFbxPath);
+		mPendingFbxPath.reset();
+	}
 
 	if (renderSceneView)
 	{
@@ -363,6 +377,20 @@ void EditorApplication::CalculateFrameStats()
 	}
 }
 
+void EditorApplication::OpenAsset(const std::filesystem::path& path)
+{
+	const auto ext = path.extension();
+
+	if (ext == L".d12scene")
+	{
+		LoadScene(path);
+	}
+	else if (ext == L".fbx")
+	{
+		mPendingFbxPath = path;
+	}
+}
+
 bool EditorApplication::SaveActiveScene(bool AsDiffName)
 {
 	std::optional<std::filesystem::path> selectedPath;
@@ -393,9 +421,14 @@ bool EditorApplication::LoadActiveScene()
 	const auto selectedPath = ShowSceneFileDialog(mhMainWnd, mActiveScenePath, false);
 	if (!selectedPath) return false;
 
+	return LoadScene(*selectedPath);
+}
+
+bool EditorApplication::LoadScene(const std::filesystem::path& path)
+{
 	Scene loadedScene;
 
-	if (!SceneSerializer::Load(loadedScene, *selectedPath))
+	if (!SceneSerializer::Load(loadedScene, path))
 	{
 		MessageBoxW(mhMainWnd, L"Scene 파일을 읽지 못했습니다.", L"Load Scene", MB_OK | MB_ICONERROR);
 		return false;
@@ -412,7 +445,7 @@ bool EditorApplication::LoadActiveScene()
 	mActiveScene.Swap(loadedScene);
 	mSceneRenderer.RebuildSceneRuntime(mD3D12Context);
 
-	mActiveScenePath = *selectedPath;
+	mActiveScenePath = path;
 
 	return true;
 }

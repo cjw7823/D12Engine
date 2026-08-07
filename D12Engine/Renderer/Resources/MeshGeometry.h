@@ -62,4 +62,9 @@ struct MeshGeometry
 		VertexBufferUploader = nullptr;
 		IndexBufferUploader = nullptr;
 	}
+
+	std::string MakeSubmeshKey(int partIndex, int submeshIndex) const
+	{
+		return Name + "_part_" + std::to_string(partIndex) + "_submesh_" + std::to_string(submeshIndex);
+	}
 };

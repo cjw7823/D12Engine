@@ -17,7 +17,12 @@ void EditorLayer::RegisterSceneCommands(std::function<void(bool)> saveSceneComma
 	mLoadSceneCommand = std::move(loadSceneCommand);
 }
 
-EditorLayer::EditorLayer(Scene& scene) : mScene(scene)
+void EditorLayer::RegisterAssetOpenCommand(OpenAssetCommand command)
+{
+	mOpenAssetCommand = std::move(command);
+}
+
+EditorLayer::EditorLayer(Scene& scene, SceneRenderer& sceneRenderer) : mScene(scene), mSceneRenderer(sceneRenderer)
 {
 }
 
@@ -63,6 +68,9 @@ void EditorLayer::DrawEditorUI()
 
 	if (mHelpWindow)
 		DrawHelper();
+
+	if (mShowStatistics)
+		DrawStatistics();
 }
 
 void EditorLayer::DrawMainDockSpace()
@@ -135,6 +143,7 @@ void EditorLayer::DrawMainMenuBar()
 			ImGui::MenuItem("Hierarchy", nullptr, &mShowHierarchy);
 			ImGui::MenuItem("Inspector", nullptr, &mShowInspector);
 			ImGui::MenuItem("Console", nullptr, &mShowConsole);
+			ImGui::MenuItem("Statistics", nullptr, &mShowStatistics);
 
 			ImGui::EndMenu();
 		}
@@ -249,9 +258,15 @@ void EditorLayer::DrawContentBrowser()
 			{
 				bool selected = (mSelectedAssetPath == path);
 
-				if (ImGui::Selectable(filename.c_str(), selected))
+				if (ImGui::Selectable(filename.c_str(), selected, ImGuiSelectableFlags_AllowDoubleClick))
 				{
 					mSelectedAssetPath = path;
+
+					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+					{
+						if (mOpenAssetCommand)
+							mOpenAssetCommand(path);
+					}
 				}
 			}
 		}
@@ -691,5 +706,50 @@ void EditorLayer::DrawHelper()
 	}
 
 	ImGui::EndChild();
+	ImGui::End();
+}
+
+void EditorLayer::DrawStatistics()
+{
+	if (!ImGui::Begin("Statistics", &mShowStatistics))
+	{
+		ImGui::End();
+		return;
+	}
+
+	const SceneRenderStatistics stats = mSceneRenderer.GetStatistics();
+
+	if (ImGui::CollapsingHeader("GPU Timestamp Query", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		if (stats.GpuTimestampValid)
+		{
+			ImGui::Text("Renderer GPU: %.3f ms", stats.RendererGpuMs);
+			ImGui::Text("Scene Passes: %.3f ms", stats.ScenePassGpuMs);
+		}
+		else
+		{
+			ImGui::TextDisabled("Waiting for GPU timestamp data...");
+		}
+	}
+
+	if (ImGui::CollapsingHeader("Frustum Culling", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		bool enabled = stats.FrustumCullingEnabled;
+
+		if (ImGui::Checkbox("Enabled", &enabled))
+			mSceneRenderer.SetFrustumCullingEnabled(enabled);
+
+		const float culledRatio =
+			stats.CullCandidateCount > 0
+			? static_cast<float>(stats.FrustumCulledInstanceCount) /
+			static_cast<float>(stats.CullCandidateCount)
+			: 0.0f;
+
+		ImGui::Text("Batched Instances: %u", stats.BatchedInstanceCount);
+		ImGui::Text("Cull Candidates: %u", stats.CullCandidateCount);
+		ImGui::Text("Visible Instances: %u", stats.VisibleInstanceCount);
+		ImGui::Text("Culled Instances: %u (%.1f%%)", stats.FrustumCulledInstanceCount, culledRatio * 100.0f);
+	}
+
 	ImGui::End();
 }

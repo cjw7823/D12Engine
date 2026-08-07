@@ -41,7 +41,7 @@ inline std::string PathToUtf8(const std::filesystem::path& path)
 	return WideToUtf8(path.wstring());
 }
 
-inline std::wstring AnsiToWString(const std::string& str)
+inline std::wstring AnsiToWide(const std::string& str)
 {
 	WCHAR buffer[512];
 	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);

@@ -26,8 +26,8 @@ void SkinnedModelInstance::Initialize(const SkeletalMeshAsset& asset, std::strin
 
         throw DxException(
             E_INVALIDARG,
-            AnsiToWString(oss.str()),
-            AnsiToWString(__FILE__),
+            AnsiToWide(oss.str()),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -80,7 +80,7 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
         throw DxException(
             E_FAIL,
             L"Animation joint count does not match skeleton joint count.",
-            AnsiToWString(__FILE__),
+            AnsiToWide(__FILE__),
             __LINE__);
     }
 
@@ -122,7 +122,7 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
             throw DxException(
                 E_FAIL,
                 L"Skeleton evaluation order contains an invalid joint index.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
@@ -144,7 +144,7 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
                 throw DxException(
                     E_FAIL,
                     L"Skeleton contains an invalid parent index.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -161,12 +161,12 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
     // 4. 서브메시별 최종 GPU Skin Palette 생성
     if (SubmeshFinalTransforms.size() != Asset->GetSubmeshCount())
     {
-        SubmeshFinalTransforms.resize(Asset->GetSubmeshCount());
+        SubmeshFinalTransforms.resize(Asset->MeshParts.size());
     }
 
-    for (std::size_t submeshIndex = 0; submeshIndex < Asset->MeshParts.size(); submeshIndex++)
+    for (std::size_t partIndex = 0; partIndex < Asset->MeshParts.size(); partIndex++)
     {
-        const SkinBinding& skin = Asset->MeshParts[submeshIndex].Skin;
+        const SkinBinding& skin = Asset->MeshParts[partIndex].Skin;
         const std::size_t paletteSize = skin.PaletteToSkeletonJoint.size();
 
         if (skin.OffsetMatrices.size() != paletteSize)
@@ -174,11 +174,11 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
             throw DxException(
                 E_FAIL,
                 L"Skin binding palette and offset matrix counts do not match.",
-                AnsiToWString(__FILE__),
+                AnsiToWide(__FILE__),
                 __LINE__);
         }
 
-        std::vector<XMFLOAT4X4>& finalTransforms = SubmeshFinalTransforms[submeshIndex];
+        std::vector<XMFLOAT4X4>& finalTransforms = SubmeshFinalTransforms[partIndex];
         finalTransforms.resize(paletteSize);
 
         for (std::size_t paletteIndex = 0; paletteIndex < paletteSize; paletteIndex++)
@@ -190,7 +190,7 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
                 throw DxException(
                     E_FAIL,
                     L"Skin palette contains an invalid skeleton joint index.",
-                    AnsiToWString(__FILE__),
+                    AnsiToWide(__FILE__),
                     __LINE__);
             }
 
@@ -201,10 +201,7 @@ void SkinnedModelInstance::UpdateAnimation(float deltaTime)
             // Mesh bind space
             // → Joint bind space
             // → 현재 Root space
-            XMMATRIX finalTransform =
-                XMMatrixMultiply(
-                    offset,
-                    jointToRoot);
+            XMMATRIX finalTransform = XMMatrixMultiply(offset, jointToRoot);
 
             // 기존 HLSL이 mul(matrix, vector) 또는
             // 전치 행렬 업로드 규약을 사용한다는 전제
