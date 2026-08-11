@@ -417,7 +417,7 @@ void SceneRenderer::Render(D3D12Context& context, D3D12RenderTarget& renderTarge
 			renderTarget.GetColorState(),
 			D3D12_RESOURCE_STATE_COPY_DEST);
 
-		mCommandList->CopyResource(renderTarget.GetColorResource(), mBlurFilter->SobelOutput());
+		mCommandList->CopyResource(renderTarget.GetColorResource(), mBlurFilter->BlurOutput());
 
 		renderTarget.TransitionIfNeeded(
 			mCommandList,

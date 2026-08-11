@@ -15,7 +15,7 @@ BlurFilter::BlurFilter(ID3D12Device* device, UINT width, UINT height, DXGI_FORMA
 	BuildResources();
 }
 
-ID3D12Resource* BlurFilter::SobelOutput()
+ID3D12Resource* BlurFilter::BlurOutput()
 {
 	return mBlurMap0.Get();
 }

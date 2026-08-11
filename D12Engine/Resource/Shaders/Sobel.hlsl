@@ -34,7 +34,7 @@ void SobelCS(int3 dispatchThreadID : SV_DispatchThreadID)
     float4 Gy = -1.0f * c[2][0] - 2.0f * c[2][1] - 1.0f * c[2][2] + 1.0f * c[0][0] + 2.0f * c[0][1] + 1.0f * c[0][2];
     
     //그래디언트는 (Gx, Gy)다. 각 색상 채널에 대해 그래디언트의 크기를 계산하여 변화율의 최대값을 구한다.
-    float4 mag = sqrt(Gx * Gx + Gy + Gy);
+    float4 mag = sqrt(Gx * Gx + Gy * Gy);
     
     //엣지는 검은색, 다른 부분은 흰색
     mag = 1.0f - saturate(Calcuminance(mag.rgb));

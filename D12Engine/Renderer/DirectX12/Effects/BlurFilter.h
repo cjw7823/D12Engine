@@ -20,7 +20,7 @@ public:
 	BlurFilter& operator=(const BlurFilter& rhs) = delete;
 	~BlurFilter() = default;
 
-	ID3D12Resource* SobelOutput();
+	ID3D12Resource* BlurOutput();
 
 	void BuildDescriptors(const AllocateDescriptorCallback& allocateDescriptor);
 
