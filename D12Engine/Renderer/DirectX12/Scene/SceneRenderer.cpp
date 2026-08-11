@@ -2014,6 +2014,8 @@ void SceneRenderer::BuildPSOs(const D3D12Context& context)
 		PipelineStateFactory factory(opaqueWireframeCtx);
 		mLayerPSOs[(int)RenderPass::Opaque][(int)SceneRenderMode::Wireframe] =
 			factory.CreateOpaquePSO(mShaders["standardVS"].Get(), mShaders["opaquePS"].Get());
+		mLayerPSOs[(int)RenderPass::Waves][(int)SceneRenderMode::Wireframe] =
+			factory.CreateOpaquePSO(mShaders["wavesVS"].Get(), mShaders["opaquePS"].Get());
 	}
 
 	{
